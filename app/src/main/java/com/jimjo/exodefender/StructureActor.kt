@@ -67,6 +67,12 @@ class FriendlyStructureActor(
 
     private val scheduledBursts = ArrayDeque<ScheduledBurst>()
     private var destructionStartedMs: Int = 0
+    private var hideAtMs: Int? = null
+
+    private var didFoundationFlash = false
+    private var lastFlashMs = Int.MIN_VALUE
+    private val flashCooldownMs = 120
+    private var emittedBurstCount = 0
 
     val editorBoundsAabb = Aabb(Vec3(), Vec3())
 
@@ -78,6 +84,10 @@ class FriendlyStructureActor(
         destroyed = false
         destructEndMs = if (destructEnabled) s!! * 1000 else 0
         currentTimeMs = 0
+
+        didFoundationFlash = false
+        lastFlashMs = Int.MIN_VALUE
+        emittedBurstCount = 0
     }
 
     fun applyDamageFromEnemy(timeMs: Int, hitPosition: Vec3) {
@@ -105,6 +115,92 @@ class FriendlyStructureActor(
             }
         }
     }
+
+    override fun select() {
+        super.select()
+        updateEditorBoundsAabb()
+    }
+
+    override fun update(dt: Float, dtMs: Int, timeMs: Int) {
+        updateDestruction(timeMs)
+
+        // If you set destroyed=true and call onDestroyed(), ensure you also start VFX there.
+        updateDestructionVfx(timeMs)
+
+        hideAtMs?.let {
+            if (timeMs >= it) {
+                world.removeActorFromWorld(this)
+                hideAtMs = null
+            }
+        }
+    }
+
+
+    fun updateDestruction(timeMs: Int) {
+        if (!destructEnabled || destroyed) return
+
+        if (timeMs >= destructEndMs) {
+            destroyed = true
+            onDestroyed(timeMs)
+        }
+    }
+
+    fun updateDestructionVfx(timeMs: Int) {
+        while (scheduledBursts.isNotEmpty() && timeMs >= scheduledBursts.first().timeMs) {
+            val b = scheduledBursts.removeFirst()
+
+            // ---- explosions ----
+            explosionPool.activateLarge(b.pos)
+
+            // ---- flashes ----
+            val flash = this.explosionFlash  // Actor.explosionFlash?
+            if (flash != null) {
+
+                // 1) One big flash early in the sequence (foundation)
+                if (!didFoundationFlash) {
+                    didFoundationFlash = true
+                    lastFlashMs = timeMs
+                    flash.spawnWorldExtraLarge(b.pos)   // big “boom”
+                    world.renderer?.screenShake?.start(2f, 0.7f)
+                } else {
+                    // 2) Medium-ish flashes during the sequence
+                    val shouldFlashThisBurst =
+                        (emittedBurstCount % 3 == 0) && (timeMs - lastFlashMs >= flashCooldownMs)
+
+                    if (shouldFlashThisBurst) {
+                        lastFlashMs = timeMs
+                        flash.spawnWorldExtraLarge(b.pos) // smaller accompaniment flash
+                    }
+                }
+            }
+
+            emittedBurstCount++
+        }
+    }
+
+    fun onDestroyed(timeMs: Int) {
+        println("Structure Destroyed!")
+        updateEditorBoundsAabb()
+        startDestructionVfx(timeMs, editorBoundsAabb)
+        hideAtMs = timeMs + 230
+    }
+
+
+    override fun draw(vpMatrix: FloatArray, timeMs: Int) {
+        // Do NOT call super.draw() if structure has no visible geometry
+        // (If it does have geometry later, you can add it back.)
+
+        if (drawEditorBounds) {
+            renderer.drawAabbWire(
+                vpMatrix,
+                editorBoundsAabb,
+                renderer.highlightLineColor
+            )
+        }
+    }
+
+    override fun toTemplate() = null
+
 
     fun updateEditorBoundsAabb(): Boolean {
         editorBoundsAabb.min.set(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -141,57 +237,6 @@ class FriendlyStructureActor(
         return true
     }
 
-
-
-    override fun select() {
-        super.select()
-        updateEditorBoundsAabb()
-    }
-
-    fun updateDestruction(timeMs: Int) {
-        if (!destructEnabled || destroyed) return
-
-        if (timeMs >= destructEndMs) {
-            destroyed = true
-            onDestroyed(timeMs)
-        }
-    }
-
-    fun updateDestructionVfx(timeMs: Int) {
-        while (scheduledBursts.isNotEmpty() && timeMs >= scheduledBursts.first().timeMs) {
-            val b = scheduledBursts.removeFirst()
-            if (b.large) explosionPool.activateLarge(b.pos) else explosionPool.activateSmall(b.pos)
-        }
-    }
-
-    fun onDestroyed(timeMs: Int) {
-        println("Structure Destroyed!")
-        updateEditorBoundsAabb()
-        startDestructionVfx(timeMs, editorBoundsAabb)
-    }
-
-    override fun update(dt: Float, dtMs: Int, timeMs: Int) {
-        updateDestruction(timeMs)
-
-        // If you set destroyed=true and call onDestroyed(), ensure you also start VFX there.
-        updateDestructionVfx(timeMs)
-    }
-
-    override fun draw(vpMatrix: FloatArray, timeMs: Int) {
-        // Do NOT call super.draw() if structure has no visible geometry
-        // (If it does have geometry later, you can add it back.)
-
-        if (drawEditorBounds) {
-            renderer.drawAabbWire(
-                vpMatrix,
-                editorBoundsAabb,
-                renderer.highlightLineColor
-            )
-        }
-    }
-
-    override fun toTemplate() = null
-
     fun startDestructionVfx(timeMs: Int, structureAabb: Aabb) {
         destructionStartedMs = timeMs
         scheduledBursts.clear()
@@ -201,13 +246,16 @@ class FriendlyStructureActor(
         // Your existing block-based sampler
         val pts = sampleExplosionPointsFromBlocks(blocks, count = 16)
 
-        // Sort center-out
-        val sorted = pts.sortedBy { p ->
-            val dx = p.x - center.x
-            val dy = p.y - center.y
-            val dz = p.z - center.z
-            dx*dx + dy*dy + dz*dz
-        }
+//        // Sort center-out
+//        val sorted = pts.sortedBy { p ->
+//            val dx = p.x - center.x
+//            val dy = p.y - center.y
+//            val dz = p.z - center.z
+//            dx*dx + dy*dy + dz*dz
+//        }
+
+        // Sort bottom -> top
+        val sorted = pts.sortedBy { it.z }  // bottom -> top
 
         // Timing knobs
         val initialDelayMs = 0          // 0..100 if you want a tiny pause

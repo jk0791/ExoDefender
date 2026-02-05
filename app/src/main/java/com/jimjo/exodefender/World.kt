@@ -535,6 +535,12 @@ class World(val mapId: Int) {
             }
         }
 
+        if (actor is FriendlyStructureActor) {
+            for (b in actor.blocks) {
+                removeActorFromWorld(b)
+            }
+        }
+
         if (actor is FriendlyActor) {
             removeFriendlyActorFromWorld(actor)
         }

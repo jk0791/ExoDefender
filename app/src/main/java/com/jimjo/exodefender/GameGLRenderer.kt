@@ -40,6 +40,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     private val skyboxProjectionMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
 
+    val screenShake = ScreenShake()
+
     var mProgram: Int = -1
     private var vPMatrixHandle: Int = -1
     private var positionHandle: Int = -1
@@ -298,7 +300,6 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         var actor: Actor? = null
         var laserBoltPool: SingleLaserBoltPool? = null
         var explosion: Explosion? = null
-        var explosionFlashSystem: ExplosionFlashSystem? = null
         var actorLog: ActorLog? = null
 
 
@@ -306,10 +307,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             actor = level.world.spawnGroundFriendly(actorTemplate.position.x, actorTemplate.position.y, actorTemplate.position.z)
             laserBoltPool = friendlyLaserBoltPool
             explosion = friendlyExplosion
-            explosionFlashSystem = this.explosionFlash
         }
         else if (actorTemplate is FriendlyStructureTemplate) {
-            actor = level.world.spawnFriendlyStructure(actorTemplate) as FriendlyStructureActor
+            actor = level.world.spawnFriendlyStructure(actorTemplate)
             laserBoltPool = friendlyLaserBoltPool
             if (destructibleStructure == null && actorTemplate.destructSeconds != null) {
                 destructibleStructure = actor
@@ -324,7 +324,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                     }
                     else {
                         val blockLog = flightLog.createActorLog(blockActor, actorTemplate)
-                        blockActor.initialize(this, level.world, blockLog, ship, laserBoltPool, null, null)
+                        blockActor.initialize(this, level.world, blockLog, ship, laserBoltPool, null, explosionFlash)
                     }
                 }
             }
@@ -332,7 +332,6 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         else if (actorTemplate is EnemyTemplate) {
             laserBoltPool = enemyLaserBoltPool
             explosion = enemyExplosion
-            explosionFlashSystem = this.explosionFlash
             when (actorTemplate) {
                 is GroundTargetTemplate ->
                     actor = level.world.spawnGroundTarget(
@@ -394,7 +393,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                 // live game so create new actor log
                 actorLog = flightLog.createActorLog(actor, actorTemplate)
             }
-            actor.initialize(this, level.world, actorLog, ship, laserBoltPool, explosion, explosionFlashSystem)
+            actor.initialize(this, level.world, actorLog, ship, laserBoltPool, explosion, explosionFlash)
         }
 
     }
@@ -772,6 +771,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             // UPDATE WORLD
             updateWorld()
 
+            screenShake.update(interval)
+
+
 
             // UPDATE COUNTS AND GAME STATE
             level.world.updateActorCounts()
@@ -808,6 +810,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         else {
 
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+
+            val shakeOffset = screenShake.getOffset()
+            camera.position.addLocal(shakeOffset)
 
             // Set the camera position (View matrix)
             Matrix.setLookAtM(
@@ -1119,17 +1124,44 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     override fun notifyWriteFileRequestOutcome(msg: Message) {
         when (msg.what) {
             0 -> {
-//                parent.mainActivity.log.printout("Flight log saved to internal storage")
                 handler.sendEmptyMessage(LAST_FLIGHTLOG_SAVED)
             }
         }
     }
 
-//    fun loadReplayActors(flightLog: FlightLog) {
-//        println("Loading replay actors...")
-//        for (actor in flightLog.replayActors) {
-//            println("actor is ${actor::class.simpleName} at ${actor.initialPosition}")
-//
-//        }
-//    }
+}
+
+class ScreenShake {
+
+    private var timeLeft = 0f
+    private var amplitude = 0f
+    private var frequency = 0f
+    private var seed = 0f
+
+    fun start(strength: Float, duration: Float, freq: Float = 50f) {
+        amplitude = strength
+        timeLeft = duration
+        frequency = freq
+        seed = kotlin.random.Random.nextFloat() * 1000f
+    }
+
+    fun update(dt: Float) {
+        if (timeLeft > 0f) {
+            timeLeft -= dt
+            if (timeLeft < 0f) timeLeft = 0f
+        }
+    }
+
+    fun getOffset(): Vec3 {
+        if (timeLeft <= 0f) return Vec3()
+
+        val t = timeLeft
+        val decay = t * t  // quadratic falloff feels good
+
+        val x = (kotlin.math.sin(seed + t * frequency) * amplitude * decay)
+        val y = (kotlin.math.sin(seed * 1.3f + t * frequency * 1.1f) * amplitude * decay)
+        val z = (kotlin.math.sin(seed * 0.7f + t * frequency * 0.9f) * amplitude * decay)
+
+        return Vec3(x, y, z)
+    }
 }

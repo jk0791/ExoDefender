@@ -142,6 +142,15 @@ class ExplosionFlashSystem(
             speed = 60f)
     }
 
+    fun spawnWorldExtraLarge(position: Vec3) {
+        // world → GL swizzle
+        spawnInternal(position.x, position.z, position.y,
+            strength = 1.8f,
+            r = 1.1f, g = 0.75f, b = 0.4f,
+            baseSize = 14f,
+            speed = 100f)
+    }
+
     private fun spawnInternal(
         x: Float, y: Float, z: Float,
         strength: Float,
