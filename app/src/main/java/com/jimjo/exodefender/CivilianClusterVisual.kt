@@ -11,6 +11,9 @@ class CivilianClusterVisual(
     private val wire: WireBatchRenderer,
 ) : VisualObject {
 
+
+    override var active = false
+
     var count: Int = initialCount
         set(value) { field = value.coerceIn(0, maxSlots) }
 
@@ -32,7 +35,7 @@ class CivilianClusterVisual(
     private var mode: TransferMode = TransferMode.NONE
     private var targetCount: Int = count
 
-    private var active = false
+    private var transferActive = false
     private var activeStartMs = 0
     private var nextStartMs = 0
 
@@ -83,10 +86,11 @@ class CivilianClusterVisual(
 
     fun isThreatPad(): Boolean = initialCount > 0
     fun isSafePad(): Boolean = initialCount == 0
-    fun isIdle(): Boolean = !active && mode == TransferMode.NONE
+    fun isIdle(): Boolean = !transferActive && mode == TransferMode.NONE
 
     fun resetToInitial() {
         count = initialCount
+        active = true
     }
 
     fun requestCount(newCount: Int, timeMs: Int) {
@@ -102,7 +106,7 @@ class CivilianClusterVisual(
             nextStartMs = timeMs
         } else {
             mode = TransferMode.NONE
-            active = false
+            transferActive = false
             activeIndex = -1
         }
     }
@@ -119,11 +123,11 @@ class CivilianClusterVisual(
         val baseZ = anchorWorld.z
 
         // --- Transfer scheduling: start a new transfer on the beat (if none active) ---
-        if (!active && mode != TransferMode.NONE && timeMs >= nextStartMs) {
+        if (!transferActive && mode != TransferMode.NONE && timeMs >= nextStartMs) {
             when (mode) {
                 TransferMode.BOARDING -> {
                     if (count > targetCount && count > 0) {
-                        active = true
+                        transferActive = true
                         activeStartMs = timeMs
                         activeIndex = count - 1          // last visible leaves
                         nextStartMs = timeMs + TRANSFER_INTERVAL_MS
@@ -133,7 +137,7 @@ class CivilianClusterVisual(
                 }
                 TransferMode.DISEMBARKING -> {
                     if (count < targetCount && count < maxSlots) {
-                        active = true
+                        transferActive = true
                         activeStartMs = timeMs
                         activeIndex = count              // next slot arrives (not yet in visible range)
                         nextStartMs = timeMs + TRANSFER_INTERVAL_MS
@@ -151,7 +155,7 @@ class CivilianClusterVisual(
         var activeZOffset = 0f
         var glow01 = 0f
 
-        if (active) {
+        if (transferActive) {
             val t = ((timeMs - activeStartMs).toFloat() / TRANSFER_ANIM_MS.toFloat()).coerceIn(0f, 1f)
             // easeOutQuad
             val easeOut = 1f - (1f - t) * (1f - t)
@@ -180,7 +184,7 @@ class CivilianClusterVisual(
                     TransferMode.DISEMBARKING -> count = (count + 1).coerceAtMost(targetCount)
                     else -> Unit
                 }
-                active = false
+                transferActive = false
                 activeIndex = -1
 
                 if (count == targetCount) mode = TransferMode.NONE
@@ -190,13 +194,13 @@ class CivilianClusterVisual(
         // --- Draw civilians ---
         // We draw [0 until count] always.
         // If disembarking and activeIndex == count (the new one), we also draw that one during the anim.
-        val drawExtraIncoming = active && mode == TransferMode.DISEMBARKING && activeIndex == count
+        val drawExtraIncoming = transferActive && mode == TransferMode.DISEMBARKING && activeIndex == count
 
         val n = if (drawExtraIncoming) count + 1 else count
         for (i in 0 until n) {
             val inst = civilians[i]
 
-            val isActive = active && i == activeIndex
+            val isActive = transferActive && i == activeIndex
 
             val x = anchorWorld.x + offX[i]
             val y = anchorWorld.y + offY[i]
@@ -224,7 +228,7 @@ class CivilianClusterVisual(
         }
 
         // --- Draw the vertical glow line for the active transfer (optional but recommended) ---
-        if (active) {
+        if (transferActive) {
             val gx: Float
             val gy: Float
             val gz: Float

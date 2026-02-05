@@ -4,6 +4,7 @@ import android.opengl.GLES20
 import android.opengl.Matrix
 
 interface VisualObject {
+    var active: Boolean
     fun update(dt: Float) {}
     fun draw(vpMatrix: FloatArray, timeMs: Int)
 }

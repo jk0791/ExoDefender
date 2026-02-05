@@ -35,10 +35,12 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     lateinit var modelManager: ModelManager
     private lateinit var gpuModelCache: GpuModelCache
 
-    private val vPMatrix = FloatArray(16)
+    private val vPWorld = FloatArray(16)
     private val worldProjectionMatrix = FloatArray(16)
     private val skyboxProjectionMatrix = FloatArray(16)
-    private val viewMatrix = FloatArray(16)
+    private val viewBase = FloatArray(16)
+    private val viewShaken = FloatArray(16)
+    private val vPShip = FloatArray(16)
 
     val screenShake = ScreenShake()
 
@@ -811,12 +813,10 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
 
-            val shakeOffset = screenShake.getOffset()
-            camera.position.addLocal(shakeOffset)
 
             // Set the camera position (View matrix)
             Matrix.setLookAtM(
-                viewMatrix, 0,
+                viewBase, 0,
                 camera.position.x,
                 camera.position.z, // swap y and z
                 camera.position.y,
@@ -826,38 +826,47 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                 camera.orientationUp.x, camera.orientationUp.y, camera.orientationUp.z
             )
 
-            skybox.draw(viewMatrix, skyboxProjectionMatrix)
+            val o = screenShake.getOffset()
+
+            // copy base -> shaken
+            System.arraycopy(viewBase, 0, viewShaken, 0, 16)
+
+            // apply shake (world shake) after lookAt
+            Matrix.translateM(viewShaken, 0, o.x, o.z, o.y)
+
+            skybox.draw(viewBase, skyboxProjectionMatrix)
 
             // Calculate the projection and view transformation
-            Matrix.multiplyMM(vPMatrix, 0, worldProjectionMatrix, 0, viewMatrix, 0)
-            mapGrid.draw(vPMatrix)
+            Matrix.multiplyMM(vPWorld, 0, worldProjectionMatrix, 0, viewShaken, 0)
+            mapGrid.draw(vPWorld)
 
 
         }
 
         // draw game objects
         if (ship.active) {
-            ship.draw(vPMatrix, flightTimeMs)
+            Matrix.multiplyMM(vPShip, 0, worldProjectionMatrix, 0, viewBase, 0)
+            ship.draw(vPShip, flightTimeMs)
         }
 
         for (actor in level.world.actors) {
-            if (actor.active) actor.draw(vPMatrix, flightTimeMs)
+            if (actor.active) actor.draw(vPWorld, flightTimeMs)
         }
 
         for (v in level.world.visuals) {
-            v.draw(vPMatrix, flightTimeMs)
+            if (v.active) v.draw(vPWorld, flightTimeMs)
         }
 
 
-        shipLaserBoltPool.draw(vPMatrix)
-        enemyLaserBoltPool.draw(vPMatrix)
-        friendlyLaserBoltPool.draw(vPMatrix)
+        shipLaserBoltPool.draw(vPWorld)
+        enemyLaserBoltPool.draw(vPWorld)
+        friendlyLaserBoltPool.draw(vPWorld)
 
-        shipExplosion.draw(vPMatrix)
-        enemyExplosion.draw(vPMatrix)
-        friendlyExplosion.draw(vPMatrix)
-        structureExplosionPool.draw(vPMatrix)
-        explosionFlash.draw(vPMatrix, viewMatrix)
+        shipExplosion.draw(vPWorld)
+        enemyExplosion.draw(vPWorld)
+        friendlyExplosion.draw(vPWorld)
+        structureExplosionPool.draw(vPWorld)
+        explosionFlash.draw(vPWorld, viewBase)
 
         if (parent.levelBuilderMode) {
 //            debugLabel.set(dart.position.x.toInt().toString() + " " + dart.position.y.toInt().toString() + " " + dart.position.z.toInt().toString())
@@ -1138,7 +1147,7 @@ class ScreenShake {
     private var frequency = 0f
     private var seed = 0f
 
-    fun start(strength: Float, duration: Float, freq: Float = 50f) {
+    fun start(strength: Float, duration: Float, freq: Float = 100f) {
         amplitude = strength
         timeLeft = duration
         frequency = freq

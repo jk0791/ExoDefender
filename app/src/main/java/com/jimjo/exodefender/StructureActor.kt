@@ -25,6 +25,7 @@ class BuildingBlockActor(
     var relocateLocalBasePos = Vec3()
     var relocateLocalYaw: Double = 0.0
 
+
     override fun onHit(timeMs: Int, enemyHit: Boolean, hitPosition: Vec3) {
         if (!log.flightLog.replayActive) {
             renderer.flashLinesOnce(timeMs)
@@ -161,7 +162,7 @@ class FriendlyStructureActor(
                     didFoundationFlash = true
                     lastFlashMs = timeMs
                     flash.spawnWorldExtraLarge(b.pos)   // big “boom”
-                    world.renderer?.screenShake?.start(2f, 0.7f)
+                    world.renderer?.screenShake?.start(4f, 1f)
                 } else {
                     // 2) Medium-ish flashes during the sequence
                     val shouldFlashThisBurst =

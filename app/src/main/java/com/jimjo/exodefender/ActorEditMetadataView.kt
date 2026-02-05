@@ -126,7 +126,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
     val chkLandingPad: CheckBox
     val waitingAreaRow: View
 
-    private val editCivilianCount: EditText
+    private val editCivilianInitialCount: EditText
 
     private val btnCiviliansMinus1: Button
     private val btnCiviliansPlus1: Button
@@ -271,7 +271,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
 
         // Edits
 
-        editCivilianCount = findViewById(R.id.editCivilianCount)
+        editCivilianInitialCount = findViewById(R.id.editCivilianCount)
         btnCiviliansMinus1 = findViewById(R.id.btnCiviliansMinus1)
         btnCiviliansPlus1 = findViewById(R.id.btnCiviliansPlus1)
 
@@ -340,7 +340,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             if (ignoreUiCallbacks) return@setOnCheckedChangeListener
             if (checked) {
                 waitingAreaRow.visibility = VISIBLE
-                if (editCivilianCount.text.toString() == "") editCivilianCount.setText("0")
+                if (editCivilianInitialCount.text.toString() == "") editCivilianInitialCount.setText("0")
                 if (editWAPosX.text.toString() == "") editWAPosX.setText("0.0")
                 if (editWAPosY.text.toString() == "") editWAPosY.setText("0.0")
                 if (editWAPosZ.text.toString() == "") editWAPosZ.setText("0.0")
@@ -351,8 +351,8 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             applyBlockEditsFromUi()
         }
 
-        btnCiviliansMinus1.setOnClickListener { nudgeInt(editCivilianCount, -1); applyBlockEditsFromUi() }
-        btnCiviliansPlus1.setOnClickListener { nudgeInt(editCivilianCount, +1); applyBlockEditsFromUi() }
+        btnCiviliansMinus1.setOnClickListener { nudgeInt(editCivilianInitialCount, -1); applyBlockEditsFromUi() }
+        btnCiviliansPlus1.setOnClickListener { nudgeInt(editCivilianInitialCount, +1); applyBlockEditsFromUi() }
 
         btnWAPosXMinus10.setOnClickListener { nudge(editWAPosX, -10f); applyBlockEditsFromUi() }
         btnWAPosXMinus1.setOnClickListener { nudge(editWAPosX, -1f); applyBlockEditsFromUi() }
@@ -549,13 +549,13 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
                     waitingAreaRow.visibility = VISIBLE
 
                     if (bt.civilianSpec != null) {
-                        editCivilianCount.setText(bt.civilianSpec!!.initialCount.toString(), TextView.BufferType.EDITABLE)
+                        editCivilianInitialCount.setText(bt.civilianSpec!!.initialCount.toString(), TextView.BufferType.EDITABLE)
                         editWAPosX.setText(bt.civilianSpec!!.waitingAreaLocal.x.toString(), TextView.BufferType.EDITABLE)
                         editWAPosY.setText(bt.civilianSpec!!.waitingAreaLocal.y.toString(), TextView.BufferType.EDITABLE)
                         editWAPosZ.setText(bt.civilianSpec!!.waitingAreaLocal.z.toString(), TextView.BufferType.EDITABLE)
                     }
                     else {
-                        editCivilianCount.setText(0.toString(), TextView.BufferType.EDITABLE)
+                        editCivilianInitialCount.setText(0.toString(), TextView.BufferType.EDITABLE)
                         editWAPosX.setText(0f.toString(), TextView.BufferType.EDITABLE)
                         editWAPosY.setText(0f.toString(), TextView.BufferType.EDITABLE)
                         editWAPosZ.setText(0f.toString(), TextView.BufferType.EDITABLE)
@@ -711,7 +711,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
 
         var cs: CivilianSpec? = null
         if (chkLandingPad.isChecked) {
-            val cc = editCivilianCount.text.toString().toIntOrNull() ?: return toast("Invalid Civilian Count")
+            val cc = editCivilianInitialCount.text.toString().toIntOrNull() ?: return toast("Invalid Initial Civilian Count")
             val wax = editWAPosX.text.toString().toFloatOrNull() ?: return toast("Invalid Waiting Area Pos X")
             val way = editWAPosY.text.toString().toFloatOrNull() ?: return toast("Invalid Waiting Area Pos Y")
             val waz = editWAPosZ.text.toString().toFloatOrNull() ?: return toast("Invalid Waiting Area Pos Z")
