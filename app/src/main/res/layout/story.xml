@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:saveEnabled="false">
+
+    <ImageView
+        android:id="@+id/btnHome"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:padding="10dp"
+        android:src="@drawable/home_button"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/centerLayout"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toTopOf="@+id/btnTraining"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_max="500dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_max="500dp">
+
+        <TextView
+            android:id="@+id/storyHeading"
+            style="@style/DefaultText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/border_lower"
+            android:text="Background"
+            android:textAlignment="center"
+            android:textSize="45dp" />
+
+        <ScrollView
+            android:saveEnabled="false"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/shortForm"
+                    style="@style/DefaultText"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="Ground units are deployed ahead of main forces.\n
+They depend on close air support to survive initial contact.\n\n
+You are an Exo Fighter pilot."
+                    android:textSize="35dp" />
+
+                <TextView
+                    android:id="@+id/longForm"
+                    style="@style/DefaultText"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="Humans have discovered interstellar space travel and begun exploring exoplanets and moons to establish colonies. Early colonies had promising beginnings when the C’tarr-ni made first contact.\n\n
+An ancient alien warrior race, the C’tarr-ni have the doctrine that God has granted them absolute hegemony in the galaxy. With their fanatical belief in their supremacy, the C’tarr-ni have made it their sworn duty to stop all attempts by other species to set foot beyond their home worlds. Earth’s first colonies were decimated.\n\n
+For many years, every base Earth established was annihilated by the C’tarr-ni. With no foothold Earth was unable to fight back and thus forced to explore increasingly distant edges of the galaxy.\n\n
+Earth's strategy now is to send small military ground units to multiple habitable exoplanets and moons in the outer reaches of Orion’s arm. The mission of each ground unit is to establish a base that can be built upon to hopefully one day support a force strong enough to withstand a C’tarr-ni attack. If just one of these ground units succeed it may turn the tide in Earth’s favour.\n\n
+The C’tarr-ni, aware of Earth’s plans, have sent long-range patrols to hunt down our ground forces. Faced with superior weapons and shields, Earth’s ground forces are hopelessly outmatched by the C’tarr-nian hunting patrols. Their only hope is close air support.\n\n
+Many weapon platforms were developed to provide air support but the most successful has been the nimble space interdictor gunship, the EXO-57 Fighter. Our pilots and their Exo Strikers are the only hope our ground forces have against a C’tarr-ni attack.\n\n
+Good luck."
+                    android:textSize="35dp" />
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnTraining"
+        style="@style/DefaultButton"
+        android:layout_width="150dp"
+        android:layout_height="50dp"
+        android:textSize="30dp"
+        android:layout_margin="10dp"
+        android:text="Begin Training"
+        android:alpha="0"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintRight_toRightOf="@+id/centerLayout" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

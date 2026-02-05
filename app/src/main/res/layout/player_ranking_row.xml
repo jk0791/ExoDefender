@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TableRow xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp">
+
+    <!-- Marker -->
+    <TextView
+        android:id="@+id/txtMarker"
+        style="@style/DefaultText"
+        android:layout_width="18dp"
+        android:layout_height="wrap_content"
+        android:text="▶"
+        android:textSize="20sp"
+        android:visibility="invisible" />
+
+    <!-- Rank -->
+    <TextView
+        android:id="@+id/txtRank"
+        style="@style/DefaultText"
+        android:layout_width="46dp"
+        android:layout_height="wrap_content"
+        android:text="#1"
+        android:textSize="20sp" />
+
+    <!-- Callsign (expands) -->
+    <TextView
+        android:id="@+id/txtCallsign"
+        style="@style/DefaultText"
+        android:layout_width="130dp"
+        android:layout_height="wrap_content"
+        android:text="callsign"
+        android:textSize="20sp" />
+
+    <!-- Score (right-aligned column) -->
+    <TextView
+        android:id="@+id/txtScore"
+        style="@style/DefaultText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:text="1000"
+        android:textSize="20sp" />
+
+    <!-- Delta (always reserved column) -->
+    <TextView
+        android:id="@+id/txtDelta"
+        style="@style/DefaultText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:text=""
+        android:layout_marginLeft="10dp"
+        android:alpha="0.7"
+        android:textSize="16sp"
+        android:visibility="invisible" />
+
+</TableRow>

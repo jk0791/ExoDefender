@@ -1,0 +1,8 @@
+<resources>
+
+    <style name="Widget.Theme.TestGLProject.MyView" parent="">
+        <item name="android:background">@color/gray_600</item>
+        <item name="android:fontFamily">@font/agencyr</item>
+        <item name="android:textColor">#5ADC00</item>
+    </style>
+</resources>

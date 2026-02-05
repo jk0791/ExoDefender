@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom="http://schemas.android.com/apk/res-auto"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fontFamily="@font/agencyr"
+    android:textColor="#5ADC00"
+    android:clickable="true" >
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+                <FrameLayout
+                    android:id="@+id/frameLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:background="#FF000000"
+                    android:orientation="vertical"
+                    app:layout_constrainedWidth="true"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHeight_percent="0.9"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintWidth_percent="0.6">
+
+                </FrameLayout>
+                <TextView
+                    android:id="@+id/trainingSummary"
+                    style="@style/DefaultText"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    custom:layout_constraintTop_toBottomOf="@+id/btnHome"
+                    custom:layout_constraintStart_toStartOf="@+id/frameLayout"
+                    custom:layout_constraintEnd_toEndOf="@+id/frameLayout"
+                    android:paddingHorizontal="20dp"
+                    android:paddingBottom="20dp"
+                    android:text="Short description of training completed. This can be two lines of text on small screens."
+                    android:textAlignment="center"
+                    android:textSize="30dp" />
+
+                        <androidx.constraintlayout.widget.ConstraintLayout
+                            android:id="@+id/actorsDiagram"
+                            android:layout_width="0dp"
+                            android:layout_height="0dp"
+                            custom:layout_constraintTop_toBottomOf="@+id/trainingSummary"
+                            custom:layout_constraintBottom_toTopOf="@+id/btnPrev"
+                            custom:layout_constraintStart_toStartOf="@+id/frameLayout"
+                            custom:layout_constraintEnd_toEndOf="@+id/frameLayout">
+
+
+                                <ImageView
+                                    android:id="@+id/groundEnemyImage"
+                                    android:layout_width="0dp"
+                                    android:layout_height="0dp"
+                                    custom:layout_constraintHeight_max="200dp"
+                                    custom:layout_constraintBottom_toTopOf="@+id/enemyLabel"
+                                    custom:layout_constraintStart_toStartOf="parent"
+                                    custom:layout_constraintEnd_toStartOf="@+id/flyingEnemyImage"
+                                    custom:layout_constraintTop_toTopOf="parent"
+                                    android:src="@drawable/tut_ground_enemy" />
+
+                                <ImageView
+                                    android:id="@+id/flyingEnemyImage"
+                                    android:layout_width="0dp"
+                                    android:layout_height="0dp"
+                                    custom:layout_constraintHeight_max="200dp"
+                                    android:src="@drawable/tut_flying_enemy"
+                                    android:layout_marginRight="50dp"
+                                    custom:layout_constraintBottom_toTopOf="@id/enemyLabel"
+                                    custom:layout_constraintEnd_toStartOf="@id/groundFriendlyImage"
+                                    custom:layout_constraintStart_toEndOf="@+id/groundEnemyImage"
+                                    custom:layout_constraintTop_toTopOf="parent"
+                                    custom:layout_constraintWidth_max="200dp" />
+
+                                <ImageView
+                                    android:id="@+id/groundFriendlyImage"
+                                    android:layout_width="0dp"
+                                    android:layout_height="0dp"
+                                    custom:layout_constraintHeight_max="200dp"
+                                    custom:layout_constraintLeft_toRightOf="@+id/flyingEnemyImage"
+                                    custom:layout_constraintRight_toRightOf="parent"
+                                    custom:layout_constraintTop_toTopOf="parent"
+                                    custom:layout_constraintBottom_toTopOf="@id/friendlyLabel"
+                                    android:src="@drawable/tut_ground_friendly" />
+
+
+
+                                <TextView
+                                    android:id="@+id/enemyLabel"
+                                    style="@style/DefaultText"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    custom:layout_constraintStart_toStartOf="@+id/groundEnemyImage"
+                                    custom:layout_constraintEnd_toEndOf="@+id/flyingEnemyImage"
+                                    custom:layout_constraintTop_toBottomOf="@+id/groundEnemyImage"
+                                    custom:layout_constraintBottom_toBottomOf="parent"
+                                    android:text="Enemies"
+                                    android:textAlignment="center"
+                                    android:textColor="@color/white"
+                                    android:textSize="20dp" />
+
+                                <TextView
+                                    android:id="@+id/friendlyLabel"
+                                    style="@style/DefaultText"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    custom:layout_constraintStart_toStartOf="@+id/groundFriendlyImage"
+                                    custom:layout_constraintEnd_toEndOf="@+id/groundFriendlyImage"
+                                    custom:layout_constraintTop_toBottomOf="@+id/groundFriendlyImage"
+                                    custom:layout_constraintBottom_toBottomOf="parent"
+                                    custom:layout_constraintVertical_bias="1"
+                                    android:text="Friendly"
+                                    android:textAlignment="center"
+                                    android:textColor="@color/white"
+                                    android:textSize="20dp" />
+
+                        </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <Button
+                    android:id="@+id/btnPrev"
+                    style="@style/DefaultBorderlessButton"
+                    android:layout_width="150dp"
+                    android:layout_height="60dp"
+                    app:layout_constraintStart_toStartOf="@+id/frameLayout"
+                    app:layout_constraintBottom_toBottomOf="@+id/frameLayout"
+                    android:text="Retry"
+                    android:textSize="30dp" />
+
+                <Button
+                    android:id="@+id/btnNext"
+                    style="@style/DefaultBorderlessButton"
+                    android:layout_width="150dp"
+                    android:layout_height="60dp"
+                    app:layout_constraintEnd_toEndOf="@+id/frameLayout"
+                    app:layout_constraintBottom_toBottomOf="@+id/frameLayout"
+                    android:text="Next &gt;"
+                    android:textSize="30dp" />
+
+
+                <ImageView
+                    android:id="@+id/btnHome"
+                    style="@style/DefaultBorderlessButton"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:padding="10dp"
+                    android:src="@drawable/home_button_off"
+                    android:textSize="30dp"
+                    app:layout_constraintStart_toStartOf="@+id/frameLayout"
+                    app:layout_constraintTop_toTopOf="@+id/frameLayout" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+</FrameLayout>

@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:background="@color/white"
+    android:theme="@style/ThemeOverlay.ExoDefender.Admin"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:padding="5dp">
+    <LinearLayout
+        android:layout_marginTop="5dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="30dp"
+            android:textAlignment="center"
+            android:text="Admin" />
+
+
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TableLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+            <TableRow
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:textSize="20dp"
+                    android:text="ID:" />
+                <TextView
+                    android:id="@+id/displayLevelId"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:textSize="20dp"
+                    android:text="level name" />
+            </TableRow>
+            <TableRow
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:textSize="20dp"
+                    android:text="Name:" />
+                <TextView
+                    android:id="@+id/displayName"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:textSize="20dp"
+                    android:text="level name" />
+            </TableRow>
+
+            <TableRow
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:textSize="20dp"
+                    android:text="Current cmpn:" />
+
+                <Spinner
+                    android:id="@+id/currentCampaignCode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="20dp" />
+
+            </TableRow>
+
+
+
+
+        </TableLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <Button
+                android:id="@+id/btnResetUser"
+                android:layout_width="wrap_content"
+                android:layout_margin="5dp"
+                android:layout_height="40dp"
+                android:text="Reset User" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#000000"
+                android:text="Mandatory Training Completion Flag:" />
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" >
+                <Button
+                    android:id="@+id/btnClearMandTrngCompFlag"
+                    android:layout_width="wrap_content"
+                    android:layout_margin="5dp"
+                    android:layout_height="40dp"
+                    android:text="Clear" />
+                <Button
+                    android:id="@+id/btnFillMandTrngCompFlag"
+                    android:layout_width="wrap_content"
+                    android:layout_margin="5dp"
+                    android:layout_height="40dp"
+                    android:text="Fill" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" >
+
+                <Button
+                    android:id="@+id/btnClearStartupNoticeAcceptance"
+                    android:layout_width="wrap_content"
+                    android:layout_margin="5dp"
+                    android:layout_height="40dp"
+                    android:text="Reset Startup Notice" />
+
+                <Button
+                    android:id="@+id/btnViewLog"
+                    android:layout_width="wrap_content"
+                    android:layout_margin="5dp"
+                    android:layout_height="40dp"
+                    android:text="View Log" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Activity ID::" />
+
+                <EditText
+                    android:id="@+id/flightActivityIdTxt"
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/black"
+                    android:inputType="number" />
+
+                <Button
+                    android:id="@+id/replayActivityButton"
+                    android:layout_width="50dp"
+                    android:layout_height="40dp"
+                    android:text="R" />
+                <ProgressBar
+                    android:id="@+id/networkProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="true" />
+
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Entry ID::" />
+
+                <EditText
+                    android:id="@+id/flightLogEntryIdTxt"
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/black"
+                    android:inputType="number" />
+
+                <Button
+                    android:id="@+id/downloadFlightLogButton"
+                    android:layout_width="50dp"
+                    android:layout_height="40dp"
+                    android:text="D" />
+
+            </LinearLayout>
+
+
+        </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <Button
+                    android:id="@+id/btnLevelEditor"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_margin="5dp"
+                    android:text="Open Level Editor" />
+                <Switch
+                    android:id="@+id/unlockAllLevelsSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_margin="5dp"
+                    android:textColor="@color/black"
+                    android:text="Unlock All Levels" />
+                <Button
+                    android:id="@+id/btnResetAllLevels"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_margin="5dp"
+                    android:text="Reset All Levels" />
+                <Button
+                    android:id="@+id/btnGetLatestLevels"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_margin="5dp"
+                    android:text="Get Latest Levels" />
+                <Button
+                    android:id="@+id/btnCallMaybeAppReview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_margin="5dp"
+                    android:text="Call Maybe App Rvw" />
+            </LinearLayout>
+
+
+        </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1">
+
+        <Button
+            android:id="@+id/closeAdminButton"
+            android:layout_width="wrap_content"
+            android:layout_gravity="bottom|right"
+            android:layout_height="40dp"
+            android:text="Close" />
+    </FrameLayout>
+
+</LinearLayout>

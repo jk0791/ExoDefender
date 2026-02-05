@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/homeButton"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/home_button_white"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <ImageView
+        android:id="@+id/btnLevelBuilderToolbar"
+        android:layout_marginLeft="25dp"
+        android:layout_width="30dp"
+        android:layout_height="90dp"
+        android:src="@drawable/toolbar_button"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+
+    <ImageView
+        android:id="@+id/gameSettingsButton"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:src="@drawable/settings_icon"
+        android:layout_marginLeft="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/txtStructureTimeRemaining"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="STRUCTURE: 22s"
+        android:textSize="22dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/addCameraEvent"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginLeft="15dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/gameSettingsButton"
+        android:src="@drawable/add_camera_event" />
+
+    <ImageView
+        android:id="@+id/zoomOutButton"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginLeft="15dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/addCameraEvent"
+        android:src="@drawable/zoom_out_button" />
+
+    <TextView
+        android:id="@+id/zoomLevelText"
+        android:layout_width="45dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="@+id/zoomOutButton"
+        app:layout_constraintBottom_toBottomOf="@+id/zoomOutButton"
+        app:layout_constraintLeft_toRightOf="@+id/zoomOutButton"
+        android:textAlignment="center"
+        android:textColor="#DDDDDD"
+        android:text="1.0x"
+        android:textSize="16dp" />
+
+    <ImageView
+        android:id="@+id/zoomInButton"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/zoomLevelText"
+        android:src="@drawable/zoom_in_button" />
+
+    <com.jimjo.exodefender.JoystickDisplay
+        android:id="@+id/tranDisplay"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginLeft="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/gameSettingsButton" />
+
+    <com.jimjo.exodefender.JoystickDisplay
+        android:id="@+id/attitudeDisplay"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginLeft="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toRightOf="@id/tranDisplay" />
+
+
+
+
+    <com.jimjo.exodefender.ThrottleDisplay
+        android:id="@+id/throttle"
+        android:layout_marginTop="10dp"
+        android:layout_width="200dp"
+        android:layout_height="50dp"
+        android:src="@drawable/blue"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/linearLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <com.jimjo.exodefender.ActorStatsDisplay
+            android:id="@+id/actorStatsDisplay"
+            android:layout_width="170dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center_vertical" />
+
+        <com.jimjo.exodefender.ShipHealthDisplay
+            android:id="@+id/shipHealthDisplay"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_marginLeft="50dp" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/cameraModeLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/chaseModeButton"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="5dp"
+            android:src="@drawable/chase_button" />
+
+        <ImageView
+            android:id="@+id/trackModeButton"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="5dp"
+            android:src="@drawable/track_button" />
+
+        <ImageView
+            android:id="@+id/fixedModeButton"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="5dp"
+            android:src="@drawable/fixed_button" />
+
+        <ImageView
+            android:id="@+id/saveFlightLogButton"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="5dp"
+            android:src="@drawable/save_file_off" />
+
+        <ImageView
+            android:id="@+id/replayStudioButton"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="5dp"
+            android:src="@drawable/replay_studio_button" />
+
+    </LinearLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/mapReplaySeekBarLayout"
+        android:layout_width="match_parent"
+        android:layout_height="90dp"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toTopOf="@+id/throttle"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <ImageView
+            android:id="@+id/mapReplayPlayPauseButton"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintDimensionRatio="1:1"
+            android:src="@drawable/map_pause_button" />
+
+        <FrameLayout
+            android:id="@+id/timelineContainer"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintLeft_toRightOf="@+id/mapReplayPlayPauseButton"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintRight_toRightOf="parent">
+
+            <com.jimjo.exodefender.CameraTrackMarkerView
+                android:id="@+id/markerOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true" />
+
+
+            <SeekBar
+                android:id="@+id/mapReplaySeekBar"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_gravity="bottom"
+                android:progressBackgroundTint="#CCCCCC"
+                android:progressTint="#DDDDDD"
+                android:scrollbarSize="8dp"
+                android:thumb="@drawable/custom_thumb"
+                android:thumbTint="#B6B6B6" />
+
+
+        </FrameLayout>
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <com.jimjo.exodefender.ScreenAnnotations
+        android:id="@+id/screenAnnotations"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+

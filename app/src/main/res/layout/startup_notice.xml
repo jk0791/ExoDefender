@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom="http://schemas.android.com/apk/res-auto"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fontFamily="@font/agencyr"
+    android:clickable="true" >
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:background="@drawable/score_card_border"
+                    android:orientation="vertical"
+                    app:layout_constrainedWidth="true"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintHeight_percent="0.9"
+                    app:layout_constraintWidth_percent="0.9" >
+
+                    <TextView
+                        android:id="@+id/startupNoticeTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="30sp"
+                        android:padding="20dp"
+                        android:textAlignment="center"
+                        style="@style/DefaultText"
+                        android:background="@drawable/border_lower"
+                        android:text = "Welcome Title" />
+
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_marginHorizontal="100dp"
+                        android:layout_marginVertical="20dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1">
+
+                        <TextView
+                            android:id="@+id/startupNoticeMessage"
+                            style="@style/DefaultText"
+                            android:textSize="25sp"
+                            android:padding="10dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="This is a welcome message shown at the launch of the app" />
+
+                    </ScrollView>
+
+
+                    <Button
+                        android:id="@+id/btnStartUpNoticeOk"
+                        style="@style/DefaultButton"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="15dp"
+                        android:textSize="25sp"
+                        android:padding="15dp"
+                        android:text="I understand" />
+
+                </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+</FrameLayout>

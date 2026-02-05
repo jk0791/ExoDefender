@@ -1,0 +1,47 @@
+<resources>
+
+    <style name="DefaultText" parent="TextAppearance.AppCompat">
+        <item name="android:fontFamily">@font/agencyr</item>
+        <item name="android:textColor">#5ADC00</item>
+    </style>
+
+    <style name="DefaultButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/standard_button</item>
+        <item name="android:fontFamily">@font/agencyr</item>
+        <item name="android:padding">5dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@color/default_button_text_color</item>
+    </style>
+    <style name="DefaultButton.Compact" parent="DefaultButton">
+        <!-- Smaller touch footprint -->
+        <item name="android:minWidth">36dp</item>
+        <item name="android:minHeight">36dp</item>
+
+        <!-- Reduce internal padding -->
+        <item name="android:padding">2dp</item>
+
+        <!-- Optional: slightly smaller text -->
+        <item name="android:textSize">14sp</item>
+    </style>
+    <style name="DefaultButton.CompactSquare" parent="DefaultButton.Compact">
+        <item name="android:minWidth">32dp</item>
+        <item name="android:minHeight">32dp</item>
+    </style>
+    <style name="DefaultBorderlessButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">#00000000</item>
+        <item name="android:fontFamily">@font/agencyr</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@color/default_button_text_color</item>
+    </style>
+    <style name="ThemeOverlay.ExoDefender.Admin" parent="">
+        <item name="android:textColor">#000000</item>
+        <item name="android:buttonStyle">@style/AdminButtonStyle</item>
+    </style>
+
+    <style name="AdminButtonStyle" parent="@android:style/Widget.Button">
+        <item name="android:background">@drawable/admin_button_background</item>
+        <item name="android:textColor">#FFFFFF</item>    <!-- white text -->
+        <item name="android:padding">8dp</item>
+    </style>
+
+</resources>

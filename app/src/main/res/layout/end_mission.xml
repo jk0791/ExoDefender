@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom="http://schemas.android.com/apk/res-auto"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fontFamily="@font/agencyr"
+    android:textColor="#5ADC00" >
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:background="#BB000000"
+                    app:layout_constrainedWidth="true"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+
+                    app:layout_constraintWidth_percent="0.6"
+                    app:layout_constraintHeight_percent="0.8">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="vertical">
+
+                                <FrameLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content">
+                                        <ImageView
+                                            android:id="@+id/btnExitSummary"
+                                            style="@style/DefaultBorderlessButton"
+                                            android:layout_gravity="left"
+                                            android:layout_width="60dp"
+                                            android:layout_height="60dp"
+                                            android:textSize="30dp"
+                                            android:padding="10dp"
+                                            android:src="@drawable/home_button_off" />
+                                        <TextView
+                                            android:id="@+id/outcomeHeading"
+                                            style="@style/DefaultText"
+                                            android:layout_width="match_parent"
+                                            android:layout_height="wrap_content"
+                                            android:textSize="45dp"
+                                            android:padding="10dp"
+                                            android:textAlignment="center"
+                                            android:text="Outcome"/>
+
+                                        <ImageView
+                                            android:id="@+id/btnReplayMission"
+                                            style="@style/DefaultBorderlessButton"
+                                            android:layout_gravity="right"
+                                            android:layout_width="60dp"
+                                            android:layout_height="60dp"
+                                            android:textSize="30dp"
+                                            android:padding="5dp"
+                                            android:src="@drawable/replay_icon" />
+
+                                </FrameLayout>
+                                <TextView
+                                    android:id="@+id/failureSummary"
+                                    android:visibility="gone"
+                                    style="@style/DefaultText"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:textSize="30dp"
+                                    android:padding="15dp"
+                                    android:textAlignment="center"
+                                    android:text="Short description of reason for failure "/>
+
+                                <TableLayout
+                                    android:id="@+id/scoreTable"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:layout_marginLeft="70dp"
+                                    android:layout_marginRight="70dp"
+                                    android:layout_weight="1"
+                                    android:stretchColumns="0">
+                                        <TableRow
+                                            android:layout_width="match_parent"
+                                            android:layout_height="50dp">
+                                                <TextView
+                                                        android:layout_width="match_parent"
+                                                        android:layout_height="match_parent"
+                                                    style="@style/DefaultText"
+                                                    android:textSize="30dp"
+                                                    android:text="Mission completion bonus" />
+                                                <TextView
+                                                    android:id="@+id/missionCompletionBonus"
+                                                        android:layout_width="match_parent"
+                                                        android:layout_height="match_parent"
+                                                    style="@style/DefaultText"
+                                                    android:textAlignment="viewEnd"
+                                                    android:textSize="30dp"
+                                                    android:text="4800" />
+                                        </TableRow>
+                                        <TableRow
+                                            android:layout_width="match_parent"
+                                            android:layout_height="50dp">
+                                                <TextView
+                                                        android:layout_width="match_parent"
+                                                        android:layout_height="match_parent"
+                                                    style="@style/DefaultText"
+                                                    android:textSize="30dp"
+                                                    android:text="Ground forces saved bonus" />
+                                                <TextView
+                                                    android:id="@+id/friendliesSavedBonus"
+                                                        android:layout_width="match_parent"
+                                                        android:layout_height="match_parent"
+                                                    style="@style/DefaultText"
+                                                    android:textAlignment="viewEnd"
+                                                    android:textSize="30dp"
+                                                    android:text="1700" />
+                                        </TableRow>
+                                        <TableRow
+                                            android:layout_width="match_parent"
+                                            android:layout_height="50dp">
+                                                <TextView
+                                                        android:layout_width="match_parent"
+                                                        android:layout_height="match_parent"
+                                                    style="@style/DefaultText"
+                                                    android:textSize="30dp"
+                                                    android:text="Enemies destroyed bonus" />
+                                                <TextView
+                                                    android:id="@+id/enemiesDestroyedBonus"
+                                                        android:layout_width="match_parent"
+                                                        android:layout_height="match_parent"
+                                                    style="@style/DefaultText"
+                                                    android:textAlignment="viewEnd"
+                                                    android:textSize="30dp"
+                                                    android:text="1500" />
+                                        </TableRow>
+                                        <TableRow
+                                            android:layout_width="match_parent"
+                                            android:layout_height="50dp">
+                                                <TextView
+                                                        android:layout_width="match_parent"
+                                                        android:layout_height="match_parent"
+                                                    style="@style/DefaultText"
+                                                    android:textSize="30dp"
+                                                    android:text="Skill bonus" />
+                                                <TextView
+                                                    android:id="@+id/skillBonus"
+                                                        android:layout_width="match_parent"
+                                                        android:layout_height="match_parent"
+                                                    style="@style/DefaultText"
+                                                    android:textAlignment="viewEnd"
+                                                    android:textSize="30dp"
+                                                    android:text="2000" />
+                                        </TableRow>
+                                        <TableRow
+                                            android:layout_width="match_parent"
+                                            android:layout_height="50dp">
+                                                <TextView
+                                                        android:layout_width="match_parent"
+                                                        android:layout_height="match_parent"
+                                                    style="@style/DefaultText"
+                                                    android:textSize="30dp"
+                                                    android:text="Total score" />
+                                                <TextView
+                                                    android:id="@+id/totalScore"
+                                                        android:layout_width="match_parent"
+                                                        android:layout_height="match_parent"
+                                                    style="@style/DefaultText"
+                                                    android:textAlignment="viewEnd"
+                                                    android:textSize="30dp"
+                                                    android:text="10000" />
+                                        </TableRow>
+                                </TableLayout>
+                        </LinearLayout>
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom">
+
+                                <Button
+                                    android:id="@+id/btnPrev"
+                                    style="@style/DefaultBorderlessButton"
+                                    android:layout_gravity="left"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textSize="30dp"
+                                    android:padding="15dp"
+                                    android:text="Retry Mission" />
+                                <Button
+                                    android:id="@+id/btnPlayNextMission"
+                                    style="@style/DefaultBorderlessButton"
+                                    android:layout_gravity="right"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textSize="30dp"
+                                    android:padding="15dp"
+                                    android:text="Next Mission &gt;" />
+                        </FrameLayout>
+
+                </FrameLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+</FrameLayout>

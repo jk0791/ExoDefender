@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/btnHome"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:padding="10dp"
+        android:src="@drawable/home_button"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/replayManagerHeading"
+        style="@style/DefaultText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toEndOf="@+id/btnHome"
+        app:layout_constraintTop_toTopOf="parent"
+        android:background="@drawable/border_lower"
+        android:text="Saved Replays"
+        android:textSize="35dp" />
+
+
+    <ScrollView
+        android:id="@+id/centerLayout"
+        android:saveEnabled="false"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        app:layout_constraintTop_toBottomOf="@+id/replayManagerHeading"
+        app:layout_constraintEnd_toStartOf="@+id/linearLayout3"
+        app:layout_constraintStart_toEndOf="@+id/btnHome"
+        app:layout_constraintBottom_toBottomOf="parent" >
+
+        <TableLayout
+            android:id="@+id/savedReplaysTable"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+        </TableLayout>
+    </ScrollView>
+
+    <LinearLayout
+        android:id="@+id/linearLayout3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginLeft="10dp"
+        app:layout_constraintTop_toBottomOf="@id/replayManagerHeading"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/btnRenameFlightLog"
+            style="@style/DefaultButton"
+            android:layout_width="150dp"
+            android:layout_height="50dp"
+            android:textSize="30dp"
+            android:layout_margin="5dp"
+            android:text="Rename" />
+
+        <Button
+            android:id="@+id/btnDeleteFlightLog"
+            style="@style/DefaultButton"
+            android:layout_width="150dp"
+            android:layout_height="50dp"
+            android:textSize="30dp"
+            android:layout_margin="5dp"
+            android:text="Delete" />
+
+        <Button
+            android:id="@+id/copyFlightLogButton"
+            style="@style/DefaultButton"
+            android:layout_width="150dp"
+            android:layout_height="50dp"
+            android:textSize="30dp"
+            android:layout_margin="5dp"
+            android:text="Copy" />
+
+        <Button
+            android:id="@+id/btnUploadFlightLog"
+            style="@style/DefaultButton"
+            android:layout_width="150dp"
+            android:layout_height="50dp"
+            android:textSize="30dp"
+            android:layout_margin="5dp"
+            android:text="Upload" />
+
+
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/networkProgressIndicator"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:indeterminate="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

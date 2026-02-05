@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Disabled text color -->
+    <item android:color="#445ADC00" android:state_enabled="false" />
+
+    <!-- Pressed text color (optional: brighter or same as enabled) -->
+    <item android:color="#5ADC00" android:state_pressed="true" />
+
+    <!-- Default enabled text color -->
+    <item android:color="#5ADC00" />
+</selector>

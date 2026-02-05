@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom="http://schemas.android.com/apk/res-auto"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black"
+    android:fontFamily="@font/agencyr"
+    android:textColor="#5ADC00"
+    android:clickable="true" >
+
+        <TextView
+            android:id="@+id/settingsHeading"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Settings"
+            android:textSize="50dp"
+            custom:layout_constraintTop_toTopOf="parent"
+            style="@style/DefaultText" />
+
+        <LinearLayout
+            android:id="@+id/linearLayout2"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            custom:layout_constraintBottom_toBottomOf="parent"
+            custom:layout_constraintTop_toBottomOf="@+id/settingsHeading">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+
+                        <TextView
+                            style="@style/DefaultText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Control Sensitivity"
+                            android:textSize="30dp" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="50dp"
+                            android:layout_marginLeft="10dp"
+                            android:orientation="horizontal">
+
+                                <ImageView
+                                    android:layout_width="30dp"
+                                    android:layout_height="30dp"
+                                    android:layout_gravity="center_vertical"
+                                    android:src="@drawable/tran_sensitivity" />
+
+                                <SeekBar
+                                    android:id="@+id/tranSensitivitySeekbar"
+                                    style="@style/Widget.AppCompat.SeekBar.Discrete"
+                                    android:layout_width="350dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_gravity="center_vertical"
+                                    android:max="9"
+                                    android:min="1"
+                                    android:progress="5"
+                                    android:progressBackgroundTint="@color/gray_400"
+                                    android:progressTint="@color/gray_600"
+                                    android:scrollbarSize="8dp"
+                                    android:thumb="@drawable/custom_thumb"
+                                    android:thumbTint="#555555"
+                                    android:tickMark="@drawable/seek_tick" />
+
+                                <TextView
+                                    android:id="@+id/tranSensitivityValue"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_gravity="center_vertical"
+                                    android:text="5"
+                                    android:textColor="@color/gray_400"
+                                    android:textSize="20dp" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="50dp"
+                            android:layout_marginLeft="10dp"
+                            android:orientation="horizontal">
+
+                                <ImageView
+                                    android:layout_width="30dp"
+                                    android:layout_height="30dp"
+                                    android:layout_gravity="center_vertical"
+                                    android:src="@drawable/rot_sensitivity" />
+
+                                <SeekBar
+                                    android:id="@+id/rotSensitivitySeekbar"
+                                    style="@style/Widget.AppCompat.SeekBar.Discrete"
+                                    android:layout_width="350dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_gravity="center_vertical"
+                                    android:max="9"
+                                    android:min="1"
+                                    android:progress="5"
+                                    android:progressBackgroundTint="@color/gray_400"
+                                    android:progressTint="@color/gray_600"
+                                    android:scrollbarSize="8dp"
+                                    android:thumb="@drawable/custom_thumb"
+                                    android:thumbTint="#555555"
+                                    android:tickMark="@drawable/seek_tick" />
+
+                                <TextView
+                                    android:id="@+id/rotSensitivityValue"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_gravity="center_vertical"
+                                    android:text="5"
+                                    android:textColor="@color/gray_400"
+                                    android:textSize="20dp" />
+                        </LinearLayout>
+
+
+                        <TextView
+                            style="@style/DefaultText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Audio"
+                            android:textSize="30dp" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="50dp"
+                            android:layout_marginLeft="10dp"
+                            android:orientation="horizontal">
+
+                                <ImageView
+                                    android:layout_width="30dp"
+                                    android:layout_height="30dp"
+                                    android:layout_gravity="center_vertical"
+                                    android:src="@drawable/effects_volume_icon" />
+
+                                <SeekBar
+                                    android:id="@+id/effectsVolumeSeekBar"
+                                    android:layout_width="300dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_gravity="center_vertical"
+                                    android:progressBackgroundTint="@color/gray_400"
+                                    android:progressTint="@color/gray_600"
+                                    android:scrollbarSize="8dp"
+                                    android:thumb="@drawable/custom_thumb"
+                                    android:thumbTint="#555555" />
+                        </LinearLayout>
+
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="50dp"
+                            android:layout_marginLeft="10dp"
+                            android:orientation="horizontal">
+
+                                <ImageView
+                                    android:layout_width="30dp"
+                                    android:layout_height="30dp"
+                                    android:layout_gravity="center_vertical"
+                                    android:src="@drawable/music_volume_icon" />
+
+                                <SeekBar
+                                    android:id="@+id/musicVolumeSeekBar"
+                                    android:layout_width="300dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_gravity="center_vertical"
+                                    android:progressBackgroundTint="@color/gray_400"
+                                    android:progressTint="@color/gray_600"
+                                    android:scrollbarSize="8dp"
+                                    android:thumb="@drawable/custom_thumb"
+                                    android:thumbTint="#555555" />
+                        </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+
+                        android:orientation="horizontal">
+                        <Switch
+                            android:id="@+id/btnEnableVibration"
+                            style="@style/DefaultText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="40dp"
+                            android:checked="true"
+                            android:text="Vibration"
+                            android:textSize="30sp"
+                            android:thumbTint="@drawable/newthumb"
+                            android:trackTint="@drawable/newthumb" />
+                        <Switch
+                            android:id="@+id/btnEnableRadio"
+                            style="@style/DefaultText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="40dp"
+                            android:layout_marginLeft="40dp"
+                            android:checked="true"
+                            android:text="Radio"
+                            android:textSize="30sp"
+                            android:thumbTint="@drawable/newthumb"
+                            android:trackTint="@drawable/newthumb" />
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="30dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                                <TextView
+                                    android:id="@+id/callSignLabel"
+                                    style="@style/DefaultText"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Callsign"
+                                    android:textSize="35dp" />
+
+                                <EditText
+                                    android:id="@+id/adminPassword"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:layout_marginLeft="20dp"
+                                    android:layout_weight="1"
+                                    android:ems="10"
+                                    android:text=""
+                                    android:textColor="@color/white" />
+
+                                <Button
+                                    android:id="@+id/btnAdmin"
+                                    style="@style/DefaultButton"
+                                    android:layout_width="100dp"
+                                    android:layout_height="40dp"
+                                    android:layout_gravity="right"
+                                    android:text="Admin"
+                                    android:textSize="20dp" />
+
+                        </LinearLayout>
+
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginLeft="10dp"
+                            android:orientation="horizontal">
+
+                                <TextView
+                                    android:id="@+id/txtCurrentCallsign"
+                                    style="@style/DefaultText"
+                                    android:layout_width="200dp"
+                                    android:layout_height="wrap_content"
+                                    android:background="@drawable/border_full"
+                                    android:text="-"
+                                    android:textAlignment="center"
+                                    android:textColor="@color/white"
+                                    android:textSize="35dp" />
+
+                                <Button
+                                    android:id="@+id/btnChangeCallsign"
+                                    style="@style/DefaultButton"
+                                    android:layout_width="150dp"
+                                    android:layout_height="50dp"
+                                    android:text="Change"
+                                    android:textSize="25dp" />
+
+                        </LinearLayout>
+
+                        <Space
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_gravity="right">
+
+                                <Button
+                                    android:id="@+id/btnAbout"
+                                    style="@style/DefaultButton"
+                                    android:layout_width="120dp"
+                                    android:layout_height="50dp"
+                                    android:text="About"
+                                    android:layout_marginRight="10dp"
+                                    android:textSize="25dp" />
+
+                                <Button
+                                    android:id="@+id/btnCloseSettings"
+                                    style="@style/DefaultButton"
+                                    android:layout_width="120dp"
+                                    android:layout_height="50dp"
+                                    android:text="Close"
+                                    android:textSize="25dp" />
+
+                        </LinearLayout>
+
+
+
+                </LinearLayout>
+
+        </LinearLayout>
+
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/aboutView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="true"
+            android:visibility="gone"
+            tools:layout_editor_absoluteY="10dp">
+
+                <ImageView
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:scaleType="fitXY"
+                    custom:layout_constraintEnd_toEndOf="@id/aboutScrollView"
+                    custom:layout_constraintStart_toStartOf="@id/aboutScrollView"
+                    custom:layout_constraintTop_toTopOf="@id/aboutScrollView"
+                    custom:layout_constraintBottom_toBottomOf="@id/aboutScrollView"
+                    android:src="@drawable/background_2" />
+
+                <ScrollView
+                    android:id="@+id/aboutScrollView"
+                    android:layout_width="700dp"
+                    android:layout_height="match_parent"
+                    custom:layout_constraintEnd_toEndOf="parent"
+                    custom:layout_constraintStart_toStartOf="parent" >
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="vertical">
+
+                                <TextView
+                                    style="@style/DefaultText"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:paddingTop="10dp"
+                                    android:text="Exo Defender"
+                                    android:textAlignment="center"
+                                    android:textSize="40sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:padding="10dp"
+                                    android:text="By JimJo Technology"
+                                    android:textAlignment="center"
+                                    android:textColor="@color/white"
+                                    android:textSize="20sp" />
+
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_gravity="center_horizontal"
+                                    android:orientation="horizontal"
+                                    android:visibility="visible">
+
+                                        <TableLayout
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginLeft="20dp"
+                                            android:layout_marginRight="20dp">
+
+                                                <TableRow
+                                                    android:layout_width="match_parent"
+                                                    android:layout_height="wrap_content">
+
+                                                        <TextView
+                                                            android:layout_width="match_parent"
+                                                            android:layout_height="wrap_content"
+                                                            android:paddingRight="15dp"
+                                                            android:text="App Version"
+                                                            android:textColor="@color/white"
+                                                            android:textSize="15sp" />
+
+                                                        <TextView
+                                                            android:id="@+id/appVersionLabel"
+                                                            android:layout_width="match_parent"
+                                                            android:layout_height="wrap_content"
+                                                            android:text="1.7"
+                                                            android:textColor="#80D232"
+                                                            android:textSize="15sp" />
+                                                </TableRow>
+
+
+                                        </TableLayout>
+
+                                        <ImageView
+                                            android:id="@+id/google_play_button"
+                                            android:layout_width="100dp"
+                                            android:layout_height="30dp"
+                                            android:layout_gravity="center_vertical"
+                                            android:foreground="@drawable/google_play_icon" />
+
+                                </LinearLayout>
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="15dp"
+                                    android:paddingLeft="30dp"
+                                    android:paddingBottom="10dp"
+                                    android:text="About"
+                                    android:textColor="@color/white"
+                                    android:textSize="20sp" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:paddingLeft="30dp"
+                                    android:paddingRight="30dp"
+                                    android:paddingBottom="10dp"
+                                    android:text="Exo Defender was inspired by the original Descent computer game by Parallax Software in the 1990s. It was written by a life-long programmer who wanted to try their hand at OpenGL."
+                                    android:textColor="@color/white"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:paddingLeft="30dp"
+                                    android:paddingRight="30dp"
+                                    android:text="This game is freely available and advertisement-free. Enjoy!"
+                                    android:textColor="@color/white"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="10dp"
+                                    android:paddingLeft="30dp"
+                                    android:paddingBottom="10dp"
+                                    android:text="Music Credits"
+                                    android:textColor="@color/white"
+                                    android:textSize="20sp" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:paddingLeft="30dp"
+                                    android:text="&quot;Warzone&quot; by One Man Symphony"
+                                    android:textColor="@color/white"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:autoLink="web"
+                                    android:linksClickable="true"
+                                    android:paddingLeft="30dp"
+                                    android:text="https://onemansymphony.bandcamp.com/"
+                                    android:textColor="@color/white"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:paddingLeft="30dp"
+                                    android:text="&quot;Raining Bullets&quot; by One Man Symphony"
+                                    android:textColor="@color/white"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:autoLink="web"
+                                    android:linksClickable="true"
+                                    android:paddingLeft="30dp"
+                                    android:text="https://onemansymphony.bandcamp.com/"
+                                    android:textColor="@color/white"
+                                    android:textSize="15sp" />
+
+
+                        </LinearLayout>
+                </ScrollView>
+
+                <ImageView
+                    android:id="@+id/closeAboutDialog"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:padding="10dp"
+                    custom:layout_constraintTop_toTopOf="@id/aboutScrollView"
+                    custom:layout_constraintRight_toRightOf="@id/aboutScrollView"
+                    android:src="@drawable/close_button" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
