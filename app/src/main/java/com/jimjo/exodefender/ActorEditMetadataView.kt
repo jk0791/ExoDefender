@@ -542,7 +542,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             editDimD.setText(bt.dimensions.y.toString(), TextView.BufferType.EDITABLE)
             editDimH.setText(bt.dimensions.z.toString(), TextView.BufferType.EDITABLE)
 
-            if (bt.shape == BlockShape.CYLINDER) {
+            if (bt.shape == BlockShape.BOX || bt.shape == BlockShape.CYLINDER) {
                 blockLandingPadRow.visibility = VISIBLE
                 if (bt.landingPadTop) {
                     chkLandingPad.isChecked = true

@@ -11,7 +11,7 @@ import kotlin.math.sqrt
 // tuning
 const val COLLISION_EPS = 0.01f
 private const val LEVEL_RATE = 2.0        // rad/sec response
-private const val LEVEL_EPS  = 0.005        // ~0.6° "good enough"
+private const val LEVEL_EPS  = 0.01        // ~0.6° "good enough"
 
 data class CollisionInfo(
     var collided: Boolean = false,
@@ -149,7 +149,7 @@ class ShipActor(
 
     private val supportRadiusZ = 1.5f  // start: shipHeight/2 ~ 1m
 
-    private val landingFootprintRadius = sqrt(4.25f * 4.25f + 2.5f * 2.5f) // ~4.93m
+    private val landingFootprintRadius = sqrt(4.25f * 4.25f + 2.5f * 2.5f) * 2 / 3 // ~4.93m
 
 
     private var levelAtRest = false
@@ -484,12 +484,27 @@ class ShipActor(
 
         val groundedOnPad = groundedOnCollider && (padBlock?.landingPadTop == true)
 
+        val overlay = padBlock?.renderer?.landingPadOverlay
         val withinLandingPad =
             groundedOnPad &&
+                    (overlay != null) &&
                     isShipWithinPad2D(
                         shipPos = position,
-                        padCenter = padBlock.position,
-                        padRadius = padBlock.landingPadRadius,
+                        pad = if (overlay.isBox)
+                            PadSpec(
+                                shape = PadShape.BOX,
+                                center = padBlock.position,
+                                yawRad = padBlock.yawRad.toFloat(),
+                                halfX = overlay.halfX,
+                                halfY = overlay.halfY
+                            )
+                        else
+                            PadSpec(
+                                shape = PadShape.CIRCLE,
+                                center = padBlock.position,
+                                yawRad = 0f,
+                                radius = overlay.radius - overlay.inset
+                            ),
                         shipFootprintRadius = landingFootprintRadius,
                         margin = 0.25f
                     )
@@ -520,12 +535,11 @@ class ShipActor(
                 rollRad  = dampTo(rollRad,  0.0, LEVEL_RATE, dt.toDouble())
 
                 // Stop angular motion
-                pitchVel = 0.0
-                yawVel   = 0.0
+//                pitchVel = 0.0
+//                yawVel   = 0.0
 
                 // Latch when basically level
-                if (kotlin.math.abs(pitchRad) < LEVEL_EPS &&
-                    kotlin.math.abs(rollRad)  < LEVEL_EPS) {
+                if (abs(pitchRad) < LEVEL_EPS && abs(rollRad)  < LEVEL_EPS) {
 
                     restLatched = true
                     latchedYaw = yawRad
@@ -552,12 +566,16 @@ class ShipActor(
 
         }
 
-        rescueTransfer.update(
+        val deltaCiviliansOnboard = rescueTransfer.update(
             padConfirmed = padConfirmed,
             restLatched = restLatched,
             lastPadBlock = lastPadBlock,
             timeMs = timeMs
         )
+
+        if (deltaCiviliansOnboard != 0) {
+            parent.civiliansOnboardChanged(carryingCivilians, deltaCiviliansOnboard)
+        }
 
 
 //        debugLogger.add("ship.position=${position}", timeMs)
@@ -694,19 +712,56 @@ class ShipActor(
     }
 
 
+    enum class PadShape { CIRCLE, BOX }
+
+    data class PadSpec(
+        val shape: PadShape,
+        val center: Vec3,
+        val yawRad: Float,      // only used for BOX
+        val radius: Float = 0f, // used for CIRCLE
+        val halfX: Float = 0f,  // used for BOX (pre-yaw extents)
+        val halfY: Float = 0f
+    )
+
     fun isShipWithinPad2D(
         shipPos: Vec3,
-        padCenter: Vec3,
-        padRadius: Float,
+        pad: PadSpec,
         shipFootprintRadius: Float,
-        margin: Float = 0.25f
+        margin: Float
     ): Boolean {
-        val dx = shipPos.x - padCenter.x
-        val dy = shipPos.y - padCenter.y
-        val r = padRadius - shipFootprintRadius - margin
-        if (r <= 0f) return false
-        return (dx*dx + dy*dy) <= (r*r)
+
+
+        return when (pad.shape) {
+            PadShape.CIRCLE -> {
+                val r = shipFootprintRadius + margin
+                val dx = shipPos.x - pad.center.x
+                val dy = shipPos.y - pad.center.y
+                val allowed = pad.radius - r
+                if (allowed <= 0f) return false
+                (dx * dx + dy * dy) <= (allowed * allowed)
+            }
+
+            PadShape.BOX -> {
+                val r = shipFootprintRadius // - 3 * margin
+                val dx = shipPos.x - pad.center.x
+                val dy = shipPos.y - pad.center.y
+
+                val c = kotlin.math.cos(-pad.yawRad)
+                val s = kotlin.math.sin(-pad.yawRad)
+
+                // rotate by -yaw: localX points along pad's local X axis
+                val localX =  dx * c + dy * s
+                val localY = -dx * s + dy * c
+
+                val allowedX = pad.halfX - r
+                val allowedY = pad.halfY - r
+                if (allowedX <= 0f || allowedY <= 0f) return false
+
+                abs(localX) <= allowedX && abs(localY) <= allowedY
+            }
+        }
     }
+
 
     /**
      * Continuous collision with sliding along AABB faces.
@@ -1347,8 +1402,6 @@ class ShipActor(
 
 
     override fun draw(vpMatrix: FloatArray, timeMs: Int) {
-//        renderer.nozzleGlow = 1.5f
-
         renderer.draw(vpMatrix, timeMs)
 
 //        renderer.drawCircleWireSwapYZHorizontal(

@@ -110,6 +110,16 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />
 
+    <com.jimjo.exodefender.CiviliansOnboardDisplay
+        android:id="@+id/civiliansOnboardDisplay"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/linearLayout"
+        app:layout_constraintStart_toEndOf="@+id/attitudeDisplay" />
+
+
+
     <LinearLayout
         android:id="@+id/linearLayout"
         android:layout_width="wrap_content"

@@ -89,7 +89,7 @@ class World(val mapId: Int) {
             actor.actorIndex = i
 
             // DEBUG:  Uncomment to disable all actor firing
-//            actor.firingEnabled = false
+            actor.firingEnabled = false
 
             when (actor) {
                 is FriendlyActor -> friendlyActors.add(actor)
@@ -434,7 +434,7 @@ class World(val mapId: Int) {
                 normalLineColor = floatArrayOf(0.2f, 0.8f, 1.0f, 1f)
                 signalLineColor = floatArrayOf(0.9f, 0.9f, 0.9f, 1f)
 
-                // landing pad overlay (cylinder-only pads)
+                // landing pad overlay
                 if (b.shape == BlockShape.CYLINDER && b.landingPadTop) {
                     landingPadRadius = halfExtents.x      // per your choice: halfXExtent
                     landingPadOverlay = LandingPadOverlay(
@@ -442,6 +442,24 @@ class World(val mapId: Int) {
                         radius = landingPadRadius,
                         halfHeight = halfExtents.z,
                         color = floatArrayOf(0.95f, 0.95f, 0.95f, 1f),
+                    )
+                } else if (b.shape == BlockShape.BOX && b.landingPadTop) {
+                    landingPadOverlay = LandingPadOverlay(
+                        enabled = true,
+                        isBox = true,
+
+                        // Pre-yaw (local) half extents
+                        halfX = halfExtents.x,
+                        halfY = halfExtents.y,
+                        halfHeight = halfExtents.z,
+
+                        // Optional: keep radius set too (harmless, might help if you reuse it elsewhere)
+                        radius = halfExtents.x,
+
+                        color = floatArrayOf(0.95f, 0.95f, 0.95f, 1f),
+
+                        // Optional tuning (recommended so inset never eats the whole pad)
+                        inset = minOf(1.5f, 0.18f * minOf(halfExtents.x, halfExtents.y))
                     )
                 } else {
                     landingPadOverlay = null

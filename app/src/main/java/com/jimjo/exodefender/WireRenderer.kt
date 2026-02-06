@@ -203,10 +203,9 @@ class WireRenderer(
     }
 
 
-    private fun drawLandingPadOverlay(vpMatrix: FloatArray, timeMs: Int) {
+    private fun WireRenderer.drawLandingPadOverlay(vpMatrix: FloatArray, timeMs: Int) {
         val o = landingPadOverlay ?: return
         if (!o.enabled) return
-        if (o.radius <= 0f) return
 
         // Enable blending so alpha in vColor is respected
         GLES20.glEnable(GLES20.GL_BLEND)
@@ -216,118 +215,159 @@ class WireRenderer(
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glDepthMask(false)   // don't write depth for the overlay
 
-        // --- alpha modulation ---
-        val alpha = if (o.pulse && !o.isConfirmed) {
-            // I'd recommend disabling pulse when confirmed so "locked" looks stable.
-            val phase = (timeMs % o.pulsePeriodMs).toFloat() / o.pulsePeriodMs.toFloat()
-            o.baseAlpha + o.pulseAmp * kotlin.math.sin(phase * Math.PI * 2.0).toFloat()
-        } else {
-            o.steadyAlpha
-        }.coerceIn(0f, 1f)
+        try {
+            // --- alpha modulation ---
+            val alpha = if (o.pulse && !o.isConfirmed) {
+                val phase = (timeMs % o.pulsePeriodMs).toFloat() / o.pulsePeriodMs.toFloat()
+                o.baseAlpha + o.pulseAmp * kotlin.math.sin(phase * Math.PI * 2.0).toFloat()
+            } else {
+                o.steadyAlpha
+            }.coerceIn(0f, 1f)
 
-        val rInset = o.radius - o.inset
-        if (rInset <= 0.01f) {
+            // World center of block top (your instances are positioned at block center)
+            val cx = instance.position.x
+            val cy = instance.position.y
+            val topZ = instance.position.z + o.halfHeight + o.zBias
+
+            // Base colors (don’t mutate o.color)
+            val base = floatArrayOf(o.color[0], o.color[1], o.color[2], alpha)
+
+            // Optional: brighten slightly when within bounds (helps tuning)
+            val within = if (o.isWithin && !o.isConfirmed) {
+                floatArrayOf(
+                    (base[0] * 1.25f).coerceAtMost(1f),
+                    (base[1] * 1.25f).coerceAtMost(1f),
+                    (base[2] * 1.25f).coerceAtMost(1f),
+                    alpha
+                )
+            } else base
+
+            val confirmedGreen = floatArrayOf(0.2f, 1.0f, 0.2f, alpha)
+
+            // ============================================================
+            // BOX RUNWAY STYLE
+            // ============================================================
+            if (o.isBox) {
+                val hx = (o.halfX - o.inset)
+                val hy = (o.halfY - o.inset)
+                if (hx <= 0.05f || hy <= 0.05f) return
+
+                val yaw = instance.yawRad.toFloat()   // or just instance.yawRad if already Float
+                val lines = buildBoxRunwayLinesWorldYaw(cx, cy, topZ, hx, hy, yaw, o)
+
+                if (!o.isConfirmed) {
+                    drawLinesSwapYZ(vpMatrix, lines, within)
+                } else {
+                    val c = confirmedGreen
+
+                    // "thicken" by overdrawing with small XY offsets
+                    val off = 0.10f
+
+                    fun offsetLines(dx: Float, dy: Float): FloatArray {
+                        val out = lines.copyOf()
+                        var i = 0
+                        while (i < out.size) {
+                            out[i] += dx       // x
+                            out[i + 1] += dy   // y
+                            // out[i+2] is z
+                            i += 3
+                        }
+                        return out
+                    }
+
+                    drawLinesSwapYZ(vpMatrix, lines, c)
+                    drawLinesSwapYZ(vpMatrix, offsetLines(+off, 0f), c)
+                    drawLinesSwapYZ(vpMatrix, offsetLines(-off, 0f), c)
+                    drawLinesSwapYZ(vpMatrix, offsetLines(0f, +off), c)
+                    drawLinesSwapYZ(vpMatrix, offsetLines(0f, -off), c)
+                }
+                return
+            }
+
+            // ============================================================
+            // CIRCULAR STYLE (existing behavior)
+            // ============================================================
+            if (o.radius <= 0f) return
+
+            val rInset = o.radius - o.inset
+            if (rInset <= 0.01f) return
+
+            if (!o.isConfirmed) {
+                // --- Outline mode ---
+                drawCircleWireSwapYZHorizontal(
+                    vpMatrix = vpMatrix,
+                    centerWorldX = cx,
+                    centerWorldY = cy,
+                    centerWorldZ = topZ,
+                    radius = rInset,
+                    segments = o.segments,
+                    color = within
+                )
+
+                val crossLen = rInset * o.crossFrac
+                val crossVertsWorld = floatArrayOf(
+                    // X axis line (world XY plane)
+                    cx - crossLen, cy,           topZ,
+                    cx + crossLen, cy,           topZ,
+
+                    // Y axis line (world XY plane)
+                    cx,           cy - crossLen, topZ,
+                    cx,           cy + crossLen, topZ
+                )
+                drawLinesSwapYZ(vpMatrix, crossVertsWorld, within)
+
+            } else {
+                // --- Confirmed mode: "solid" via thickness/overdraw ---
+                val c = confirmedGreen
+
+                // 1) Thick ring: multiple slightly offset rings
+                val ringThickness = 0.18f
+                val ringLayers = 5
+                for (i in 0 until ringLayers) {
+                    val t = if (ringLayers == 1) 0.5f else i.toFloat() / (ringLayers - 1).toFloat()
+                    val r = rInset - (t - 0.5f) * ringThickness
+                    if (r > 0.01f) {
+                        drawCircleWireSwapYZHorizontal(
+                            vpMatrix = vpMatrix,
+                            centerWorldX = cx,
+                            centerWorldY = cy,
+                            centerWorldZ = topZ,
+                            radius = r,
+                            segments = o.segments,
+                            color = c
+                        )
+                    }
+                }
+
+                // 2) Thick crosshair: draw parallel lines
+                val crossLen = rInset * o.crossFrac
+                val crossOffset = 0.10f
+
+                fun drawCrossAtOffset(dx: Float, dy: Float) {
+                    val verts = floatArrayOf(
+                        // X axis line (offset in Y)
+                        cx - crossLen, cy + dy, topZ,
+                        cx + crossLen, cy + dy, topZ,
+
+                        // Y axis line (offset in X)
+                        cx + dx, cy - crossLen, topZ,
+                        cx + dx, cy + crossLen, topZ
+                    )
+                    drawLinesSwapYZ(vpMatrix, verts, c)
+                }
+
+                drawCrossAtOffset(0f, 0f)
+                drawCrossAtOffset(+crossOffset, 0f)
+                drawCrossAtOffset(-crossOffset, 0f)
+                drawCrossAtOffset(0f, +crossOffset)
+                drawCrossAtOffset(0f, -crossOffset)
+            }
+        } finally {
+            // Restore state
             GLES20.glDepthMask(true)
             GLES20.glDisable(GLES20.GL_BLEND)
-            return
         }
-
-        // World center of cylinder top (your instances are positioned at block center)
-        val cx = instance.position.x
-        val cy = instance.position.y
-        val topZ = instance.position.z + o.halfHeight + o.zBias
-
-        // Base colors (don’t mutate o.color)
-        val base = floatArrayOf(o.color[0], o.color[1], o.color[2], alpha)
-
-        // Optional: brighten slightly when within bounds (helps tuning)
-        val within = if (o.isWithin && !o.isConfirmed) {
-            floatArrayOf(
-                (base[0] * 1.25f).coerceAtMost(1f),
-                (base[1] * 1.25f).coerceAtMost(1f),
-                (base[2] * 1.25f).coerceAtMost(1f),
-                alpha
-            )
-        } else base
-
-        val confirmedGreen = floatArrayOf(0.2f, 1.0f, 0.2f, alpha)
-
-        if (!o.isConfirmed) {
-            // --- Outline mode (existing behavior) ---
-            drawCircleWireSwapYZHorizontal(
-                vpMatrix = vpMatrix,
-                centerWorldX = cx,
-                centerWorldY = cy,
-                centerWorldZ = topZ,
-                radius = rInset,
-                segments = o.segments,
-                color = within
-            )
-
-            val crossLen = rInset * o.crossFrac
-            val crossVertsWorld = floatArrayOf(
-                // X axis line (world XY plane)
-                cx - crossLen, cy,           topZ,
-                cx + crossLen, cy,           topZ,
-
-                // Y axis line (world XY plane)
-                cx,           cy - crossLen, topZ,
-                cx,           cy + crossLen, topZ
-            )
-            drawLinesSwapYZ(vpMatrix, crossVertsWorld, within)
-
-        } else {
-            // --- Confirmed mode: "solid" via thickness/overdraw ---
-            val c = confirmedGreen
-
-            // 1) Thick ring: multiple slightly offset rings
-            val ringThickness = 0.18f   // world units; tune later
-            val ringLayers = 5
-            for (i in 0 until ringLayers) {
-                val t = if (ringLayers == 1) 0.5f else i.toFloat() / (ringLayers - 1).toFloat()
-                val r = rInset - (t - 0.5f) * ringThickness // spans +/- thickness/2
-                if (r > 0.01f) {
-                    drawCircleWireSwapYZHorizontal(
-                        vpMatrix = vpMatrix,
-                        centerWorldX = cx,
-                        centerWorldY = cy,
-                        centerWorldZ = topZ,
-                        radius = r,
-                        segments = o.segments,
-                        color = c
-                    )
-                }
-            }
-
-            // 2) Thick crosshair: draw parallel lines
-            val crossLen = rInset * o.crossFrac
-            val crossOffset = 0.10f // world units; tune later
-
-            fun drawCrossAtOffset(dx: Float, dy: Float) {
-                val verts = floatArrayOf(
-                    // X axis line (offset in Y)
-                    cx - crossLen, cy + dy, topZ,
-                    cx + crossLen, cy + dy, topZ,
-
-                    // Y axis line (offset in X)
-                    cx + dx, cy - crossLen, topZ,
-                    cx + dx, cy + crossLen, topZ
-                )
-                drawLinesSwapYZ(vpMatrix, verts, c)
-            }
-
-            drawCrossAtOffset(0f, 0f)
-            drawCrossAtOffset(+crossOffset, 0f)
-            drawCrossAtOffset(-crossOffset, 0f)
-            drawCrossAtOffset(0f, +crossOffset)
-            drawCrossAtOffset(0f, -crossOffset)
-        }
-
-        // Restore state
-        GLES20.glDepthMask(true)
-        GLES20.glDisable(GLES20.GL_BLEND)
     }
-
 
 
     private fun drawLinesSwapYZ(
@@ -502,6 +542,109 @@ class WireRenderer(
         if (aPosLoc >= 0) GLES20.glDisableVertexAttribArray(aPosLoc)
     }
 
+    private fun buildBoxRunwayLinesWorldYaw(
+        cx: Float,
+        cy: Float,
+        topZ: Float,
+        halfX: Float,
+        halfY: Float,
+        yawRad: Float,
+        o: LandingPadOverlay
+    ): FloatArray {
+
+        val longIsLocalX = halfX >= halfY * 1.05f
+        val halfL = if (longIsLocalX) halfX else halfY
+        val halfW = if (longIsLocalX) halfY else halfX
+
+        val c = kotlin.math.cos(-yawRad)
+        val s = kotlin.math.sin(-yawRad)
+
+        val xAxisX = c
+        val xAxisY = s
+        val yAxisX = -s
+        val yAxisY = c
+
+        val uAxisX: Float
+        val uAxisY: Float
+        val vAxisX: Float
+        val vAxisY: Float
+        if (longIsLocalX) {
+            uAxisX = xAxisX; uAxisY = xAxisY
+            vAxisX = yAxisX; vAxisY = yAxisY
+        } else {
+            uAxisX = yAxisX; uAxisY = yAxisY
+            vAxisX = xAxisX; vAxisY = xAxisY
+        }
+
+        fun toWorldX(u: Float, v: Float): Float = cx + uAxisX * u + vAxisX * v
+        fun toWorldY(u: Float, v: Float): Float = cy + uAxisY * u + vAxisY * v
+
+        val verts = ArrayList<Float>(256)
+        fun addLineUV(u0: Float, v0: Float, u1: Float, v1: Float) {
+            verts.add(toWorldX(u0, v0)); verts.add(toWorldY(u0, v0)); verts.add(topZ)
+            verts.add(toWorldX(u1, v1)); verts.add(toWorldY(u1, v1)); verts.add(topZ)
+        }
+
+        // ============================================================
+        // Manual layout distances
+        // ============================================================
+        val barHalfLenU = o.thresholdTickLen * 0.5f
+
+        // Threshold bar center is positioned so the OUTER edge is thresholdEdgeGap from runway end.
+        // Outer edge on +end is at u = +halfL, bar extends inward (toward 0).
+        // So bar center on +end is: halfL - (edgeGap + halfBarLen)
+        val uNear = halfL - (o.thresholdEdgeGap + barHalfLenU)
+
+        // Inner edge of the +end bars (toward center) is u = uNear - barHalfLenU
+        // Centerline should end centerlineToThresholdGap BEFORE that inner edge.
+        val uCenterlineMax = (uNear - barHalfLenU) - o.centerlineToThresholdGap
+
+        // Convert that into a centerline inset from the runway end.
+        // If uCenterlineMax <= 0, there's no room for a centerline.
+        val centerlineInsetU = (halfL - uCenterlineMax).coerceAtLeast(0f)
+
+        // --- Dashed centerline along U (v = 0) ---
+        val usable = (2f * halfL) - 2f * centerlineInsetU
+        if (usable > o.dashLen * 0.75f && uCenterlineMax > 0.05f) {
+            val period = o.dashLen + o.dashGap
+            val n = kotlin.math.max(1, kotlin.math.floor((usable + o.dashGap) / period).toInt())
+            val patternLen = n * o.dashLen + (n - 1) * o.dashGap
+            var u = -patternLen / 2f
+            repeat(n) {
+                addLineUV(u, 0f, u + o.dashLen, 0f)
+                u += period
+            }
+        }
+
+        // --- Threshold zebra bars on the short ends (parallel to centerline) ---
+        val vMin = -halfW + o.thresholdSideInset
+        val vMax = +halfW - o.thresholdSideInset
+        val usableW = vMax - vMin
+
+        // If uNear goes <= 0, the bars would overlap at/over the center; still drawable, but you may prefer to skip.
+        if (usableW > o.thresholdTickSpacing * 0.5f && uNear > 0.01f) {
+            val m = kotlin.math.max(
+                1,
+                kotlin.math.floor((usableW + o.thresholdTickSpacing) / o.thresholdTickSpacing).toInt()
+            )
+            val span = (m - 1) * o.thresholdTickSpacing
+            val v0 = -span / 2f
+
+            repeat(m) { i ->
+                val vCenter = v0 + i * o.thresholdTickSpacing
+
+                // +end
+                addLineUV(+uNear - barHalfLenU, vCenter, +uNear + barHalfLenU, vCenter)
+                // -end
+                addLineUV(-uNear - barHalfLenU, vCenter, -uNear + barHalfLenU, vCenter)
+            }
+        }
+
+        return verts.toFloatArray()
+    }
+
+
+
 
 }
 
@@ -509,8 +652,11 @@ data class LandingPadOverlay(
     var enabled: Boolean = false,
 
     // Geometry (local-space semantics, but we render using world center + known Z top)
+    var isBox: Boolean = false,
     var radius: Float = 0f,        // you decided: radius = halfXExtent
-    var halfHeight: Float = 0f,    // halfExtents.z
+    var halfX: Float = 0f,        // half extent in X (world/local depending on yaw usage)
+    var halfY: Float = 0f,        // half extent in Y
+    var halfHeight: Float = 0f,
 
     // Style
     var color: FloatArray = floatArrayOf(1f, 1f, 1f, 1f),
@@ -528,6 +674,19 @@ data class LandingPadOverlay(
     var pulseAmp: Float = 0.375f,       // amplitude
     var pulsePeriodMs: Int = 2500
 ) {
+
+    // BOX runway style
+    var dashLen: Float = 3.5f
+    var dashGap: Float = 2.5f
+    var thresholdTickLen: Float = 5f   // tick length along short axis
+    var thresholdTickSpacing: Float = 2f
+    var thresholdSideInset: Float = 0.30f // keep ticks away from the side edges
+
+    // Distances along the long axis (U)
+    var thresholdEdgeGap: Float = 0.20f      // runway end -> start of threshold bars
+    var centerlineToThresholdGap: Float = 0.80f // inner edge of threshold bars -> centerline end
+
+
     var isWithin: Boolean = false
     var isConfirmed: Boolean = false
 }

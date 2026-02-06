@@ -12,7 +12,7 @@ class CivilianClusterVisual(
 ) : VisualObject {
 
 
-    override var active = false
+    override var active = true
 
     var count: Int = initialCount
         set(value) { field = value.coerceIn(0, maxSlots) }
@@ -114,7 +114,7 @@ class CivilianClusterVisual(
     override fun draw(vpMatrix: FloatArray, timeMs: Int) {
 
         // --- anchorWorld = padPos + rotate(padYaw, waitingAreaLocal.xy), z fixed ---
-        rotateXY(waitingAreaLocal.x, waitingAreaLocal.y, padInstance.yawRad, tmp)
+        rotateXY(waitingAreaLocal.x, waitingAreaLocal.y, -padInstance.yawRad, tmp)
 
         anchorWorld.x = padInstance.position.x + tmp.x
         anchorWorld.y = padInstance.position.y + tmp.y

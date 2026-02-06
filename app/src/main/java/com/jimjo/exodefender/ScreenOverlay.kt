@@ -40,6 +40,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     private val levelBuilderToolbarButton: ImageView
     private val actorStatsDisplay: ActorStatsDisplay
     private val shipHealthDisplay: ShipHealthDisplay
+    private val civiliansOnboardDisplay: CiviliansOnboardDisplay
 
     val cameraModeLayout: LinearLayout
     private val chaseModeButton: ImageView
@@ -123,6 +124,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
         actorStatsDisplay = findViewById(R.id.actorStatsDisplay)
         shipHealthDisplay = findViewById(R.id.shipHealthDisplay)
+        civiliansOnboardDisplay = findViewById(R.id.civiliansOnboardDisplay)
 
         mapReplaySeekBarLayout = findViewById(R.id.mapReplaySeekBarLayout)
         mapReplaySeekBar = findViewById(R.id.mapReplaySeekBar)
@@ -538,6 +540,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
             currentLevel.world.enemyActors.size,
         )
         shipHealthDisplay.update(gLView.renderer.ship.getHealth())
+        civiliansOnboardDisplay.update(gLView.renderer.ship.carryingCivilians)
 
     }
 

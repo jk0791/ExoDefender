@@ -19,26 +19,20 @@ class RescueTransferController(
         restLatched: Boolean,
         lastPadBlock: BuildingBlockActor?,
         timeMs: Int
-    ) {
+    ): Int {
         if (!(padConfirmed && restLatched)) {
             // Freeze behavior: no new requests while not latched.
             // Also, drop tracking so we don't mis-attribute a count change to an old pad.
             lastCluster = null
             lastCount = -1
-            return
+            return 0
         }
 
         val cluster = lastPadBlock?.civilianCluster
 
-        if (cluster == null) {
-            println("No civilianCluster on this padBlock (id=${lastPadBlock?.structure?.templateId})")
-            return
-        }
+        if (cluster == null) return 0
 
-        println(
-            "TRANSFER pad initial=${cluster.initialCount} count=${cluster.count} " +
-                    "idle=${cluster.isIdle()} ship=${ship.carryingCivilians}/${ship.carryingCapacity}"
-        )
+        var deltaCivilians = 0
 
         // Detect transfer completion by observing count changes.
         if (cluster === lastCluster) {
@@ -46,20 +40,20 @@ class RescueTransferController(
             if (lastCount >= 0 && c != lastCount) {
                 // One transfer finished.
                 if (cluster.isThreatPad()) {
-                    println("Threat pad")
                     // Threat pad: count went DOWN by 1 (boarding)
                     if (c < lastCount) {
-                        println("Threat pad: count went DOWN by 1 (boarding): $c")
+                        val boarded = lastCount - c
                         ship.carryingCivilians =
-                            (ship.carryingCivilians + (lastCount - c)).coerceAtMost(ship.carryingCapacity)
+                            (ship.carryingCivilians + boarded).coerceAtMost(ship.carryingCapacity)
+                        deltaCivilians += boarded
                     }
                 } else if (cluster.isSafePad()) {
-                    println("Safe pad")
                     // Safe pad: count went UP by 1 (disembarking)
                     if (c > lastCount) {
-                        println("Safe pad: count went UP by 1 (disembarking): $c")
+                        val disembarked = (c - lastCount)
                         ship.carryingCivilians =
-                            (ship.carryingCivilians - (c - lastCount)).coerceAtLeast(0)
+                            (ship.carryingCivilians - disembarked).coerceAtLeast(0)
+                        deltaCivilians -= disembarked
                     }
                 }
             }
@@ -71,7 +65,7 @@ class RescueTransferController(
         }
 
         // If cluster is mid-animation, do nothing this frame.
-        if (!cluster.isIdle()) return
+        if (!cluster.isIdle()) return 0
 
         // Decide the next one-at-a-time action.
         if (cluster.isThreatPad()) {
@@ -87,5 +81,6 @@ class RescueTransferController(
                 // we will decrement ship.carryingCivilians when count change is observed
             }
         }
+        return deltaCivilians
     }
 }

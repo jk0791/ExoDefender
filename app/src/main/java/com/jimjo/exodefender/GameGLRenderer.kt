@@ -21,6 +21,11 @@ interface ModelParent {
     val audioPlayer: AudioPlayer
     fun shipHit(destroyed: Boolean)
     fun notifyActorDestroyed(playSound: Boolean, friendly: Boolean)
+
+    fun civiliansOnboardChanged(
+        newCount: Int,
+        delta: Int
+    )
 }
 
 interface OnRendererReadyListener {
@@ -266,9 +271,19 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         if (!flightLog.replaySeeking) scheduleEndOfFrameChecks()
     }
 
+    override fun civiliansOnboardChanged(
+        newCount: Int,
+        delta: Int
+    ) {
+        // TODO sounds and radio calls for boarding/disembarking
+
+        handler.sendEmptyMessage(UPDATE_SCREEN)
+    }
+
     fun scheduleEndOfFrameChecks() {
         endOfFrameChecksScheduled = true
     }
+
 
     fun endOfFrameChecks() {
 
