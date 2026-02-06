@@ -1,15 +1,66 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# =========================
+# Android / Gradle
+# =========================
+.gradle/
+build/
+*/build/
+
+# Local Gradle config
 local.properties
+
+# =========================
+# Android Studio / IntelliJ
+# =========================
+.idea/
+*.iml
+
+# User-specific workspace files
+*.iws
+*.ipr
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Temporary / cache
+# =========================
+.cache/
+tmp/
+
+# =========================
+# NDK / native build
+# =========================
+.cxx/
+
+# =========================
+# Debug / profiling
+# =========================
+captures/
+externalNativeBuild/
+
+# =========================
+# Keystore (VERY IMPORTANT)
+# =========================
+*.jks
+*.keystore
+
+# =========================
+# Optional: ffmpeg / capture artifacts
+# =========================
+*.rgba
+*.mp4
+*.mov
+
+# =========================
+# Optional: editor exports
+# =========================
+*.bak
+*.tmp
