@@ -89,7 +89,7 @@ class World(val mapId: Int) {
             actor.actorIndex = i
 
             // DEBUG:  Uncomment to disable all actor firing
-            actor.firingEnabled = false
+//            actor.firingEnabled = false
 
             when (actor) {
                 is FriendlyActor -> friendlyActors.add(actor)
