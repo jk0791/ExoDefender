@@ -137,6 +137,16 @@ class FriendlyStructureActor(
     }
 
 
+    fun getCiviliansRemaining(): Int {
+        var totalRemaining = 0
+        for (b in blocks) {
+            b.civilianCluster?.let {
+                totalRemaining += it.count
+            }
+        }
+        return totalRemaining
+    }
+
     fun updateDestruction(timeMs: Int) {
         if (!destructEnabled || destroyed) return
 

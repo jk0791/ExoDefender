@@ -43,16 +43,16 @@ class RescueTransferController(
                     // Threat pad: count went DOWN by 1 (boarding)
                     if (c < lastCount) {
                         val boarded = lastCount - c
-                        ship.carryingCivilians =
-                            (ship.carryingCivilians + boarded).coerceAtMost(ship.carryingCapacity)
+                        ship.civiliansOnboard =
+                            (ship.civiliansOnboard + boarded).coerceAtMost(ship.carryingCapacity)
                         deltaCivilians += boarded
                     }
                 } else if (cluster.isSafePad()) {
                     // Safe pad: count went UP by 1 (disembarking)
                     if (c > lastCount) {
                         val disembarked = (c - lastCount)
-                        ship.carryingCivilians =
-                            (ship.carryingCivilians - disembarked).coerceAtLeast(0)
+                        ship.civiliansOnboard =
+                            (ship.civiliansOnboard - disembarked).coerceAtLeast(0)
                         deltaCivilians -= disembarked
                     }
                 }
@@ -70,13 +70,13 @@ class RescueTransferController(
         // Decide the next one-at-a-time action.
         if (cluster.isThreatPad()) {
             // board until ship full or pad empty
-            if (ship.carryingCivilians < ship.carryingCapacity && cluster.count > 0) {
+            if (ship.civiliansOnboard < ship.carryingCapacity && cluster.count > 0) {
                 cluster.requestCount(cluster.count - 1, timeMs)   // one civilian boards
                 // we will update ship.carryingCivilians when count change is observed (animation end)
             }
         } else if (cluster.isSafePad()) {
             // disembark all (one at a time, paced)
-            if (ship.carryingCivilians > 0) {
+            if (ship.civiliansOnboard > 0) {
                 cluster.requestCount(cluster.count + 1, timeMs)   // one civilian disembarks to safe pad
                 // we will decrement ship.carryingCivilians when count change is observed
             }

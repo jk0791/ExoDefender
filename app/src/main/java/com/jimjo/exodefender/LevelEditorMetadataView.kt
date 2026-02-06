@@ -32,21 +32,24 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
     val editOrder: EditText
     var mapSpinner: Spinner
     var typeSpinner: Spinner
+    var objectiveTypeSpinner: Spinner
+
     val levelTypes = listOf(
         Level.LevelType.DEVELOPMENT.name,
         Level.LevelType.TRAINING.name,
         Level.LevelType.MILKRUN.name,
         Level.LevelType.MISSION.name,
         )
+
+    val objectiveTypeNames = Level.ObjectiveType.entries.map { it.name }
+
     val saveButton: Button
     val closeCancelButton: Button
 
     val hostnameLabel: TextView
     val uploadLevelButton: Button
     val networkProgress: ProgressBar
-
-    var loadingView = false
-    private var typeSpinnerChangedOnce = false
+    var ignoreUiCallbacks = true
 
     var textWatcher: TextWatcher = object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {
@@ -54,7 +57,7 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
         }
 
         override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-            if (!loadingView) {
+            if (!ignoreUiCallbacks) {
                 writeToFile()
             }
         }
@@ -73,19 +76,33 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
 
         editOrder = this.findViewById(R.id.editLevelOrder)
 
-        mapSpinner = findViewById(R.id.mapSpinner)
         typeSpinner = findViewById(R.id.typeSpinner)
+        objectiveTypeSpinner = findViewById(R.id.objectiveSpinner)
+        mapSpinner = findViewById(R.id.mapSpinner)
 
         typeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
                 parent: AdapterView<*>,
                 view: View?, position: Int, id: Long
             ) {
-                if (typeSpinnerChangedOnce) {
+                if (!ignoreUiCallbacks) {
                     typeSpinnerChanged(levelTypes[position])
                 }
-                else {
-                    typeSpinnerChangedOnce = true
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {
+                // write code to perform some action
+                println("nothing selected")
+            }
+        }
+
+        objectiveTypeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>,
+                view: View?, position: Int, id: Long
+            ) {
+                if (!ignoreUiCallbacks) {
+                    objectiveTypeSpinnerChanged(objectiveTypeNames[position])
                 }
             }
 
@@ -113,25 +130,29 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
 
     fun load(levelManager: LevelManager, level: Level?) {
 
-        loadingView = true
-        typeSpinnerChangedOnce = false
+        ignoreUiCallbacks = true
+
 
         hostnameLabel.text = getHostServer(mainActivity)
 
         this.levelManager = levelManager
         this.level = level
 
+        // load level type spinner
+        val levelTypesArrayAdapter = ArrayAdapter(context,  R.layout.settings_spinner_item, levelTypes)
+        typeSpinner.adapter = levelTypesArrayAdapter
+
+        // load objective type spinner
+        val objectiveTypesArrayAdapter = ArrayAdapter(context,  R.layout.settings_spinner_item, objectiveTypeNames)
+        objectiveTypeSpinner.adapter = objectiveTypesArrayAdapter
+
         // load map id spinner
         val maps = mutableListOf<Int>()
         for (mapFile in levelManager.worldManager.mapFiles) {
             maps.add(mapFile.second)
         }
-        val mapsArrayAdapter = ArrayAdapter(context,  R.layout.settings_spinner_item, maps)
-        mapSpinner.adapter = mapsArrayAdapter
-
-        // load map id spinner
-        val typesArrayAdapter = ArrayAdapter(context,  R.layout.settings_spinner_item, levelTypes)
-        typeSpinner.adapter = typesArrayAdapter
+        val mapIdsArrayAdapter = ArrayAdapter(context,  R.layout.settings_spinner_item, maps)
+        mapSpinner.adapter = mapIdsArrayAdapter
 
         if (level != null) {
             saveButton.visibility = GONE
@@ -142,6 +163,7 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             mapSpinner.isEnabled = false
             typeSpinner.setSelection(levelTypes.indexOf(level.type.name))
             typeSpinner.isEnabled = true
+            objectiveTypeSpinner.setSelection(objectiveTypeNames.indexOf(level.objectiveType.name))
             editOrder.setText(level.order.toString(), TextView.BufferType.EDITABLE)
             uploadLevelButton.isEnabled = true
             editName.addTextChangedListener(textWatcher)
@@ -159,11 +181,12 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             mapSpinner.isEnabled = true
             typeSpinner.setSelection(levelTypes.indexOf(Level.LevelType.DEVELOPMENT.name))
             typeSpinner.isEnabled = false
+            objectiveTypeSpinner.setSelection(objectiveTypeNames.indexOf(Level.ObjectiveType.UNKNOWN.name))
             editOrder.setText("1", TextView.BufferType.EDITABLE)
         }
 
         updateCampaignCode()
-        loadingView = false
+        ignoreUiCallbacks = false
     }
 
     fun typeSpinnerChanged(newLevelTypeName: String) {
@@ -172,6 +195,19 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             if (levelType != null) {
 
                 level!!.type = levelType
+                updateCampaignCode()
+                writeToFile()
+            }
+        }
+    }
+
+    fun objectiveTypeSpinnerChanged(newObjectiveTypeName: String) {
+        if (level != null) {
+
+            val newObjectiveType = levelManager.getObjectiveFromName(newObjectiveTypeName)
+            if (newObjectiveType != null) {
+
+                level!!.objectiveType = newObjectiveType
                 updateCampaignCode()
                 writeToFile()
             }
@@ -199,6 +235,9 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
                 displayCampaignCode.text = "<null>"
             }
         }
+        else {
+            displayCampaignCode.text = "<null>"
+        }
     }
 
     fun createNewLevel() {
@@ -214,10 +253,14 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             }
 
             val levelType = levelManager.getLevelTypeFromString(typeSpinner.selectedItem as String)
+            val objectiveType = levelManager.getObjectiveFromName(objectiveTypeSpinner.selectedItem as String)
 
-            if (levelType != null && newOrder != null && levelManager.createBlankLevel(newLevelId, editName.text.toString(), newOrder, mapId)) {
-                levelManager.loadLevelsFromInternalStorage()
-                mainActivity.closeLevelBuilderMetadata()
+            if (levelType != null && objectiveType != null && newOrder != null) {
+
+                if (levelManager.createBlankLevel(newLevelId, editName.text.toString(), newOrder, objectiveType, mapId)) {
+                    levelManager.loadLevelsFromInternalStorage()
+                    mainActivity.closeLevelBuilderMetadata()
+                }
             }
         }
 

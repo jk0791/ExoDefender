@@ -277,7 +277,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     ) {
         // TODO sounds and radio calls for boarding/disembarking
 
-        handler.sendEmptyMessage(UPDATE_SCREEN)
+        scheduleEndOfFrameChecks()
     }
 
     fun scheduleEndOfFrameChecks() {
@@ -287,26 +287,57 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
     fun endOfFrameChecks() {
 
-        if (level.world.activeFriendliesScratch.size == 0 && level.world.friendlyActors.size != 0) {
-            if (!flightLog.replayActive) {
-                liveLevelCompleted = true
-                flightLog.completionOutcome = CompletionOutcome.FAILED_ZERO_FRIENDLIES
-                levelCompletedCountdownMs = 500
-            }
-        } else if (level.world.activeEnemiesScratch.size == 0 && level.world.enemyActors.size != 0) {
+        if (liveLevelCompleted) return
 
-            // mission completion
-            for (friendlyActor in level.world.activeFriendliesScratch) {
-                friendlyActor.startFlashSignal(flightTimeMs)
-            }
-            if (!flightLog.replayActive) {
-                liveLevelCompleted = true
-                flightLog.completionOutcome = CompletionOutcome.SUCCESS
-                levelCompletedCountdownMs = 4000
+        if (level.objectiveType == Level.ObjectiveType.CAS || level.objectiveType == Level.ObjectiveType.UNKNOWN) {
+            if (level.world.activeFriendliesScratch.size == 0 && level.world.friendlyActors.size != 0) {
+                if (!flightLog.replayActive) {
+                    liveLevelCompleted = true
+                    flightLog.completionOutcome = CompletionOutcome.FAILED_ZERO_FRIENDLIES
+                    levelCompletedCountdownMs = 500
+                }
+            } else if (level.world.activeEnemiesScratch.size == 0 && level.world.enemyActors.size != 0 && ship.active) {
 
-                audioPlayer.radio.onMissionComplete(flightTimeMs.toLong())
+                // mission completion
+                for (friendlyActor in level.world.activeFriendliesScratch) {
+                    friendlyActor.startFlashSignal(flightTimeMs)
+                }
+                if (!flightLog.replayActive) {
+                    liveLevelCompleted = true
+                    flightLog.completionOutcome = CompletionOutcome.SUCCESS
+                    levelCompletedCountdownMs = 4000
+
+                    audioPlayer.radio.onMissionComplete(flightTimeMs.toLong())
+                }
             }
         }
+        else if (level.objectiveType == Level.ObjectiveType.EVAC) {
+            val d = destructibleStructure
+            if (d != null) {
+
+                val remaining = d.getCiviliansRemaining()
+
+                if (d.destroyed && remaining > 0) {
+                    if (!flightLog.replayActive) {
+                        liveLevelCompleted = true
+                        flightLog.completionOutcome = CompletionOutcome.FAILED_CIVILIANS_NOT_RESCUED
+                        levelCompletedCountdownMs = 2000
+                    }
+                }
+                else if (remaining == 0 && ship.civiliansOnboard == 0 && ship.active) {
+                    // mission completion
+                    for (friendlyActor in level.world.activeFriendliesScratch) {
+                        friendlyActor.startFlashSignal(flightTimeMs)
+                    }
+                    if (!flightLog.replayActive) {
+                        liveLevelCompleted = true
+                        flightLog.completionOutcome = CompletionOutcome.SUCCESS
+                        levelCompletedCountdownMs = 2000
+                    }
+                }
+            }
+        }
+
 
         handler.sendEmptyMessage(UPDATE_SCREEN)
         endOfFrameChecksScheduled = false

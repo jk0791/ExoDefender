@@ -8,7 +8,15 @@ import kotlin.compareTo
 
 const val MISSIONS_PER_CAMPAIGN = 10
 
-class Level(val id: Int, var campaignCode: String? = null, var type: LevelType, val version: Int, var order: Int, val world: World): Comparable<Level> {
+class Level(
+    val id: Int,
+    var campaignCode: String? = null,
+    var type: LevelType,
+    var objectiveType: ObjectiveType = ObjectiveType.UNKNOWN,
+    val version: Int,
+    var order: Int,
+    val world: World
+): Comparable<Level> {
 
     @Serializable
     enum class LevelType {
@@ -23,10 +31,20 @@ class Level(val id: Int, var campaignCode: String? = null, var type: LevelType, 
     }
 
     @Serializable
+    enum class ObjectiveType {
+        @SerialName("UNKNOWN") UNKNOWN,
+        @SerialName("CAS") CAS,
+        @SerialName("EVAC") EVAC,
+        @SerialName("DEFEND") DEFEND,
+        @SerialName("DESTROY") DESTROY
+    }
+
+    @Serializable
     data class LevelSerializable(
         val id: Int,
         var campaignCode: String? = null,
         val type: LevelType,
+        var objectiveType: ObjectiveType = ObjectiveType.UNKNOWN,
         val name: String,
         val order: Int,
         val mapId: Int,
@@ -116,7 +134,7 @@ class Level(val id: Int, var campaignCode: String? = null, var type: LevelType, 
 
     fun stringifyInner(): String {
         return Json.encodeToString(
-            LevelSerializable(id, campaignCode, type, name, order, world.mapId,shipPosition, shipDirection, actorTemplates)
+            LevelSerializable(id, campaignCode, type, objectiveType, name, order, world.mapId,shipPosition, shipDirection, actorTemplates)
         )
     }
 

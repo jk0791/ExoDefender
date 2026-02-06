@@ -142,7 +142,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
         val gameMap = worldManager.worldLookupById[levelJson.mapId]
 
         if (gameMap != null) {
-            val level = Level(levelJson.id, levelJson.campaignCode, levelJson.type, levelVersioned.version, levelJson.order, gameMap)
+            val level = Level(levelJson.id, levelJson.campaignCode, levelJson.type, levelJson.objectiveType, levelVersioned.version, levelJson.order, gameMap)
             level.type = levelJson.type
             level.name = levelJson.name
             level.shipPosition.set(levelJson.shipPosition)
@@ -313,18 +313,23 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
         }
     }
 
+    fun getObjectiveFromName(objectiveName: String): Level.ObjectiveType? {
+        return Level.ObjectiveType.entries
+            .firstOrNull { it.name.equals(objectiveName, ignoreCase = true) }
+    }
+
     fun getCampaignFromLevel(level: Level): Campaign? =
         level
             .takeIf { it.type == Level.LevelType.MISSION }
             ?.campaignCode
             ?.let { campaignByCode[it] }
 
-    fun createBlankLevel(id: Int, name: String, order: Int, mapId: Int): Boolean {
+    fun createBlankLevel(id: Int, name: String, order: Int, objectiveType: Level.ObjectiveType, mapId: Int): Boolean {
 
         val gameMap = worldManager.worldLookupById[mapId]
 
         if (gameMap != null) {
-            val level = Level(id, null, Level.LevelType.DEVELOPMENT, 0, order, gameMap)
+            val level = Level(id, null, Level.LevelType.DEVELOPMENT, objectiveType, 0, order, gameMap)
             level.name = name
             level.shipPosition.set(2500f, 2500f, 375f)
             level.shipDirection = 0.0

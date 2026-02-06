@@ -1,6 +1,5 @@
 package com.jimjo.exodefender
 
-import android.util.Log
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.max
@@ -161,7 +160,7 @@ class ShipActor(
 
 
     private val rescueTransfer = RescueTransferController(this)
-    var carryingCivilians: Int = 0
+    var civiliansOnboard: Int = 0
     val carryingCapacity: Int = 2
 
     val debugLogger  = DebugLogger()
@@ -200,7 +199,7 @@ class ShipActor(
         wasRestLatchedLastFrame = false
 
         rescueTransfer.reset()
-        carryingCivilians = 0
+        civiliansOnboard = 0
     }
 
     fun getHealth(): Float {
@@ -574,7 +573,7 @@ class ShipActor(
         )
 
         if (deltaCiviliansOnboard != 0) {
-            parent.civiliansOnboardChanged(carryingCivilians, deltaCiviliansOnboard)
+            parent.civiliansOnboardChanged(civiliansOnboard, deltaCiviliansOnboard)
         }
 
 

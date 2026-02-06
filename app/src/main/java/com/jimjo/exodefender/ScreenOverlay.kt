@@ -540,7 +540,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
             currentLevel.world.enemyActors.size,
         )
         shipHealthDisplay.update(gLView.renderer.ship.getHealth())
-        civiliansOnboardDisplay.update(gLView.renderer.ship.carryingCivilians)
+        civiliansOnboardDisplay.update(gLView.renderer.ship.civiliansOnboard)
 
     }
 

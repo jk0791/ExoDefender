@@ -68,7 +68,7 @@
 
                     <Spinner
                         android:id="@+id/typeSpinner"
-                        android:layout_width="250dp"
+                        android:layout_width="200dp"
                         android:layout_height="wrap_content"
                         android:background="@color/white"
                         android:textSize="20dp" />
@@ -90,6 +90,22 @@
                         android:text="A2"
                         android:gravity="center_vertical"
                         android:textColor="@color/gray_400" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="50dp"
+                        android:padding="10dp"
+                        android:layout_marginLeft="15dp"
+                        android:text="Objective:"
+                        android:textColor="@color/white"
+                        android:textSize="20dp" />
+
+                    <Spinner
+                        android:id="@+id/objectiveSpinner"
+                        android:layout_width="150dp"
+                        android:layout_height="wrap_content"
+                        android:background="@color/white"
+                        android:textSize="20dp" />
 
 
                 </LinearLayout>

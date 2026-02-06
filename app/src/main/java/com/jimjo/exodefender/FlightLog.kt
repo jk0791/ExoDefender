@@ -11,6 +11,7 @@ enum class CompletionOutcome(val value: Int) {
     SUCCESS(1),
     FAILED_DESTROYED(2),
     FAILED_ZERO_FRIENDLIES(3),
+    FAILED_CIVILIANS_NOT_RESCUED(5),
     INCOMPLETE(4);
 
     private val intValue = value
