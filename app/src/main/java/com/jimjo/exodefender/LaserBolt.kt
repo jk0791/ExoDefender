@@ -9,6 +9,8 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 
+const val MAX_LASERBOLT_TRAVEL = 400f
+
 abstract class LaserBoltPool {
     abstract val pool: MutableList<LaserBolt>
 
@@ -37,15 +39,12 @@ class DoubleLaserBoltPool(val poolSize: Int): LaserBoltPool() {
     var nextAvailableIndex = 0
     val maxIntervalMs = 150
     var sinceLastFired = 0
-    val leftStartPosition = Vec3()
-    val rightStartPosition = Vec3()
-    val offset = 2.5f
 
     fun fillPool(glProgram: Int, vPMatrixHandle: Int, positionHandle: Int, mColorHandle: Int) {
 
         for (i in 0..< poolSize) {
-            val laserBoltL = LaserBolt(LaserBolt.SourceType.DART, 10f, 400f, targetCandidates)
-            val laserBoltR = LaserBolt(LaserBolt.SourceType.DART, 10f, 400f, targetCandidates)
+            val laserBoltL = LaserBolt(LaserBolt.SourceType.SHIP, 10f, 400f, targetCandidates)
+            val laserBoltR = LaserBolt(LaserBolt.SourceType.SHIP, 10f, 400f, targetCandidates)
             laserBoltL.load(glProgram, vPMatrixHandle, positionHandle, mColorHandle)
             laserBoltR.load(glProgram, vPMatrixHandle, positionHandle, mColorHandle)
             pool.add(laserBoltL)
@@ -115,7 +114,7 @@ class SingleLaserBoltPool(val sourceType: LaserBolt.SourceType, val poolSize: In
 
 class LaserBolt(val sourceType: SourceType, val length: Float, val velocityF: Float, val targetCandidates: ArrayList<Actor>? = null): RectF() {
 
-    enum class SourceType { DART, ENEMY, FRIENDLY}
+    enum class SourceType { SHIP, ENEMY, FRIENDLY}
 
 //    var sourceId = -1
     var active = false
@@ -203,13 +202,13 @@ class LaserBolt(val sourceType: SourceType, val length: Float, val velocityF: Fl
         position2d.set(nextPosition.x, nextPosition.y)
 
         // deactivate if travelled far enough
-        if (distanceTravelled > 400f) {
+        if (distanceTravelled > MAX_LASERBOLT_TRAVEL) {
             active = false
         }
 
         if (active) {
             if (sourceType == SourceType.ENEMY) {
-                // use contains() for enemy-fired projectiles (20 times less CP intensive than segment sweeping)
+                // use contains() for enemy-fired projectiles (20 times less CPU intensive than segment sweeping)
                 if (ship.active && ship.instance.worldAabb.contains(nextPosition)) {
                     ship.onHit(flightTimeMs, false, nextPosition)
                     active = false
@@ -223,19 +222,18 @@ class LaserBolt(val sourceType: SourceType, val length: Float, val velocityF: Fl
                     }
                 }
 
-            } else if (sourceType == SourceType.DART){
+            } else if (sourceType == SourceType.SHIP){
 
                 // get the enemies close enough to bother doing segment sweeping
                 if (targetCandidates != null) {
                     targetCandidates.clear()
+
+                    // segment sweeping, CPU-intensive so use grid to narrow down
                     world.queryEnemyForSegmentInto(position, nextPosition, length, targetCandidates)
                     for (enemy in targetCandidates) {
 
                         // TODO pass hitPoint to enemy so that non-destructive can show small explosion right at the hit location
-                        // segment sweeping
-//                        println("laserBoltStart=$position    laserBoltEnd=$nextPosition  aabb.min=${enemy.instance.worldAabb.min}   aabb.max=${enemy.instance.worldAabb.max}")
                         if (segmentIntersectsAABBMutable(position, nextPosition, enemy.instance.worldAabb, hitPoint)) {
-
                             enemy.onHit(flightTimeMs, true, hitPoint)
                             active = false
                             break

@@ -83,6 +83,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
 
     var paused = false
+    var evacCompletionArmed = false
     private lateinit var skybox: Skybox
     lateinit var textAtlas: TextAtlas
     private val debugLabel = ScreenLabel(24)
@@ -139,6 +140,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     fun resetGame() {
         level.reset()
         ship.reset()
+
+        evacCompletionArmed = false
 
         camera.setCameraMode(CameraMode.CHASE)
         camera.updateForChase()
@@ -324,16 +327,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                         levelCompletedCountdownMs = 2000
                     }
                 }
-                else if (remaining == 0 && ship.civiliansOnboard == 0 && ship.active) {
+                else if (remaining == 0) {
                     // mission completion
-                    for (friendlyActor in level.world.activeFriendliesScratch) {
-                        friendlyActor.startFlashSignal(flightTimeMs)
-                    }
-                    if (!flightLog.replayActive) {
-                        liveLevelCompleted = true
-                        flightLog.completionOutcome = CompletionOutcome.SUCCESS
-                        levelCompletedCountdownMs = 2000
-                    }
+                    evacCompletionArmed = true
                 }
             }
         }
@@ -341,6 +337,30 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
         handler.sendEmptyMessage(UPDATE_SCREEN)
         endOfFrameChecksScheduled = false
+    }
+
+    fun checkIfArmedExacComplete() {
+        val d = destructibleStructure
+        if (d != null && ship.active) {
+
+            val enemyWithinRadius = level.world.hasEnemyWithinRadius(ship.position, MAX_LASERBOLT_TRAVEL)
+
+            if (!enemyWithinRadius) {
+
+                for (friendlyActor in level.world.activeFriendliesScratch) {
+                    friendlyActor.startFlashSignal(flightTimeMs)
+                }
+                if (!flightLog.replayActive) {
+                    liveLevelCompleted = true
+                    flightLog.completionOutcome = CompletionOutcome.SUCCESS
+                    levelCompletedCountdownMs = 2000
+                }
+                evacCompletionArmed = false
+                handler.sendEmptyMessage(UPDATE_SCREEN)
+
+            }
+        }
+
     }
 
     fun loadActor(actorTemplate: ActorTemplate) {
@@ -507,6 +527,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     }
 
     fun updateActors() {
+
         for (actor in level.world.actors) {
             if (actor.active && !flightLog.replayActive && !parent.levelBuilderMode) {
                 // live game
@@ -547,6 +568,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                 }
             }
         }
+
+        if (evacCompletionArmed) checkIfArmedExacComplete()
     }
 
     private fun updateWorld() {

@@ -1,8 +1,6 @@
 package com.jimjo.exodefender
 
 import kotlin.math.exp
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.random.Random
 
 //    Actor (abstract)
@@ -549,8 +547,7 @@ abstract class EnemyActor(
                         // between sqTargetingDistanceNearest and sqTargetingDistanceFurthest
                         if (!anyFriendliesAlive || targetOnlyShip) {
                             targetShip = true
-                        }
-                        else {
+                        } else {
 
                             // roll the dice to decide who to target
 
@@ -558,7 +555,8 @@ abstract class EnemyActor(
                             if (sqDistanceToShip > sqTargetingDistanceIntermediate) {
                                 weighting = 0.5f
                             } else {
-                                weighting = ((sqTargetingDistanceIntermediate - sqDistanceToShip) / sqTargetingRange + 1) / 2f
+                                weighting =
+                                    ((sqTargetingDistanceIntermediate - sqDistanceToShip) / sqTargetingRange + 1) / 2f
                             }
                             if (Random.nextFloat() < weighting) {
                                 targetShip = true
@@ -576,24 +574,10 @@ abstract class EnemyActor(
                     targetFriendly = false
                     targetPosition.set(ship.position)
 
-
-//                    val t = interceptTime(
-//                        muzzleWorld.x, muzzleWorld.y, muzzleWorld.z,
-//                        ship.position.x, ship.position.y, ship.position.z,
-//                        ship.avgVelocity.x, ship.avgVelocity.y, ship.avgVelocity.z,
-//                        laserBoltPool.boltVelocity
-//                    ).coerceAtMost(5.0f) * skillFactor
-//
-
-
                     if (timeMs >= nextAimUpdateMs) {
                         cachedAimVelocity.set(ship.velocity)
                         nextAimUpdateMs = timeMs + reactionTimeMs
                     }
-
-//                    val vx = ship.velocity.x
-//                    val vy = ship.velocity.y
-//                    val vz = ship.velocity.z
 
                     val vx = cachedAimVelocity.x
                     val vy = cachedAimVelocity.y

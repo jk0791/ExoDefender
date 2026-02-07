@@ -57,6 +57,7 @@ class FriendlyStructureActor(
     var templateId: Int = -1
     val blocks = mutableListOf<BuildingBlockActor>()
     var destructEnabled = false
+
     var destructEndMs = 0
     var destroyed = false
         private set
@@ -76,6 +77,10 @@ class FriendlyStructureActor(
     private var emittedBurstCount = 0
 
     val editorBoundsAabb = Aabb(Vec3(), Vec3())
+
+    init {
+        playSoundWhenDestroyed = true
+    }
 
     override fun reset() {
         super.reset()
@@ -194,6 +199,7 @@ class FriendlyStructureActor(
         updateEditorBoundsAabb()
         startDestructionVfx(timeMs, editorBoundsAabb)
         hideAtMs = timeMs + 230
+        parent.notifyActorDestroyed(playSoundWhenDestroyed, false)
     }
 
 

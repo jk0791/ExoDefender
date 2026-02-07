@@ -63,7 +63,6 @@ class World(val mapId: Int) {
 
     val heightMap: Array<Array<Float>> = Array(MAP_GRID_SIZE) { y -> Array(MAP_GRID_SIZE) { x -> 0f } }
 
-
     fun loadLevel(level: Level) {
 
         // create actors
@@ -89,7 +88,7 @@ class World(val mapId: Int) {
             actor.actorIndex = i
 
             // DEBUG:  Uncomment to disable all actor firing
-//            actor.firingEnabled = false
+            actor.firingEnabled = false
 
             when (actor) {
                 is FriendlyActor -> friendlyActors.add(actor)
@@ -549,8 +548,6 @@ class World(val mapId: Int) {
         if (actor is BuildingBlockActor) {
             actor.civilianCluster?.let { cluster ->
                 cluster.active = false
-//                visuals.remove(cluster)
-//                actor.civilianCluster = null
             }
         }
 
@@ -601,34 +598,7 @@ class World(val mapId: Int) {
         if (renderer != null) renderer!!.ship.unselect()
     }
 
-    /** Call after spawning/removing enemies or when an enemy moves significantly. */
-    fun rebuildEnemyGrid() = enemyGrid.rebuild(enemyActors)
-    fun rebuildFriendlyGrid() = friendlyGrid.rebuild(friendlyActors)
 
-    /** If an enemy's AABB has changed (moved), call this to update just that one. */
-    fun updateEnemyInGrid(enemy: Actor) = enemyGrid.upsert(enemy)
-    fun updateFriendlyInGrid(friendly: Actor) = friendlyGrid.upsert(friendly)
-
-    fun queryEnemyForAabbInto(sweepMin: Vec3, sweepMax: Vec3, out: MutableList<Actor>) =
-        enemyGrid.queryActorAabbsXY(sweepMin, sweepMax, out)
-
-    fun queryFriendlyForAabbInto(sweepMin: Vec3, sweepMax: Vec3, out: MutableList<Actor>) =
-        friendlyGrid.queryActorAabbsXY(sweepMin, sweepMax, out)
-
-    fun queryEnemyForSegmentInto(
-        p0: Vec3, p1: Vec3, radius: Float, out: MutableList<Actor>
-    ) {
-        // Use segment’s own z range for culling; grid method inflates sensibly
-        enemyGrid.queryActorsForSegmentXY(p0, p1, radius, zMin = minOf(p0.z, p1.z), zMax = maxOf(p0.z, p1.z), out = out)
-    }
-
-    fun queryEnemiesAndFriendliesForAabbInto(
-        sweepMin: Vec3, sweepMax: Vec3, out: MutableList<Actor>
-    ) {
-        // DO NOT clear 'out' here; moveShipSlideOnHit already clears.
-        enemyGrid.queryActorAabbsXY(sweepMin, sweepMax, out)
-        friendlyGrid.queryActorAabbsXY(sweepMin, sweepMax, out)
-    }
 
     fun getElevationAverage(position2d: PointF): Float? {
         if (mapBounds.contains(position2d)) {
@@ -701,6 +671,61 @@ class World(val mapId: Int) {
         // z is elevation, so the normal is perpendicular to the slope
         return Vec3(-dzdx, -dzdy, 1f).normalizeInPlace()
     }
+
+    /** Call after spawning/removing enemies or when an enemy moves significantly. */
+    fun rebuildEnemyGrid() = enemyGrid.rebuild(enemyActors)
+    fun rebuildFriendlyGrid() = friendlyGrid.rebuild(friendlyActors)
+
+    /** If an enemy's AABB has changed (moved), call this to update just that one. */
+    fun updateEnemyInGrid(enemy: Actor) = enemyGrid.upsert(enemy)
+    fun updateFriendlyInGrid(friendly: Actor) = friendlyGrid.upsert(friendly)
+
+    fun queryEnemyForAabbInto(sweepMin: Vec3, sweepMax: Vec3, out: MutableList<Actor>) =
+        enemyGrid.queryActorAabbsXY(sweepMin, sweepMax, out)
+
+    fun queryFriendlyForAabbInto(sweepMin: Vec3, sweepMax: Vec3, out: MutableList<Actor>) =
+        friendlyGrid.queryActorAabbsXY(sweepMin, sweepMax, out)
+
+    fun queryEnemyForSegmentInto(
+        p0: Vec3, p1: Vec3, radius: Float, out: MutableList<Actor>
+    ) {
+        // Use segment’s own z range for culling; grid method inflates sensibly
+        enemyGrid.queryActorsForSegmentXY(p0, p1, radius, zMin = minOf(p0.z, p1.z), zMax = maxOf(p0.z, p1.z), out = out)
+    }
+
+    fun queryEnemiesAndFriendliesForAabbInto(
+        sweepMin: Vec3, sweepMax: Vec3, out: MutableList<Actor>
+    ) {
+        // DO NOT clear 'out' here; moveShipSlideOnHit already clears.
+        enemyGrid.queryActorAabbsXY(sweepMin, sweepMax, out)
+        friendlyGrid.queryActorAabbsXY(sweepMin, sweepMax, out)
+    }
+
+    private val tmpMin = Vec3()
+    private val tmpMax = Vec3()
+    private val nearEnemyScratch = ArrayList<Actor>(32)
+
+    fun hasEnemyWithinRadius(position: Vec3, radius: Float): Boolean {
+        tmpMin.set(position.x - radius, position.y - radius, position.z)
+        tmpMax.set(position.x + radius, position.y + radius, position.z)
+
+        nearEnemyScratch.clear()
+        queryEnemyForAabbInto(tmpMin, tmpMax, nearEnemyScratch)
+
+        val r2 = radius * radius
+        val sx = position.x
+        val sy = position.y
+        for (e in nearEnemyScratch) {
+            if (!e.active) continue
+            val ex = e.instance.position.x
+            val ey = e.instance.position.y
+            val dx = ex - sx
+            val dy = ey - sy
+            if (dx*dx + dy*dy <= r2) return true
+        }
+        return false
+    }
+
 }
 
 interface GridActor {
@@ -764,8 +789,8 @@ class SpatialGrid2D(private val cellSize: Float) {
         val ix0 = toCell(minSweep.x); val ix1 = toCell(maxSweep.x)
         val iy0 = toCell(minSweep.y); val iy1 = toCell(maxSweep.y)
 
-        val zMin = minSweep.z - cellSize
-        val zMax = minSweep.z + cellSize
+//        val zMin = minSweep.z - cellSize
+//        val zMax = minSweep.z + cellSize
 
         for (ix in ix0..ix1) for (iy in iy0..iy1) {
             val list = cells[key(ix, iy)] ?: continue
@@ -773,7 +798,9 @@ class SpatialGrid2D(private val cellSize: Float) {
                 val actor = entry.actor
 
                 if (actor.lastQueryId == queryId) continue
-                if (actor.instance.position.z < zMin || actor.instance.position.z > zMax) continue
+
+                // No z band check
+//                if (actor.instance.position.z < zMin || actor.instance.position.z > zMax) continue
 
                 actor.lastQueryId = queryId
                 out.add(actor)
