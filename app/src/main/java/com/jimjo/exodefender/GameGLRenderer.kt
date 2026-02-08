@@ -105,8 +105,6 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
     lateinit var level: Level
 
-    var destructibleStructure: FriendlyStructureActor? = null
-
     private val mapGrid = MapGrid()
     override val audioPlayer: AudioPlayer
         get() = parent.mainActivity.audioPlayer
@@ -153,7 +151,6 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         shipExplosion.active  = false
         enemyExplosion.active = false
         friendlyExplosion.active = false
-//        structureExplosionPool.active = false
 
         flash = false
         flashLong = false
@@ -315,7 +312,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             }
         }
         else if (level.objectiveType == Level.ObjectiveType.EVAC) {
-            val d = destructibleStructure
+            val d = level.world.destructibleStructure
             if (d != null) {
 
                 val remaining = d.getCiviliansRemaining()
@@ -333,6 +330,40 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                 }
             }
         }
+        else if (level.objectiveType == Level.ObjectiveType.DEFEND) {
+            val d = level.world.destructibleStructure
+            if (d != null) {
+
+                if (d.destroyed) {
+                    if (!flightLog.replayActive) {
+                        liveLevelCompleted = true
+                        flightLog.completionOutcome = CompletionOutcome.FAILED_STRUCTURE_DESTROYED
+                        levelCompletedCountdownMs = 2000
+                    }
+                }
+                else if (!d.destructionTriggered &&
+                    level.world.activeEnemiesScratch.size == 0 &&
+                    level.world.enemyActors.size != 0 &&
+                    ship.active) {
+
+                    // mission completion
+
+                    d.cancelDestruction()
+
+                    for (friendlyActor in level.world.activeFriendliesScratch) {
+                        friendlyActor.startFlashSignal(flightTimeMs)
+                    }
+
+                    if (!flightLog.replayActive) {
+                        liveLevelCompleted = true
+                        flightLog.completionOutcome = CompletionOutcome.SUCCESS
+                        levelCompletedCountdownMs = 4000
+
+                        audioPlayer.radio.onMissionComplete(flightTimeMs.toLong())
+                    }
+                }
+            }
+        }
 
 
         handler.sendEmptyMessage(UPDATE_SCREEN)
@@ -340,10 +371,10 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     }
 
     fun checkIfArmedExacComplete() {
-        val d = destructibleStructure
+        val d = level.world.destructibleStructure
         if (d != null && ship.active) {
 
-            val enemyWithinRadius = level.world.hasEnemyWithinRadius(ship.position, MAX_LASERBOLT_TRAVEL)
+            val enemyWithinRadius = level.world.hasEnemyWithinRadius(ship.position, 500f)
 
             if (!enemyWithinRadius) {
 
@@ -360,7 +391,6 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
             }
         }
-
     }
 
     fun loadActor(actorTemplate: ActorTemplate) {
@@ -379,15 +409,17 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         else if (actorTemplate is FriendlyStructureTemplate) {
             actor = level.world.spawnFriendlyStructure(actorTemplate)
             laserBoltPool = friendlyLaserBoltPool
-            if (destructibleStructure == null && actorTemplate.destructSeconds != null) {
-                destructibleStructure = actor
+
+            // set first destrucutible structure as THE only destructible structure
+            if (level.world.destructibleStructure == null && actorTemplate.destructSeconds != null) {
+                level.world.destructibleStructure = actor
             }
 
             if (actor != null) {
                 for (blockActor in actor.blocks) {
                     if (flightLog.replayActive) {
 
-                        // TODO
+                        // TODO load structure for replay!
 
                     }
                     else {

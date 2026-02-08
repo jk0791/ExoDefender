@@ -528,25 +528,29 @@ abstract class EnemyActor(
 
                 sqDistanceToShip = deltaXtoShip * deltaXtoShip + deltaYtoShip * deltaYtoShip + deltaZtoShip * deltaZtoShip
 
-                val nearestFriendly = world.proximity.nearestFriendlyForEnemy(this, actorIndex, timeMs)
+                val nearestFriendly =
+                    if (world.destructibleStructure == null)
+                        world.proximity.nearestFriendlyForEnemy(this, actorIndex, timeMs)
+                    else
+                        null
                 val anyFriendliesAlive = (nearestFriendly != null)
 
-                val targetShip: Boolean
-                val targetFriendly: Boolean
+                val shipTargeted: Boolean
+                val friendlyTargeted: Boolean
                 if (ship.active) {
 
                     shipInRange = sqDistanceToShip < sqTargetingDistanceFurthest
 
                     if (!shipInRange) {
-                        targetShip = false
+                        shipTargeted = false
                     }
                     else if (sqDistanceToShip < sqTargetingDistanceNearest) {
-                        targetShip = true
+                        shipTargeted = true
                     } else {
 
                         // between sqTargetingDistanceNearest and sqTargetingDistanceFurthest
                         if (!anyFriendliesAlive || targetOnlyShip) {
-                            targetShip = true
+                            shipTargeted = true
                         } else {
 
                             // roll the dice to decide who to target
@@ -559,19 +563,19 @@ abstract class EnemyActor(
                                     ((sqTargetingDistanceIntermediate - sqDistanceToShip) / sqTargetingRange + 1) / 2f
                             }
                             if (Random.nextFloat() < weighting) {
-                                targetShip = true
+                                shipTargeted = true
                             } else {
-                                targetShip = false
+                                shipTargeted = false
                             }
                         }
 //                println("weighting=${df2.format(weighting)} distanceToShip=${Math.sqrt(sqDistanceToShip.toDouble()).toInt()}")
                     }
                 } else {
-                    targetShip = false
+                    shipTargeted = false
                 }
 
-                if (targetShip) {
-                    targetFriendly = false
+                if (shipTargeted) {
+                    friendlyTargeted = false
                     targetPosition.set(ship.position)
 
                     if (timeMs >= nextAimUpdateMs) {
@@ -598,10 +602,16 @@ abstract class EnemyActor(
 
                 } else {
                     // target a non-ship friendly
-                    val friendlyTarget = nearestFriendly
+                    val friendlyTarget: FriendlyActor?
+                    if (world.destructibleStructure != null) {
+                        friendlyTarget = world.destructibleStructure
+                    }
+                    else {
+                        friendlyTarget = nearestFriendly
+                    }
                     if (friendlyTarget != null) {
 
-                        targetFriendly = true
+                        friendlyTargeted = true
                         targetPosition.set(friendlyTarget.position)
 
                         // add some random innacuracy
@@ -610,11 +620,11 @@ abstract class EnemyActor(
                         targetPosition.z += Random.nextFloat() * 2f
                     }
                     else {
-                        targetFriendly = false
+                        friendlyTargeted = false
                     }
                 }
 
-                if (targetShip || targetFriendly) {
+                if (shipTargeted || friendlyTargeted) {
 
                     weaponYawRad = getPlanAngle(muzzleWorld, targetPosition)
                     weaponPitchRad = getElevationAngle(weaponYawRad,

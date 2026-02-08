@@ -8,6 +8,7 @@ class BuildingBlockActor(
     val blockIndex: Int,
     override val instance: ModelInstance,
     public override val renderer: WireRenderer,
+    val explosionPool: ExplosionPool,
     val halfExtents: Vec3,
     val landingPadTop: Boolean,
     var civilianCluster: CivilianClusterVisual? = null,
@@ -29,8 +30,8 @@ class BuildingBlockActor(
     override fun onHit(timeMs: Int, enemyHit: Boolean, hitPosition: Vec3) {
         if (!log.flightLog.replayActive) {
             renderer.flashLinesOnce(timeMs)
-            explosion?.activateSmall(hitPosition)
-            explosionFlash?.spawnWorldSmall(hitPosition)
+            explosionPool.activateSmall(hitPosition)
+            explosionFlash?.spawnWorldLarge(hitPosition)
 
 //            // shotsHit should be counted once — do it here
 //            if (enemyHit) log.flightLog.shotsHit++
@@ -68,7 +69,17 @@ class FriendlyStructureActor(
     data class ScheduledBurst(val timeMs: Int, val pos: Vec3, val large: Boolean)
 
     private val scheduledBursts = ArrayDeque<ScheduledBurst>()
+
+
     private var destructionStartedMs: Int = 0
+
+    var destructGraceMs = 500          // “extra beat” after hitting zero on destruction countdown
+    private var destructTriggeredMs = -1 // -1 = not triggered yet
+
+    val destructionTriggered: Boolean
+        get() = destructTriggeredMs >= 0
+
+
     private var hideAtMs: Int? = null
 
     private var didFoundationFlash = false
@@ -84,16 +95,7 @@ class FriendlyStructureActor(
 
     override fun reset() {
         super.reset()
-
-        val s = initialDestructSeconds
-        destructEnabled = (s != null && s > 0)
-        destroyed = false
-        destructEndMs = if (destructEnabled) s!! * 1000 else 0
-        currentTimeMs = 0
-
-        didFoundationFlash = false
-        lastFlashMs = Int.MIN_VALUE
-        emittedBurstCount = 0
+        resetDestructionState()
     }
 
     fun applyDamageFromEnemy(timeMs: Int, hitPosition: Vec3) {
@@ -127,6 +129,16 @@ class FriendlyStructureActor(
         updateEditorBoundsAabb()
     }
 
+    fun getCiviliansRemaining(): Int {
+        var totalRemaining = 0
+        for (b in blocks) {
+            b.civilianCluster?.let {
+                totalRemaining += it.count
+            }
+        }
+        return totalRemaining
+    }
+
     override fun update(dt: Float, dtMs: Int, timeMs: Int) {
         updateDestruction(timeMs)
 
@@ -141,25 +153,30 @@ class FriendlyStructureActor(
         }
     }
 
-
-    fun getCiviliansRemaining(): Int {
-        var totalRemaining = 0
-        for (b in blocks) {
-            b.civilianCluster?.let {
-                totalRemaining += it.count
-            }
-        }
-        return totalRemaining
-    }
-
     fun updateDestruction(timeMs: Int) {
         if (!destructEnabled || destroyed) return
 
-        if (timeMs >= destructEndMs) {
+        // Stage 1: timer reaches zero -> start destruction sequence (but not destroyed yet)
+        if (destructTriggeredMs < 0 && timeMs >= destructEndMs) {
+            destructTriggeredMs = timeMs
+
+            // kick off the destruction VFX
+            updateEditorBoundsAabb()
+            startDestructionVfx(timeMs, editorBoundsAabb)
+        }
+
+        // Stage 2: after grace window -> now mark destroyed and do removal bookkeeping
+        if (destructTriggeredMs >= 0 && timeMs >= destructEndMs + destructGraceMs) {
             destroyed = true
             onDestroyed(timeMs)
         }
     }
+
+    fun onDestroyed(timeMs: Int) {
+        hideAtMs = timeMs + 230
+        parent.notifyActorDestroyed(playSoundWhenDestroyed, false)
+    }
+
 
     fun updateDestructionVfx(timeMs: Int) {
         while (scheduledBursts.isNotEmpty() && timeMs >= scheduledBursts.first().timeMs) {
@@ -194,12 +211,33 @@ class FriendlyStructureActor(
         }
     }
 
-    fun onDestroyed(timeMs: Int) {
-        println("Structure Destroyed!")
-        updateEditorBoundsAabb()
-        startDestructionVfx(timeMs, editorBoundsAabb)
-        hideAtMs = timeMs + 230
-        parent.notifyActorDestroyed(playSoundWhenDestroyed, false)
+    fun cancelDestruction() {
+        destructEnabled = false
+        destructTriggeredMs = -1
+        scheduledBursts.clear()
+        didFoundationFlash = false
+        hideAtMs = null
+    }
+
+    fun resetDestructionState() {
+
+
+        val s = initialDestructSeconds
+        destructEnabled = (s != null && s > 0)
+        destroyed = false
+        destructEndMs = if (destructEnabled) s!! * 1000 else 0
+        currentTimeMs = 0
+
+        didFoundationFlash = false
+        lastFlashMs = Int.MIN_VALUE
+        emittedBurstCount = 0
+
+        hideAtMs = null
+
+        // destruction timing
+        destructTriggeredMs = -1
+
+        scheduledBursts.clear()
     }
 
 

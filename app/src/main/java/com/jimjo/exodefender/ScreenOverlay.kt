@@ -556,7 +556,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     }
 
     private fun updateStructureCountdown() {
-        val s = gLView.renderer.destructibleStructure
+        val s = currentLevel.world.destructibleStructure
         if (s != null && s.destructEnabled && !s.destroyed) {
             val msLeft = s.destructEndMs - gLView.renderer.flightTimeMs
             val secondsLeft = max(0, (msLeft + 999) / 1000) // ceil

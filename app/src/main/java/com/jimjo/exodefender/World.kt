@@ -58,7 +58,7 @@ class World(val mapId: Int) {
     val enemyActors = mutableListOf<EnemyActor>()
     val activeFriendliesScratch = ArrayList<FriendlyActor>()
     val activeEnemiesScratch = ArrayList<EnemyActor>()
-
+    var destructibleStructure: FriendlyStructureActor? = null
     val visuals = mutableListOf<VisualObject>()
 
     val heightMap: Array<Array<Float>> = Array(MAP_GRID_SIZE) { y -> Array(MAP_GRID_SIZE) { x -> 0f } }
@@ -88,7 +88,7 @@ class World(val mapId: Int) {
             actor.actorIndex = i
 
             // DEBUG:  Uncomment to disable all actor firing
-            actor.firingEnabled = false
+//            actor.firingEnabled = false
 
             when (actor) {
                 is FriendlyActor -> friendlyActors.add(actor)
@@ -470,6 +470,7 @@ class World(val mapId: Int) {
                 blockIndex = blockIndex,
                 instance = instance,
                 renderer = renderer,
+                explosionPool = structure.explosionPool,
                 halfExtents = halfExtents,
                 landingPadTop = b.landingPadTop,
                 structure = structure,
