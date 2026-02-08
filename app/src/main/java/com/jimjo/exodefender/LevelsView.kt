@@ -188,7 +188,7 @@ class LevelsView(context: Context, attrs: AttributeSet? = null) :
             mainActivity.openLevelFromLevelsView(level)
         }
         else {
-            mainActivity.log.printout("level is null")
+            mainActivity.adminLogView.printout("level is null")
         }
     }
 

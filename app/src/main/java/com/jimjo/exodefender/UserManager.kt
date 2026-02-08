@@ -2,7 +2,6 @@ package com.jimjo.exodefender
 
 import android.app.Application
 import android.content.Context
-import android.content.pm.PackageInfo
 import android.os.Build
 import android.os.Message
 import androidx.appcompat.app.AppCompatActivity
@@ -42,7 +41,7 @@ class UserManager(app: Application): NetworkResponseReceiver {
                 putInt(USERID_KEY, overrideUserID)
                 putString(CALLSIGN_KEY, overrideCallsign)
             }
-            mainActivity.log.printout("Overriding user and callsign in preferences")
+            mainActivity.adminLogView.printout("Overriding user and callsign in preferences")
         }
 
         // load persisted user id values
@@ -53,7 +52,7 @@ class UserManager(app: Application): NetworkResponseReceiver {
             mainActivity.userId = userIdPrefValue
             mainActivity.callsign = callSignPrefValue
 
-            mainActivity.log.printout("User ${mainActivity.callsign} (${mainActivity.userId!!}) loaded from preferences")
+            mainActivity.adminLogView.printout("User ${mainActivity.callsign} (${mainActivity.userId!!}) loaded from preferences")
             sendEnvironmentDetails()
 
         } else {
@@ -68,7 +67,7 @@ class UserManager(app: Application): NetworkResponseReceiver {
     }
 
     fun loadUserOnServerResponse() {
-        mainActivity.log.printout("Server successfully created a new user, persisted to preferences")
+        mainActivity.adminLogView.printout("Server successfully created a new user, persisted to preferences")
         loadUser()
     }
 
@@ -131,11 +130,11 @@ class UserManager(app: Application): NetworkResponseReceiver {
     fun checkForNoUserNoNetwork() {
         val preferences = mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
 
-        mainActivity.log.printout(preferences.getString(LAST_NET_ERROR, "")!!)
+        mainActivity.adminLogView.printout(preferences.getString(LAST_NET_ERROR, "")!!)
 
         if (preferences.getInt(USERID_KEY, -1) == -1) {
 
-            mainActivity.log.printout("No user in preferences and no network, stopping app!")
+            mainActivity.adminLogView.printout("No user in preferences and no network, stopping app!")
             // show user message
             mainActivity.showInstallDialog(
                 false,
@@ -153,11 +152,11 @@ class UserManager(app: Application): NetworkResponseReceiver {
                 sendEnvironmentDetails()
             }
             -1, -2, -3-> {
-                mainActivity.log.printout("Server error occured")
-                mainActivity.log.printout("Error: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Server error occured")
+                mainActivity.adminLogView.printout("Error: [${msg.what}] ${msg.obj}")
             }
             -4 -> {
-                mainActivity.log.printout("Error: Could not connect to server")
+                mainActivity.adminLogView.printout("Error: Could not connect to server")
                 checkForNoUserNoNetwork()
             }
         }

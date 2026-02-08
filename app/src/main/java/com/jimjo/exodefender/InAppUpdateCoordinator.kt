@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.SystemClock
-import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import com.google.android.play.core.appupdate.AppUpdateManager
@@ -60,7 +59,7 @@ class InAppUpdateCoordinator(
         appUpdateManager.appUpdateInfo
             .addOnSuccessListener { info ->
                 val availability = info.updateAvailability()
-                mainActivity.log.printout(
+                mainActivity.adminLogView.printout(
                     "InAppUpdate: availability=$availability " +
                             "flexibleAllowed=${info.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)} " +
                             "immediateAllowed=${info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)}"
@@ -95,7 +94,7 @@ class InAppUpdateCoordinator(
                 }
             }
             .addOnFailureListener { e ->
-                mainActivity.log.printout("InAppUpdate: appUpdateInfo failed: ${e.javaClass.simpleName}: ${e.message}")
+                mainActivity.adminLogView.printout("InAppUpdate: appUpdateInfo failed: ${e.javaClass.simpleName}: ${e.message}")
             }
     }
 
@@ -104,7 +103,7 @@ class InAppUpdateCoordinator(
      */
     fun completeFlexibleUpdateIfReady() {
         if (!flexibleUpdateDownloaded) return
-        mainActivity.log.printout("InAppUpdate: Completing flexible update...")
+        mainActivity.adminLogView.printout("InAppUpdate: Completing flexible update...")
         appUpdateManager.completeUpdate()
     }
 
@@ -114,7 +113,7 @@ class InAppUpdateCoordinator(
     }
 
     private fun startUpdateFlow(info: com.google.android.play.core.appupdate.AppUpdateInfo, updateType: Int) {
-        mainActivity.log.printout("InAppUpdate: Starting flow type=${typeName(updateType)}")
+        mainActivity.adminLogView.printout("InAppUpdate: Starting flow type=${typeName(updateType)}")
 
         if (updateType == AppUpdateType.FLEXIBLE) {
             // Register listener once.
@@ -122,7 +121,7 @@ class InAppUpdateCoordinator(
                 installListener = InstallStateUpdatedListener { state ->
                     if (state.installStatus() == InstallStatus.DOWNLOADED) {
                         flexibleUpdateDownloaded = true
-                        mainActivity.log.printout("InAppUpdate: Flexible update downloaded (ready to complete).")
+                        mainActivity.adminLogView.printout("InAppUpdate: Flexible update downloaded (ready to complete).")
                         // You can now show an in-game banner/button:
                         // "Update ready — Restart to apply"
                     }
@@ -141,7 +140,7 @@ class InAppUpdateCoordinator(
             )
         } catch (e: Exception) {
             // Extremely rare, but safe to log
-            mainActivity.log.printout("InAppUpdate: startUpdateFlow exception: ${e.javaClass.simpleName}: ${e.message}")
+            mainActivity.adminLogView.printout("InAppUpdate: startUpdateFlow exception: ${e.javaClass.simpleName}: ${e.message}")
         }
     }
 

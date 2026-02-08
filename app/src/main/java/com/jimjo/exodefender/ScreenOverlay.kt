@@ -10,7 +10,6 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
-import kotlin.math.max
 import android.os.Handler
 import android.os.Looper
 
@@ -55,7 +54,6 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     val mapReplaySeekBarLayout: ConstraintLayout
     private val mapReplaySeekBar: SeekBar
     val markerOverlay: CameraTrackMarkerView
-//    private var fadeOutAnimation = AnimationUtils.loadAnimation(context, R.anim.fade_out)
     private val mapReplayPlayPauseButton: ImageView
     private var mapReplayPlayButtonState = MapReplayPlayButtonState.PAUSE
     private var isProgrammaticSeekbarChange = true
@@ -385,7 +383,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
                 showReplayEditorOverlay(false)
 
             } else {
-                mainActivity.log.printout("ERROR: attempted to enable replay studio but either not in replayMode or no savedFlightLogFilename")
+                mainActivity.adminLogView.printout("ERROR: attempted to enable replay studio but either not in replayMode or no savedFlightLogFilename")
             }
         }
         else {
@@ -443,7 +441,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
                     refreshMarkers(lastClickedEvent)
                 }
             } else {
-                mainActivity.log.printout("ERROR: attempted to show replay studio but either not in replayMode or replayStudio not enabled or no savedFlightLogFilename")
+                mainActivity.adminLogView.printout("ERROR: attempted to show replay studio but either not in replayMode or replayStudio not enabled or no savedFlightLogFilename")
             }
         }
         else {
@@ -558,14 +556,20 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     private fun updateStructureCountdown() {
         val s = currentLevel.world.destructibleStructure
         if (s != null && s.destructEnabled && !s.destroyed) {
-            val msLeft = s.destructEndMs - gLView.renderer.flightTimeMs
-            val secondsLeft = max(0, (msLeft + 999) / 1000) // ceil
+            val timeMs = gLView.renderer.flightTimeMs
+
+            // Cinematic: countdown hits 0 at "zero" and stays at 0 during the post-zero beat.
+            val msLeftToZero = (s.destructEndMs - timeMs).coerceAtLeast(0)
+            val secondsLeft = (msLeftToZero + 999) / 1000  // ceil
+
             txtStructureTimeRemaining.visibility = VISIBLE
             txtStructureTimeRemaining.text = "STRUCTURE: ${secondsLeft}s"
         } else {
             txtStructureTimeRemaining.visibility = GONE
         }
     }
+
+
 
 
     override fun joystickDisplayClicked(caller: JoystickDisplay) {

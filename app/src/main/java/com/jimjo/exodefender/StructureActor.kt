@@ -57,29 +57,41 @@ class FriendlyStructureActor(
 
     var templateId: Int = -1
     val blocks = mutableListOf<BuildingBlockActor>()
-    var destructEnabled = false
 
-    var destructEndMs = 0
-    var destroyed = false
+    // --- destruction state ---
+    var destructEnabled = false
         private set
+
+    /** "Zero moment" expressed in ms since level start (timeMs). */
+    var destructEndMs: Int = 0
+        private set
+
+    /** Cinematic beat after zero before we explode + become destroyed (and thus fail DEFEND). */
+    val destructPostZeroBeatMs: Int = 500
+
+    val destructTotalMs: Int
+        get() = if (!destructEnabled) 0
+        else ((initialDestructSeconds ?: 0) * 1000) + destructPostZeroBeatMs
+
+    /** Remaining time until FAIL moment (includes post-zero cinematic beat). */
+    val destructRemainingToFailMs: Int
+        get() = if (!destructEnabled) 0
+        else (destructEndMs + destructPostZeroBeatMs - lastLevelTimeMs).coerceAtLeast(0)
+
+    /** Remaining time until zero (not including post-zero beat). */
     val destructRemainingMs: Int
-        get() = if (!destructEnabled || destroyed) 0 else (destructEndMs - currentTimeMs).coerceAtLeast(0)
-    private var currentTimeMs: Int = 0
+        get() = if (!destructEnabled || destroyed) 0 else (destructEndMs - lastLevelTimeMs).coerceAtLeast(0)
+
+    var destroyed: Boolean = false
+        private set
+
+    /** Keep last seen level time to support destructRemainingMs. */
+    private var lastLevelTimeMs: Int = 0
 
     data class ScheduledBurst(val timeMs: Int, val pos: Vec3, val large: Boolean)
-
     private val scheduledBursts = ArrayDeque<ScheduledBurst>()
 
-
     private var destructionStartedMs: Int = 0
-
-    var destructGraceMs = 500          // “extra beat” after hitting zero on destruction countdown
-    private var destructTriggeredMs = -1 // -1 = not triggered yet
-
-    val destructionTriggered: Boolean
-        get() = destructTriggeredMs >= 0
-
-
     private var hideAtMs: Int? = null
 
     private var didFoundationFlash = false
@@ -93,9 +105,48 @@ class FriendlyStructureActor(
         playSoundWhenDestroyed = true
     }
 
+    private fun destructFailMs(): Int = destructEndMs + destructPostZeroBeatMs
+
     override fun reset() {
         super.reset()
         resetDestructionState()
+    }
+
+    /**
+     * Call at level start / restart.
+     * Assumes level time starts at 0.
+     *
+     * If you later start levels with timeMs != 0, change destructEndMs to (timeMs + s*1000).
+     */
+    fun resetDestructionState() {
+        val s = initialDestructSeconds
+
+        destructEnabled = (s != null && s > 0)
+        destroyed = false
+
+        destructEndMs = if (destructEnabled) (s!! * 1000) else 0
+        lastLevelTimeMs = 0
+
+        // VFX state reset
+        didFoundationFlash = false
+        lastFlashMs = Int.MIN_VALUE
+        emittedBurstCount = 0
+        hideAtMs = null
+        scheduledBursts.clear()
+    }
+
+    /**
+     * Optional helper if you need to stop destruction logic on success.
+     * Usually you don't need this if the level ends quickly.
+     */
+    fun cancelDestruction() {
+        destructEnabled = false
+        destroyed = false
+        hideAtMs = null
+        scheduledBursts.clear()
+        didFoundationFlash = false
+        lastFlashMs = Int.MIN_VALUE
+        emittedBurstCount = 0
     }
 
     fun applyDamageFromEnemy(timeMs: Int, hitPosition: Vec3) {
@@ -129,20 +180,13 @@ class FriendlyStructureActor(
         updateEditorBoundsAabb()
     }
 
-    fun getCiviliansRemaining(): Int {
-        var totalRemaining = 0
-        for (b in blocks) {
-            b.civilianCluster?.let {
-                totalRemaining += it.count
-            }
-        }
-        return totalRemaining
-    }
+    fun getCiviliansRemaining(): Int =
+        blocks.sumOf { it.civilianCluster?.count ?: 0 }
 
     override fun update(dt: Float, dtMs: Int, timeMs: Int) {
-        updateDestruction(timeMs)
+        lastLevelTimeMs = timeMs
 
-        // If you set destroyed=true and call onDestroyed(), ensure you also start VFX there.
+        updateDestruction(timeMs)
         updateDestructionVfx(timeMs)
 
         hideAtMs?.let {
@@ -153,32 +197,31 @@ class FriendlyStructureActor(
         }
     }
 
-    fun updateDestruction(timeMs: Int) {
+    /**
+     * Single-trigger model:
+     * - At (destructEndMs + destructPostZeroBeatMs): mark destroyed and start VFX immediately.
+     * - This allows DEFEND to fail at the same instant the explosions start.
+     */
+    private fun updateDestruction(timeMs: Int) {
         if (!destructEnabled || destroyed) return
 
-        // Stage 1: timer reaches zero -> start destruction sequence (but not destroyed yet)
-        if (destructTriggeredMs < 0 && timeMs >= destructEndMs) {
-            destructTriggeredMs = timeMs
-
-            // kick off the destruction VFX
-            updateEditorBoundsAabb()
-            startDestructionVfx(timeMs, editorBoundsAabb)
-        }
-
-        // Stage 2: after grace window -> now mark destroyed and do removal bookkeeping
-        if (destructTriggeredMs >= 0 && timeMs >= destructEndMs + destructGraceMs) {
+        if (timeMs >= destructFailMs()) {
             destroyed = true
             onDestroyed(timeMs)
         }
     }
 
-    fun onDestroyed(timeMs: Int) {
-        hideAtMs = timeMs + 230
+    private fun onDestroyed(timeMs: Int) {
+        updateEditorBoundsAabb()
+        startDestructionVfx(timeMs, editorBoundsAabb)
+
+        // Let the initial boom read before disappearing.
+        hideAtMs = timeMs + 350  // 350–600 feels good
+
         parent.notifyActorDestroyed(playSoundWhenDestroyed, false)
     }
 
-
-    fun updateDestructionVfx(timeMs: Int) {
+    private fun updateDestructionVfx(timeMs: Int) {
         while (scheduledBursts.isNotEmpty() && timeMs >= scheduledBursts.first().timeMs) {
             val b = scheduledBursts.removeFirst()
 
@@ -186,23 +229,20 @@ class FriendlyStructureActor(
             explosionPool.activateLarge(b.pos)
 
             // ---- flashes ----
-            val flash = this.explosionFlash  // Actor.explosionFlash?
+            val flash = this.explosionFlash
             if (flash != null) {
-
-                // 1) One big flash early in the sequence (foundation)
                 if (!didFoundationFlash) {
                     didFoundationFlash = true
                     lastFlashMs = timeMs
-                    flash.spawnWorldExtraLarge(b.pos)   // big “boom”
+                    flash.spawnWorldExtraLarge(b.pos)
                     world.renderer?.screenShake?.start(4f, 1f)
                 } else {
-                    // 2) Medium-ish flashes during the sequence
                     val shouldFlashThisBurst =
                         (emittedBurstCount % 3 == 0) && (timeMs - lastFlashMs >= flashCooldownMs)
 
                     if (shouldFlashThisBurst) {
                         lastFlashMs = timeMs
-                        flash.spawnWorldExtraLarge(b.pos) // smaller accompaniment flash
+                        flash.spawnWorldExtraLarge(b.pos)
                     }
                 }
             }
@@ -211,51 +251,13 @@ class FriendlyStructureActor(
         }
     }
 
-    fun cancelDestruction() {
-        destructEnabled = false
-        destructTriggeredMs = -1
-        scheduledBursts.clear()
-        didFoundationFlash = false
-        hideAtMs = null
-    }
-
-    fun resetDestructionState() {
-
-
-        val s = initialDestructSeconds
-        destructEnabled = (s != null && s > 0)
-        destroyed = false
-        destructEndMs = if (destructEnabled) s!! * 1000 else 0
-        currentTimeMs = 0
-
-        didFoundationFlash = false
-        lastFlashMs = Int.MIN_VALUE
-        emittedBurstCount = 0
-
-        hideAtMs = null
-
-        // destruction timing
-        destructTriggeredMs = -1
-
-        scheduledBursts.clear()
-    }
-
-
     override fun draw(vpMatrix: FloatArray, timeMs: Int) {
-        // Do NOT call super.draw() if structure has no visible geometry
-        // (If it does have geometry later, you can add it back.)
-
         if (drawEditorBounds) {
-            renderer.drawAabbWire(
-                vpMatrix,
-                editorBoundsAabb,
-                renderer.highlightLineColor
-            )
+            renderer.drawAabbWire(vpMatrix, editorBoundsAabb, renderer.highlightLineColor)
         }
     }
 
     override fun toTemplate() = null
-
 
     fun updateEditorBoundsAabb(): Boolean {
         editorBoundsAabb.min.set(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -265,6 +267,7 @@ class FriendlyStructureActor(
         for (b in blocks) {
             if (!b.active) continue
             any = true
+
             val c = b.instance.position
             val h = b.halfExtents
 
@@ -298,39 +301,27 @@ class FriendlyStructureActor(
 
         val center = structureAabb.center()
 
-        // Your existing block-based sampler
         val pts = sampleExplosionPointsFromBlocks(blocks, count = 16)
-
-//        // Sort center-out
-//        val sorted = pts.sortedBy { p ->
-//            val dx = p.x - center.x
-//            val dy = p.y - center.y
-//            val dz = p.z - center.z
-//            dx*dx + dy*dy + dz*dz
-//        }
-
-        // Sort bottom -> top
         val sorted = pts.sortedBy { it.z }  // bottom -> top
 
-        // Timing knobs
-        val initialDelayMs = 0          // 0..100 if you want a tiny pause
-        val stepMs = 70                 // 50..120 feels good
-        val jitterMs = 25               // randomness stops it looking “metronomic”
+        val initialDelayMs = 0
+        val stepMs = 70
+        val jitterMs = 25
 
         for ((i, p) in sorted.withIndex()) {
             val t = timeMs + initialDelayMs + i * stepMs + kotlin.random.Random.nextInt(-jitterMs, jitterMs + 1)
             scheduledBursts.add(ScheduledBurst(t, p, large = true))
         }
 
-        // Optional: add 1–2 anchor blasts at center immediately (reads “major event”)
         scheduledBursts.addFirst(ScheduledBurst(timeMs, Vec3(center.x, center.y, center.z), large = true))
     }
+
     fun sampleExplosionPointsFromBlocks(
         blocks: List<BuildingBlockActor>,
         count: Int,
         rng: Random = Random.Default,
-        topBias: Float = 0.7f,          // 0..1, higher = more explosions near top faces
-        jitterFracXY: Float = 0.08f,    // jitter relative to block size
+        topBias: Float = 0.7f,
+        jitterFracXY: Float = 0.08f,
         jitterFracZ: Float = 0.05f
     ): List<Vec3> {
         if (blocks.isEmpty() || count <= 0) return emptyList()
@@ -342,13 +333,12 @@ class FriendlyStructureActor(
 
         repeat(count) {
             val b = blocks[rng.nextInt(blocks.size)]
-            val aabb = b.instance.worldAabb // <-- adapt to your real property/method
+            val aabb = b.instance.worldAabb
 
             val w = max(0.001f, aabb.width())
             val d = max(0.001f, aabb.depth())
             val h = max(0.001f, aabb.height())
 
-            // Pick a point inside the block AABB, but bias Z toward the top.
             val x = rand(aabb.min.x, aabb.max.x)
             val y = rand(aabb.min.y, aabb.max.y)
 
@@ -356,7 +346,6 @@ class FriendlyStructureActor(
             val biasedT = t * t * (1f - topBias) + t * topBias
             val z = aabb.min.z + biasedT * h
 
-            // Jitter within a fraction of the block’s size so it doesn’t look “grid aligned”
             val jx = w * jitterFracXY
             val jy = d * jitterFracXY
             val jz = h * jitterFracZ
@@ -372,6 +361,5 @@ class FriendlyStructureActor(
 
         return out
     }
-
 }
 

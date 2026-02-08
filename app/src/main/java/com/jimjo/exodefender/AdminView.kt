@@ -267,7 +267,7 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
                     mainActivity.closeSettings()
                     mainActivity.replayDownloadedFlightLog(flightLog, displayCallSign, true)
                 } else {
-                    mainActivity.log.printout("Error: could not parse flight record data")
+                    mainActivity.adminLogView.printout("Error: could not parse flight record data")
                 }
             }
 
@@ -280,16 +280,16 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
                     mainActivity.closeSettings()
                     mainActivity.replayDownloadedFlightLog(flightLog, null, true)
                 } else {
-                    mainActivity.log.printout("Error: could not parse flight record data")
+                    mainActivity.adminLogView.printout("Error: could not parse flight record data")
                 }
             }
 
             -1, -2, -3 -> {
-                mainActivity.log.printout("Error: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Error: [${msg.what}] ${msg.obj}")
                 Toast.makeText(context, "Server error", Toast.LENGTH_SHORT).show()
             }
             -4 -> {
-                mainActivity.log.printout("Error: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Error: [${msg.what}] ${msg.obj}")
                 Toast.makeText(context, "Network error", Toast.LENGTH_SHORT).show()
             }
         }

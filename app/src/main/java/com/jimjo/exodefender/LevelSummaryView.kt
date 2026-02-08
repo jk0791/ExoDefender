@@ -370,7 +370,7 @@ class MissionSummaryView @JvmOverloads constructor(
     }
 
     fun showPlayerRankings(response: Networker.MissionRankingsResponse) {
-        mainActivity.log.printout("Retrieving user rankings levelid ${response.levelId}")
+        mainActivity.adminLogView.printout("Retrieving user rankings levelid ${response.levelId}")
         val model = PlayerRankingsView.Model(currentModel.levelTitle, response, 10)
         playerRankingsView.show(model)
     }
@@ -411,11 +411,11 @@ class MissionSummaryView @JvmOverloads constructor(
                 showPlayerRankings(missionRankingsResponse)
             }
             -1, -2, -3 -> {
-                mainActivity.log.printout("Server Error: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Server Error: [${msg.what}] ${msg.obj}")
                 Toast.makeText(context, "Server error retrieving rankings", Toast.LENGTH_SHORT).show()
             }
             -4 -> {
-                mainActivity.log.printout("Network error occured: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Network error occured: [${msg.what}] ${msg.obj}")
                 Toast.makeText(context, "Network error retrieving rankings", Toast.LENGTH_SHORT).show()
             }
         }

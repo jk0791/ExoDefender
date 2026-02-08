@@ -99,7 +99,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
     lateinit var levelEditorMetadataView: LevelEditorMetadataView
     lateinit var actorEditMetadataView: ActorEditMetadataView
     lateinit var adminView: AdminView
-    lateinit var log: AdminLog
+    lateinit var adminLogView: AdminLog
     lateinit var levelSummaryView: MissionSummaryView
     lateinit var trainingOutcomeView: TrainingOutcomeView
     lateinit var pauseMissionView: PauseMissionView
@@ -267,7 +267,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
         actorEditMetadataView.visibility = GONE
 
         adminView = findViewById<AdminView>(R.id.adminView).apply { visibility = GONE }
-        log = findViewById<AdminLog>(R.id.adminLogView).apply { visibility = GONE }
+        adminLogView = findViewById<AdminLog>(R.id.adminLogView).apply { visibility = GONE }
 
         settingsButton = findViewById(R.id.settingsButton)
         settingsButton.setOnClickListener({
@@ -287,7 +287,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
         settingsView.applySystemBarInsets(true, false, true, true)
         adminView.applySystemBarInsets(true, false, true, true)
         levelEditorView.applySystemBarInsets(true, false, true, true)
-//        levelBuilderToolbar.applySystemBarInsets(true, true, true, true)
+        adminLogView.applySystemBarInsets(true, false, true, false)
 
 
         onBackPressedDispatcher.addCallback(onBackPressedCallback)
@@ -302,10 +302,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
 
         getAppVersion()
 
-        log.printout("Connecting to ${getHostServer(this)}...")
+        adminLogView.printout("Connecting to ${getHostServer(this)}...")
         Thread({ Networker(this, getHostServer(this)).testConn() }).start()
 
-        log.printout("Getting globalsettings...")
+        adminLogView.printout("Getting globalsettings...")
         Thread({ Networker(this, getHostServer(this)).getGlobalSettings() }).start()
 
         userManager = UserManager(application)
@@ -618,7 +618,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
             }
         }
         else {
-            log.printout("ERROR: No such flight log found")
+            adminLogView.printout("ERROR: No such flight log found")
         }
     }
 
@@ -640,7 +640,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
             }
         }
         else {
-            log.printout("ERROR: No such flight log found")
+            adminLogView.printout("ERROR: No such flight log found")
         }
     }
 
@@ -1078,13 +1078,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
     }
 
     fun showAdminLogView() {
-        log.load()
-        log.visibility = VISIBLE
-        log.bringToFront()
+        adminLogView.load()
+        adminLogView.visibility = VISIBLE
+        adminLogView.bringToFront()
     }
 
     fun closeAdminLogView() {
-        log.visibility = GONE
+        adminLogView.visibility = GONE
     }
 
 
@@ -1114,7 +1114,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
                 if (currentLevel != null) {
                     levelsView.loadLevels(currentLevel!!.type)
                 } else {
-                    log.printout("ERROR: could not determine current level type (currentLevel is null)")
+                    adminLogView.printout("ERROR: could not determine current level type (currentLevel is null)")
                     showHomeView()
                 }
             }
@@ -1199,7 +1199,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
     fun hideAllViews() {
         pauseMissionView.visibility = GONE
         adminView.visibility = GONE
-        log.visibility = GONE
+        adminLogView.visibility = GONE
 //        endMissionView.visibility = GONE
         levelEditorMetadataView.visibility = GONE
         levelBuilderToolbar.visibility = GONE
@@ -1271,13 +1271,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
         when (msg.what) {
             NetworkResponse.TEST_OK.value -> {
                 val testConnectionResponse = msg.obj as Networker.TestConnectionResponse
-                log.printout("Server '${testConnectionResponse.exoServerVersion}' available; database '${testConnectionResponse.database}' available")
+                adminLogView.printout("Server '${testConnectionResponse.exoServerVersion}' available; database '${testConnectionResponse.database}' available")
             }
             NetworkResponse.GET_GLOBAL_SETTINGS.value -> {
                 val rawGlobalSettings = msg.obj as List<Networker.GlobalSetting>
                 globalSettings.load(rawGlobalSettings)
-                log.printout("Global settings retrieved:")
-                log.printout(globalSettings.displayAll())
+                adminLogView.printout("Global settings retrieved:")
+                adminLogView.printout(globalSettings.displayAll())
 
                 // Decide whether this install is below minimum
                 val minVc = globalSettings.minimumAppVersionCode
@@ -1287,19 +1287,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
                     lastMinVersionSeen = minVc
                     mustUpdateFromServer = appVersionCode < minVc
 
-                    log.printout("Current app version code = $appVersionCode")
+                    adminLogView.printout("Current app version code = $appVersionCode")
                     if (mustUpdateFromServer) {
-                        log.printout("Immediate update required")
+                        adminLogView.printout("Immediate update required")
                     }
                 }
 
             }
 
             -1, -2, -3 -> {
-                log.printout("Server Error: [${msg.what}] ${msg.obj}")
+                adminLogView.printout("Server Error: [${msg.what}] ${msg.obj}")
             }
             -4 -> {
-                log.printout("Network error occured: [${msg.what}] ${msg.obj}")
+                adminLogView.printout("Network error occured: [${msg.what}] ${msg.obj}")
             }
         }
 

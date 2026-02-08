@@ -176,7 +176,7 @@ class LevelEditorView(context: Context, attrs: AttributeSet? = null) :
         val difficultyTextView = TextView(context, null, 0, R.style.DefaultText)
         difficultyTextView.textSize = textSize
         if (!headingRow && level != null) {
-            difficultyTextView.text = "${df2.format(level.getDifficultyWeight())}"
+            difficultyTextView.text = "${df2.format(level.difficultyWeight)}"
         }
         else {
             difficultyTextView.text = "Diff"

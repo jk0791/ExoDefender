@@ -15,7 +15,8 @@ class Level(
     var objectiveType: ObjectiveType = ObjectiveType.UNKNOWN,
     val version: Int,
     var order: Int,
-    val world: World
+    val world: World,
+    var difficultyWeight: Float = 1.0f,
 ): Comparable<Level> {
 
     @Serializable
@@ -40,6 +41,7 @@ class Level(
     }
 
     @Serializable
+    @JsonIgnoreUnknownKeys
     data class LevelSerializable(
         val id: Int,
         var campaignCode: String? = null,
@@ -48,6 +50,7 @@ class Level(
         val name: String,
         val order: Int,
         val mapId: Int,
+        val difficultyWeight: Float = 1.0f,
         val shipPosition: Vec3,
         val shipDirection: Double,
         val actors: MutableList<ActorTemplate>
@@ -125,16 +128,27 @@ class Level(
         return ScoreCalculatorV1.DifficultyParameters(friendlyCount, enemyCount, enemyThreatSum)
     }
 
-    fun getDifficultyWeight(): Float {
-        if (name == "Initiation") {
-            println()
-        }
-        return ScoreCalculatorV1.difficultyWeightOnly(getDifficultyParameters())
-    }
+//    fun getDifficultyWeight(): Float {
+//        if (name == "Initiation") {
+//            println()
+//        }
+//        return ScoreCalculatorV1.difficultyWeightOnly(getDifficultyParameters())
+//    }
 
     fun stringifyInner(): String {
         return Json.encodeToString(
-            LevelSerializable(id, campaignCode, type, objectiveType, name, order, world.mapId,shipPosition, shipDirection, actorTemplates)
+            LevelSerializable(
+                id,
+                campaignCode,
+                type,
+                objectiveType,
+                name,
+                order,
+                world.mapId,
+                difficultyWeight,
+                shipPosition,
+                shipDirection,
+                actorTemplates)
         )
     }
 

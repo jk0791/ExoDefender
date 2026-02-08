@@ -118,7 +118,7 @@ class ReplayManager(context: Context, attrs: AttributeSet? = null) :
                 // Copy without overwrite
                 srcFile.copyTo(dstFile, overwrite = false)
             } catch (e: Exception) {
-                mainActivity.log.printout("ERROR copying camera track: ${e.message}")
+                mainActivity.adminLogView.printout("ERROR copying camera track: ${e.message}")
                 return false
             }
         }
@@ -277,7 +277,7 @@ class ReplayManager(context: Context, attrs: AttributeSet? = null) :
                     refreshTable()
                     Toast.makeText(context, "Replay copied", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
-                    mainActivity.log.printout("ERROR copying replay: ${e.message}")
+                    mainActivity.adminLogView.printout("ERROR copying replay: ${e.message}")
                     Toast.makeText(context, "Copy failed", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -290,7 +290,7 @@ class ReplayManager(context: Context, attrs: AttributeSet? = null) :
             val flightLog = mainActivity.flightLogManager.readSavedReplayFlightLogFile(getRealFilename(selectedDisplayFilename!!))
 
             if (flightLog == null) {
-                mainActivity.log.printout("ERROR: Unable to find flight log")
+                mainActivity.adminLogView.printout("ERROR: Unable to find flight log")
                 return
             }
 
@@ -448,11 +448,11 @@ class ReplayManager(context: Context, attrs: AttributeSet? = null) :
                 Toast.makeText(context, "Flight log uploaded", Toast.LENGTH_SHORT).show()
             }
             -1, -2, -3 -> {
-                mainActivity.log.printout("Server Error uploading flight log: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Server Error uploading flight log: [${msg.what}] ${msg.obj}")
                 Toast.makeText(context, "Server error", Toast.LENGTH_SHORT).show()
             }
             -4 -> {
-                mainActivity.log.printout("Network error occured uploading flight log: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Network error occured uploading flight log: [${msg.what}] ${msg.obj}")
                 Toast.makeText(context, "Network error", Toast.LENGTH_SHORT).show()
             }
         }

@@ -106,7 +106,7 @@ class EditCallSignView(context: Context, attrs: AttributeSet? = null) :
             }
             -1 -> txtError.text = "Sorry, that callsign is already taken. Try another one!"
             -2, -3, -4 -> {
-                mainActivity.log.printout("Network error: ${msg.obj}")
+                mainActivity.adminLogView.printout("Network error: ${msg.obj}")
                 txtError.text = "Sorry, a network problem occured. Perhaps try again?"
             }
         }

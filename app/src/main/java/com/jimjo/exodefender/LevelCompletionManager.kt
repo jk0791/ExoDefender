@@ -37,7 +37,7 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
 
                 // send to server
                 if (mainActivity.userId != null) {
-                    mainActivity.log.printout("Recording level outcome to server " + if (flightLogToSend == null) "(no flight log)" else "(with flight log)")
+                    mainActivity.adminLogView.printout("Recording level outcome to server " + if (flightLogToSend == null) "(no flight log)" else "(with flight log)")
                     Thread({
                         Networker(mainActivity, getHostServer(mainActivity)).logActivity(
                             mainActivity.userId!!,
@@ -110,7 +110,7 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
                         }
                         val breakdownJson = json.encodeToString(scoreBreakdown)
 
-                        mainActivity.log.printout("Submitting mission score to server: levelId=${level.id} score=${scoreBreakdown.total}")
+                        mainActivity.adminLogView.printout("Submitting mission score to server: levelId=${level.id} score=${scoreBreakdown.total}")
 
                         Thread({
                             Networker(this, getHostServer(mainActivity)).submitMissionScore(
@@ -162,7 +162,7 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
         if (copyLastFlightLogToLevelId != null) {
 
             mainActivity.flightLogManager.copyLastFlightLogAsBest(copyLastFlightLogToLevelId!!)
-            mainActivity.log.printout("New best flight log saved")
+            mainActivity.adminLogView.printout("New best flight log saved")
 
             copyLastFlightLogToLevelId = null
         }
@@ -173,14 +173,14 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
         when (msg.what) {
             NetworkResponse.SUBMIT_MISSION_SCORE.value -> {
                 val response = msg.obj as Networker.SubmitMissionScoreResponse
-                mainActivity.log.printout("[accepted=${response.accepted};duplicateRun=${response.duplicateRun};rejectReason=${response.rejectReason};submissionId=${response.submissionId};newPersonalBest=${response.newPersonalBest};bestScoreTotal=${response.bestScoreTotal};]")
+                mainActivity.adminLogView.printout("[accepted=${response.accepted};duplicateRun=${response.duplicateRun};rejectReason=${response.rejectReason};submissionId=${response.submissionId};newPersonalBest=${response.newPersonalBest};bestScoreTotal=${response.bestScoreTotal};]")
             }
 
             -1, -2, -3 -> {
-                mainActivity.log.printout("Server Error: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Server Error: [${msg.what}] ${msg.obj}")
             }
             -4 -> {
-                mainActivity.log.printout("Network error occured: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Network error occured: [${msg.what}] ${msg.obj}")
             }
 
         }

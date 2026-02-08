@@ -338,12 +338,13 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                     if (!flightLog.replayActive) {
                         liveLevelCompleted = true
                         flightLog.completionOutcome = CompletionOutcome.FAILED_STRUCTURE_DESTROYED
-                        levelCompletedCountdownMs = 2000
+                        levelCompletedCountdownMs = 4000
                     }
+                    println("Mission failed!")
                 }
-                else if (!d.destructionTriggered &&
-                    level.world.activeEnemiesScratch.size == 0 &&
-                    level.world.enemyActors.size != 0 &&
+                else if (
+                    level.world.activeEnemiesScratch.isEmpty() &&
+                    level.world.enemyActors.isNotEmpty() &&
                     ship.active) {
 
                     // mission completion
@@ -361,6 +362,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
                         audioPlayer.radio.onMissionComplete(flightTimeMs.toLong())
                     }
+                    println("Mission success!")
                 }
             }
         }
@@ -515,7 +517,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
             val flightLogCopy = flightLog.createCopy()
 
-            parent.mainActivity.log.printout("Saving flight log to internal storage...")
+            parent.mainActivity.adminLogView.printout("Saving flight log to internal storage...")
             Thread({
                 FlightLogManager(parent.mainActivity).writeLastFlightLogfile(
                     flightLogCopy,

@@ -19,7 +19,6 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
     lateinit var camera: Camera
     var opened = false
     val relocateActorButton: Button
-    val difficultyLabel: TextView
 
     val actorTypes = listOf(
         ActorType.GROUND_FRIENDLY.name,
@@ -53,8 +52,6 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
         relocateActorButton = this.findViewById(R.id.relocateButton)
         relocateActorButton.setOnClickListener({ relocateActor() })
 
-        difficultyLabel = this.findViewById<TextView>(R.id.difficultyLabel)
-
         this.findViewById<Button>(R.id.removeButton).apply {
             setOnClickListener {
                 val hasSelectedStructure =
@@ -80,14 +77,14 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
         val typesArrayAdapter = ArrayAdapter(context,  R.layout.actortypes_spinner_item, actorTypes)
         actorTypeSpinner.adapter = typesArrayAdapter
 
-        updateDifficultyLabel()
+//        updateDifficultyLabel()
 
         opened = true
     }
 
-    fun updateDifficultyLabel() {
-        difficultyLabel.text = "D: ${df2.format(level.getDifficultyWeight())}"
-    }
+//    fun updateDifficultyLabel() {
+//        difficultyLabel.text = "D: ${df2.format(level.getDifficultyWeight())}"
+//    }
 
     fun addActor() {
 
@@ -143,18 +140,18 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
                     level.editEngine.addActorOnGround(selectedActorType, spawnPoint)
                 }
                 writeToFile()
-                mainActivity.runOnUiThread {
-                    updateDifficultyLabel()
-                }
+//                mainActivity.runOnUiThread {
+//                    updateDifficultyLabel()
+//                }
             }
         }
         else {
             gLView.queueEvent {
                 level.editEngine.addFlyingEnemy(selectedActorType, spawnPoint)
                 writeToFile()
-                mainActivity.runOnUiThread {
-                    updateDifficultyLabel()
-                }
+//                mainActivity.runOnUiThread {
+//                    updateDifficultyLabel()
+//                }
             }
         }
     }
@@ -187,7 +184,6 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
         level.editEngine.removeSelectedActors()
         relocateActorButton.text = "Relocate"
         writeToFile()
-        updateDifficultyLabel()
     }
 
     private fun confirmRemoveStructure(onConfirm: () -> Unit) {

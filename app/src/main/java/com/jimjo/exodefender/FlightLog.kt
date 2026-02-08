@@ -41,6 +41,7 @@ class FlightLog(
     var id: Long? = null
     var runId = UUID.randomUUID().toString()
     var completionOutcome = CompletionOutcome.INCOMPLETE
+    var difficultyWeight: Float = 1.0f
 
     var flightTimeMs = 0
 
@@ -138,6 +139,7 @@ class FlightLog(
         newFlightLog.runId = runId
         newFlightLog.completionOutcome = completionOutcome
         newFlightLog.flightTimeMs = flightTimeMs
+        newFlightLog.difficultyWeight = difficultyWeight
         newFlightLog.friendliesStart = friendliesStart
         newFlightLog.friendliesRemaining = friendliesRemaining
         newFlightLog.enemiesStart = enemiesStart
@@ -220,6 +222,7 @@ class FlightLog(
         output += "runId=$runId\n"
         output += "completionOutcome=$completionOutcome\n"
         output += "flightTime=$flightTimeMs\n"
+        output += "difficultyWeight=$difficultyWeight\n"
         output += "friendliesStart=$friendliesStart\n"
         output += "friendliesRemaining=$friendliesRemaining\n"
         output += "enemiesStart=$enemiesStart\n"
@@ -289,6 +292,7 @@ class FlightLog(
                                     "runId" -> runId = dataParameterText
                                     "completionOutcome" -> completionOutcome = enumValueOf(dataParameterText)
                                     "flightTime" -> flightTimeMs = dataParameterText.toInt()
+                                    "difficultyWeight" -> difficultyWeight = dataParameterText.toFloat()
                                     "friendliesStart" -> friendliesStart = dataParameterText.toInt()
                                     "friendliesRemaining" -> friendliesRemaining = dataParameterText.toInt()
                                     "enemiesStart" -> enemiesStart = dataParameterText.toInt()

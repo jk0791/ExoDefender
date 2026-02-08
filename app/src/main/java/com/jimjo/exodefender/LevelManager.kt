@@ -142,7 +142,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
         val gameMap = worldManager.worldLookupById[levelJson.mapId]
 
         if (gameMap != null) {
-            val level = Level(levelJson.id, levelJson.campaignCode, levelJson.type, levelJson.objectiveType, levelVersioned.version, levelJson.order, gameMap)
+            val level = Level(levelJson.id, levelJson.campaignCode, levelJson.type, levelJson.objectiveType, levelVersioned.version, levelJson.order, gameMap, levelJson.difficultyWeight)
             level.type = levelJson.type
             level.name = levelJson.name
             level.shipPosition.set(levelJson.shipPosition)
@@ -153,14 +153,14 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
             return level
         }
         else {
-            mainActivity.log.printout("ERROR: Cannot load level, no such mapId: " + levelJson.mapId)
+            mainActivity.adminLogView.printout("ERROR: Cannot load level, no such mapId: " + levelJson.mapId)
         }
         return null
     }
 
    fun getLatestSyncManifest(includeDevelopment: Boolean) {
         if (!tryBeginSync()) {
-            mainActivity.log.printout("Manifest sync skipped (already in flight)")
+            mainActivity.adminLogView.printout("Manifest sync skipped (already in flight)")
             return
         }
 
@@ -168,7 +168,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
             try {
                 Networker(this, getHostServer(mainActivity)).getSyncManifest(includeDevelopment)
             } catch (e: Exception) {
-                mainActivity.log.printout("Level manifest fetch threw: ${e.message}")
+                mainActivity.adminLogView.printout("Level manifest fetch threw: ${e.message}")
                 endSync()
             }
         }.start()
@@ -178,8 +178,8 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
 
         val (toDelete, toUpsert) = diffLevels(allLevels, syncManifest.levels)
 
-        mainActivity.log.printout("Levels to delete: $toDelete")
-        mainActivity.log.printout("Levels to upsert: $toUpsert")
+        mainActivity.adminLogView.printout("Levels to delete: $toDelete")
+        mainActivity.adminLogView.printout("Levels to upsert: $toUpsert")
 
         for (levelId in toDelete) {
             val filename = filenameFromId(levelId)
@@ -217,7 +217,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
 
         }
         catch (e: Exception) {
-            mainActivity.log.printout("Error upserting levels " + e.message)
+            mainActivity.adminLogView.printout("Error upserting levels " + e.message)
         }
         finally {
             endSync() // ✅ pipeline complete
@@ -324,12 +324,21 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
             ?.campaignCode
             ?.let { campaignByCode[it] }
 
-    fun createBlankLevel(id: Int, name: String, order: Int, objectiveType: Level.ObjectiveType, mapId: Int): Boolean {
+    fun createBlankLevel(id: Int, name: String, order: Int, objectiveType: Level.ObjectiveType, mapId: Int, difficultyWeight: Float): Boolean {
 
         val gameMap = worldManager.worldLookupById[mapId]
 
         if (gameMap != null) {
-            val level = Level(id, null, Level.LevelType.DEVELOPMENT, objectiveType, 0, order, gameMap)
+            val level = Level(
+                id,
+                null,
+                Level.LevelType.DEVELOPMENT,
+                objectiveType,
+                0,
+                order,
+                gameMap,
+                difficultyWeight
+            )
             level.name = name
             level.shipPosition.set(2500f, 2500f, 375f)
             level.shipDirection = 0.0
@@ -670,7 +679,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
 
 
                 if (manifest.success) {
-                    mainActivity.log.printout("Level and campaign manifest received")
+                    mainActivity.adminLogView.printout("Level and campaign manifest received")
 
                     // Update campaigns metadata
                     campaignStore.applyFromManifest(manifest.campaigns)
@@ -686,7 +695,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
             NetworkResponse.GET_LEVELS.value -> {
                 val upsertLevels = msg.obj as Networker.LevelsResponse
                 if (upsertLevels.success) {
-                    mainActivity.log.printout("Upsert levels received")
+                    mainActivity.adminLogView.printout("Upsert levels received")
                     processUpsertLevels(upsertLevels)
                 }
                 else {
@@ -694,11 +703,11 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
                 }
             }
             -1, -2, -3 -> {
-                mainActivity.log.printout("Server Error: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Server Error: [${msg.what}] ${msg.obj}")
                 endSync()
             }
             -4 -> {
-                mainActivity.log.printout("Network error occured: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Network error occured: [${msg.what}] ${msg.obj}")
                 endSync()
             }
         }

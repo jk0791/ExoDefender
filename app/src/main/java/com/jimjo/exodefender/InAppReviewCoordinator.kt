@@ -40,13 +40,13 @@ class InAppReviewCoordinator(
         // Mark attempt before calling (so crashes / re-entries don’t spam attempts).
         markAttempt()
 
-        mainActivity.log.printout("InAppReview: Requesting review. levelIndex=$completedLevelIndex $extraLogData")
+        mainActivity.adminLogView.printout("InAppReview: Requesting review. levelIndex=$completedLevelIndex $extraLogData")
 
         val request = manager.requestReviewFlow()
         request.addOnCompleteListener { task ->
             if (!task.isSuccessful) {
                 val ex = task.exception
-                mainActivity.log.printout("InAppReview: requestReviewFlow failed: ${ex?.javaClass?.simpleName}: ${ex?.message}")
+                mainActivity.adminLogView.printout("InAppReview: requestReviewFlow failed: ${ex?.javaClass?.simpleName}: ${ex?.message}")
                 return@addOnCompleteListener
             }
 

@@ -16,6 +16,8 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import com.jimjo.exodefender.ServerConfig.getHostServer
+import android.os.Handler
+import android.os.Looper
 
 class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
     LinearLayout(context, attrs), NetworkResponseReceiver {
@@ -30,9 +32,19 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
     private var newLevelId = 0
     val editName: EditText
     val editOrder: EditText
+    val editDifficultyWeight: EditText
+
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private val WRITE_DEBOUNCE_MS = 250L
+
     var mapSpinner: Spinner
     var typeSpinner: Spinner
     var objectiveTypeSpinner: Spinner
+
+    private var suppressNextTypeEvent = false
+    private var suppressNextObjectiveEvent = false
+
+    private var watchersAttached = false
 
     val levelTypes = listOf(
         Level.LevelType.DEVELOPMENT.name,
@@ -51,16 +63,24 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
     val networkProgress: ProgressBar
     var ignoreUiCallbacks = true
 
-    var textWatcher: TextWatcher = object : TextWatcher {
-        override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {
-            // this function is called before text is edited
-        }
+    private val writeRunnable = Runnable {
+        if (!ignoreUiCallbacks) writeToFile()
+    }
+
+    private fun scheduleWriteToFile() {
+        uiHandler.removeCallbacks(writeRunnable)
+        uiHandler.postDelayed(writeRunnable, WRITE_DEBOUNCE_MS)
+    }
+
+    private val textWatcher = object : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
 
         override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
             if (!ignoreUiCallbacks) {
-                writeToFile()
+                scheduleWriteToFile()
             }
         }
+
         override fun afterTextChanged(s: Editable) {}
     }
 
@@ -75,6 +95,7 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
         editName = this.findViewById(R.id.editLevelName)
 
         editOrder = this.findViewById(R.id.editLevelOrder)
+        editDifficultyWeight = this.findViewById(R.id.editDifficultyWeight)
 
         typeSpinner = findViewById(R.id.typeSpinner)
         objectiveTypeSpinner = findViewById(R.id.objectiveSpinner)
@@ -85,9 +106,11 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
                 parent: AdapterView<*>,
                 view: View?, position: Int, id: Long
             ) {
-                if (!ignoreUiCallbacks) {
-                    typeSpinnerChanged(levelTypes[position])
+                if (ignoreUiCallbacks || suppressNextTypeEvent) {
+                    suppressNextTypeEvent = false
+                    return
                 }
+                typeSpinnerChanged(levelTypes[position])
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
@@ -101,9 +124,11 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
                 parent: AdapterView<*>,
                 view: View?, position: Int, id: Long
             ) {
-                if (!ignoreUiCallbacks) {
-                    objectiveTypeSpinnerChanged(objectiveTypeNames[position])
+                if (ignoreUiCallbacks || suppressNextObjectiveEvent) {
+                    suppressNextObjectiveEvent = false
+                    return
                 }
+                objectiveTypeSpinnerChanged(objectiveTypeNames[position])
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
@@ -126,6 +151,19 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
 
         closeCancelButton = this.findViewById(R.id.closeCencelCreateLevelButton)
         closeCancelButton.setOnClickListener({ mainActivity.closeLevelBuilderMetadata() })
+
+        attachWatchersOnce()
+    }
+
+
+    private fun attachWatchersOnce() {
+
+        if (watchersAttached) return
+        watchersAttached = true
+
+        editName.addTextChangedListener(textWatcher)
+        editOrder.addTextChangedListener(textWatcher)
+        editDifficultyWeight.addTextChangedListener(textWatcher)
     }
 
     fun load(levelManager: LevelManager, level: Level?) {
@@ -161,13 +199,23 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             editName.setText(level.name, TextView.BufferType.EDITABLE)
             mapSpinner.setSelection(maps.indexOf(level.world.mapId))
             mapSpinner.isEnabled = false
-            typeSpinner.setSelection(levelTypes.indexOf(level.type.name))
+
+            val typeIndex = levelTypes.indexOf(level.type.name).let { if (it >= 0) it else 0 }
+            suppressNextTypeEvent = true
+            typeSpinner.setSelection(typeIndex)
             typeSpinner.isEnabled = true
-            objectiveTypeSpinner.setSelection(objectiveTypeNames.indexOf(level.objectiveType.name))
+
+            val objIndex = objectiveTypeNames.indexOf(level.objectiveType.name).let { if (it >= 0) it else 0 }
+            suppressNextObjectiveEvent = true
+            objectiveTypeSpinner.setSelection(objIndex)
+
             editOrder.setText(level.order.toString(), TextView.BufferType.EDITABLE)
+            editDifficultyWeight.setText(df2.format(level.difficultyWeight), TextView.BufferType.EDITABLE)
             uploadLevelButton.isEnabled = true
-            editName.addTextChangedListener(textWatcher)
-            editOrder.addTextChangedListener(textWatcher)
+
+//            editName.addTextChangedListener(textWatcher)
+//            editOrder.addTextChangedListener(textWatcher)
+//            editDifficultyWeight.addTextChangedListener(textWatcher)
 
         }
         else {
@@ -183,10 +231,11 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             typeSpinner.isEnabled = false
             objectiveTypeSpinner.setSelection(objectiveTypeNames.indexOf(Level.ObjectiveType.UNKNOWN.name))
             editOrder.setText("1", TextView.BufferType.EDITABLE)
+            editDifficultyWeight.setText("1.00", TextView.BufferType.EDITABLE)
         }
 
         updateCampaignCode()
-        ignoreUiCallbacks = false
+        post { ignoreUiCallbacks = false }
     }
 
     fun typeSpinnerChanged(newLevelTypeName: String) {
@@ -252,12 +301,20 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
                 Toast.makeText(context, "Invalid order number", Toast.LENGTH_SHORT).show()
             }
 
+            var newDifficultyWeight: Float? = null
+            try {
+                newDifficultyWeight = editDifficultyWeight.text.toString().toFloat()
+            }
+            catch (e: Exception) {
+                Toast.makeText(context, "Invalid difficulty weight", Toast.LENGTH_SHORT).show()
+            }
+
             val levelType = levelManager.getLevelTypeFromString(typeSpinner.selectedItem as String)
             val objectiveType = levelManager.getObjectiveFromName(objectiveTypeSpinner.selectedItem as String)
 
-            if (levelType != null && objectiveType != null && newOrder != null) {
+            if (levelType != null && objectiveType != null && newOrder != null && newDifficultyWeight != null) {
 
-                if (levelManager.createBlankLevel(newLevelId, editName.text.toString(), newOrder, objectiveType, mapId)) {
+                if (levelManager.createBlankLevel(newLevelId, editName.text.toString(), newOrder, objectiveType, mapId, newDifficultyWeight)) {
                     levelManager.loadLevelsFromInternalStorage()
                     mainActivity.closeLevelBuilderMetadata()
                 }
@@ -277,7 +334,7 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             // DEBUG: uncomment to upload all levels to server!
 //            levels = levelManager.levels
 
-            mainActivity.log.printout("Sending levels update to server $displayIds...")
+            mainActivity.adminLogView.printout("Sending levels update to server $displayIds...")
             Thread({Networker(this, getHostServer(mainActivity)).upsertLevels(levels) }).start()
         }
 
@@ -286,20 +343,23 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
     }
 
     fun writeToFile(): Boolean {
-        if (level != null) {
-            level!!.name = editName.text.toString()
+        val lvl = level ?: return false
 
-            try {
-                level!!.order = editOrder.text.toString().toInt()
+        lvl.name = editName.text.toString()
+        lvl.order = editOrder.text.toString().toIntOrNull()
+            ?: run {
+                Toast.makeText(context, "Invalid number, defaulting to 0", Toast.LENGTH_SHORT)
+                    .show()
+                return false
             }
-            catch(e: Exception) {
-                Toast.makeText(context, "Invalid order number", Toast.LENGTH_SHORT).show()
+        lvl.difficultyWeight = editDifficultyWeight.text.toString().toFloatOrNull()
+            ?: run {
+                Toast.makeText(context, "Invalid difficulty weight", Toast.LENGTH_SHORT).show()
                 return false
             }
 
-            mainActivity.levelManager.writeLevelfile(level!!)
-            levelManager.loadLevelsFromInternalStorage()
-        }
+        mainActivity.levelManager.writeLevelfile(lvl)
+        levelManager.loadLevelsFromInternalStorage()
         return true
     }
 
@@ -309,14 +369,14 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             NetworkResponse.UPSERT_LEVELS.value -> {
                 val upsertLevelsResponse = msg.obj as Networker.UpsertLevelsResponse
                 val message = "Levels inserted: ${upsertLevelsResponse.insertCount}; updated: ${upsertLevelsResponse.updateCount}; failed: ${upsertLevelsResponse.failureCount}"
-                mainActivity.log.printout(message)
+                mainActivity.adminLogView.printout(message)
                 Toast.makeText(mainActivity, message, Toast.LENGTH_SHORT).show()
             }
             -1, -2, -3 -> {
-                mainActivity.log.printout("Server Error: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Server Error: [${msg.what}] ${msg.obj}")
             }
             -4 -> {
-                mainActivity.log.printout("Network error occured: [${msg.what}] ${msg.obj}")
+                mainActivity.adminLogView.printout("Network error occured: [${msg.what}] ${msg.obj}")
             }
         }
         networkProgress.visibility = GONE
