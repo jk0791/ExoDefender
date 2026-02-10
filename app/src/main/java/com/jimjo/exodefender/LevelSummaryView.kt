@@ -140,8 +140,9 @@ class MissionSummaryView @JvmOverloads constructor(
 
         linkMore.setOnClickListener {
             val b = lastBreakdown ?: return@setOnClickListener
-            val log = currentFlightLog ?: return@setOnClickListener
-            breakdownPopup.show(b, enemiesStart = log.enemiesStart)
+//            val log = currentFlightLog ?: return@setOnClickListener
+            val enemiesStart = currentFlightLog?.level?.objectiveSummary()?.enemiesStart ?: return@setOnClickListener
+            breakdownPopup.show(b, enemiesStart = enemiesStart)
         }
 
         // rankings hook (only visible when scoring enabled)
@@ -244,7 +245,7 @@ class MissionSummaryView @JvmOverloads constructor(
 
             rowScore.set("Score", fmtInt(breakdown.total), emphasize = true, size = RowSize.LARGE)
             rowDifficulty.set("Difficulty", "x${fmt2(breakdown.difficultyWeight)}")
-            rowFriendlies.set("Friendlies Saved", "${flightLog.friendliesRemaining} / ${flightLog.friendliesStart}")
+            rowFriendlies.set("Friendlies Saved", "${flightLog.friendliesRemaining} / ${flightLog.level?.objectiveSummary()?.friendliesStart ?: 0}")
             rowIntegrity.set("Ship Integrity", "${(flightLog.healthRemaining * 100f).toInt()}%")
             rowAccuracy.set("Accuracy Rating", if (model.score != null) "${model.score.accuracyRating}%" else "-")
             rowTime.set("Time", fmtTime(flightLog.flightTimeMs))
@@ -275,7 +276,7 @@ class MissionSummaryView @JvmOverloads constructor(
             rowDifficulty.visibility = GONE
             rowTime.visibility = GONE
 
-            rowFriendlies.set("Friendlies Saved", "${flightLog.friendliesRemaining} / ${flightLog.friendliesStart}")
+            rowFriendlies.set("Friendlies Saved", "${flightLog.friendliesRemaining} / ${flightLog.level?.objectiveSummary()?.friendliesStart ?: 0}")
             rowIntegrity.set("Ship Integrity", "${(flightLog.healthRemaining * 100f).toInt()}%")
             rowAccuracy.set("Accuracy Rating", if (model.score != null) "${model.score.accuracyRating}%" else "-")
 //            rowTime.set("Time", fmtTime(flightLog.flightTimeMs))
@@ -329,13 +330,14 @@ class MissionSummaryView @JvmOverloads constructor(
         networkProgressLayout.visibility = GONE
 
         val best = model.previousBestLog
-        if (best != null) {
+        val objSummary = best?.level?.objectiveSummary()
+        if (best != null && objSummary != null) {
             if (model.isLevelTypeScored) {
                 // difficulty from best breakdown if you store it; else recompute
                 val breakdown = ScoreCalculatorV1.score(best, parTimeMs = null)
                 rowScore.set("Personal Best", fmtInt(breakdown.total), emphasize = true)
                 rowDifficulty.set("Difficulty", "x${fmt2(breakdown.difficultyWeight)}")
-                rowFriendlies.set("Friendlies Saved", "${best.friendliesRemaining} / ${best.friendliesStart}")
+                rowFriendlies.set("Friendlies Saved", "${best.friendliesRemaining} / ${objSummary.friendliesStart}")
                 rowIntegrity.set("Ship Integrity", "${(best.healthRemaining * 100f).toInt()}%")
                 rowAccuracy.set("Accuracy", pct(best.shotsHit, best.shotsFired))
                 rowTime.set("Time", fmtTime(best.flightTimeMs))
@@ -349,7 +351,7 @@ class MissionSummaryView @JvmOverloads constructor(
                 rowDifficulty.visibility = GONE
                 rowTime.visibility = GONE
 
-                rowFriendlies.set("Friendlies Saved", "${best.friendliesRemaining} / ${best.friendliesStart}")
+                rowFriendlies.set("Friendlies Saved", "${best.friendliesRemaining} / ${objSummary.friendliesStart}")
                 rowIntegrity.set("Ship Integrity", "${(best.healthRemaining * 100f).toInt()}%")
                 rowAccuracy.set("Accuracy", pct(best.shotsHit, best.shotsFired))
                 linkMore.visibility = GONE

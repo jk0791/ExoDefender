@@ -132,30 +132,23 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
 
 
     @Serializable
-    data class SubmitMissionScoreRequest(
+    data class ScoreSubmitRequest(
         val userId: Int,
         val levelId: Int,
         val runId: String,
         val clientVersionCode: Int,
+        val objectiveType: Int,
         val completionOutcome: Int,
         val scoreVersion: Int,
         val scoreTotal: Int,
-        val flightTimeMs: Int,
-        val friendliesStart: Int,
-        val friendliesRemaining: Int,
-        val enemiesStart: Int,
-        val enemiesDestroyed: Int,
-        val shotsFired: Int,
-        val shotsHit: Int,
-        val healthRemaining: Float,
-        val enemyThreatSum: Float,
-        val breakdown: String? = null,
+        val details: String? = null,
+        val highlights: String? = null,
         val padding: String
     )
 
 
     @Serializable
-    data class SubmitMissionScoreResponse(
+    data class ScoreSubmitResult(
         val accepted: Boolean,
         val duplicateRun: Boolean = false,
         val rejectReason: String? = null,
@@ -261,8 +254,7 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
 
             val levelsJson = mutableListOf<String>()
             for (level in levels) {
-//                levelsJson.add(level.stringify())
-                levelsJson.add(level.stringifyInner())
+                levelsJson.add(level.getLevelSerializable().stringify())
             }
 
             val postBody = Json.encodeToString(UpsertLevelsRequest(levelsJson, spacing, padding))
@@ -594,33 +586,19 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
     /**
      * Submit a mission score to the server.
      *
-     * Pattern matches your other Networker methods:
-     * - builds URL
-     * - opens HttpURLConnection
-     * - JSON POST body
-     * - sends message via handler
-     *
-     * You can call this only for CompletionOutcome.SUCCESS runs (recommended),
-     * but server will also validate and reject otherwise.
+     * Caller provides details/highlights JSON (or null).
      */
     fun submitMissionScore(
         userId: Int,
         levelId: Int,
         runId: String,                  // UUID string generated client-side per run
         clientVersionCode: Int,
-        completionOutcome: Int,          // SUCCESS=1 etc
+        objectiveType: Int,             // 0..4
+        completionOutcome: Int,         // SUCCESS=1 etc
         scoreVersion: Int,
         scoreTotal: Int,
-        flightTimeMs: Int,
-        friendliesStart: Int,
-        friendliesRemaining: Int,
-        enemiesStart: Int,
-        enemiesDestroyed: Int,
-        shotsFired: Int,
-        shotsHit: Int,
-        healthRemaining: Float,          // 0..1
-        enemyThreatSum: Float,
-        breakdown: String? = null
+        details: JsonObject? = null,
+        highlights: JsonObject? = null
     ) {
         try {
             val url = "$hostServer/$scoresPath/mission/submit"
@@ -630,31 +608,27 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
             connection!!.doOutput = true
             connection!!.requestMethod = "POST"
 
-            // the client must generate a padding based on the userid that the server will validate
+            // the client must generate a padding based on the runId that the server will validate
             val padding = makePadding(runId)
 
-            val bodyObj = SubmitMissionScoreRequest(
+            val detailsStr = details?.toString()
+            val highlightsStr = highlights?.toString()
+
+            val bodyObj = ScoreSubmitRequest(
                 userId = userId,
                 levelId = levelId,
                 runId = runId,
                 clientVersionCode = clientVersionCode,
+                objectiveType = objectiveType,
                 completionOutcome = completionOutcome,
                 scoreVersion = scoreVersion,
                 scoreTotal = scoreTotal,
-                flightTimeMs = flightTimeMs,
-                friendliesStart = friendliesStart,
-                friendliesRemaining = friendliesRemaining,
-                enemiesStart = enemiesStart,
-                enemiesDestroyed = enemiesDestroyed,
-                shotsFired = shotsFired,
-                shotsHit = shotsHit,
-                healthRemaining = healthRemaining,
-                enemyThreatSum = enemyThreatSum,
-                breakdown = breakdown,
+                details = detailsStr,
+                highlights = highlightsStr,
                 padding = padding
             )
 
-            val putBody = Json.encodeToString(SubmitMissionScoreRequest.serializer(), bodyObj)
+            val putBody = Json.encodeToString(ScoreSubmitRequest.serializer(), bodyObj)
 
             connection!!.setRequestProperty("Content-Type", "application/json")
             connection!!.setRequestProperty("accept", "*/*")
@@ -668,33 +642,36 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
 
             val responseCode = connection!!.responseCode
 
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val dataOut = connection!!.inputStream.bufferedReader().readText()
-                val res = Json.decodeFromString(SubmitMissionScoreResponse.serializer(), dataOut)
-
-                // Send response object back to UI thread
+            fun postResultToUi(res: ScoreSubmitResult) {
                 handler?.let {
                     it.sendMessage(it.obtainMessage(NetworkResponse.SUBMIT_MISSION_SCORE.value, res))
                 }
-            } else if (responseCode == HttpURLConnection.HTTP_BAD_REQUEST ||
-                responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
-                // Server likely returned ScoreSubmitResult in body; try to parse it so client can show/log rejectReason.
+            }
+
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val dataOut = connection!!.inputStream.bufferedReader().readText()
+                val res = Json.decodeFromString(ScoreSubmitResult.serializer(), dataOut)
+                postResultToUi(res)
+            } else if (
+                responseCode == HttpURLConnection.HTTP_BAD_REQUEST ||
+                responseCode == HttpURLConnection.HTTP_NOT_FOUND ||
+                responseCode == HttpURLConnection.HTTP_INTERNAL_ERROR
+            ) {
+                // Server likely returned ScoreSubmitResult in body; try to parse it.
                 val errText = try { connection!!.errorStream?.bufferedReader()?.readText() } catch (_: Exception) { null }
 
                 if (!errText.isNullOrBlank()) {
                     try {
-                        val res = Json.decodeFromString(SubmitMissionScoreResponse.serializer(), errText)
-                        handler?.let {
-                            it.sendMessage(it.obtainMessage(NetworkResponse.SUBMIT_MISSION_SCORE.value, res))
-                        }
+                        val res = Json.decodeFromString(ScoreSubmitResult.serializer(), errText)
+                        postResultToUi(res)
                     } catch (_: Exception) {
-                        handler?.let { it.sendMessage(it.obtainMessage(-3, "HTTP Code $responseCode (${url})")) }
+                        handler?.let { it.sendMessage(it.obtainMessage(-3, "HTTP Code $responseCode ($url)")) }
                     }
                 } else {
-                    handler?.let { it.sendMessage(it.obtainMessage(-3, "HTTP Code $responseCode (${url})")) }
+                    handler?.let { it.sendMessage(it.obtainMessage(-3, "HTTP Code $responseCode ($url)")) }
                 }
             } else {
-                handler?.let { it.sendMessage(it.obtainMessage(-3, "HTTP Code $responseCode (${url})")) }
+                handler?.let { it.sendMessage(it.obtainMessage(-3, "HTTP Code $responseCode ($url)")) }
             }
         } catch (e: Exception) {
             handler?.let { it.sendMessage(it.obtainMessage(-4, e.message)) }

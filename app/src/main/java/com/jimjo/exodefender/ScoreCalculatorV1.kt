@@ -2,69 +2,51 @@ package com.jimjo.exodefender
 
 import kotlin.math.round
 import kotlin.math.sqrt
-import kotlinx.serialization.Serializable
 import kotlin.math.roundToInt
+import kotlinx.serialization.Serializable
 
 object ScoreCalculatorV1 {
 
     @Serializable
     data class Breakdown(
+        val objectiveType: Level.ObjectiveType,
+
         val base: Float,
-        val savePoints: Float,
+
+        // CAS only
+        val savePoints: Float = 0f,
+
+        // DEFEND only
+        val defendPoints: Float = 0f,
+
+        // EVAC only
+        val evacPoints: Float = 0f,
+        val killBonus: Float = 0f,
+
+        // Shared performance
         val healthPoints: Float,
         val accuracyPoints: Float,
         val timeBonus: Float,
-        val ratioWeight: Float,
-        val mixWeight: Float,
+
+        // Weights / display
         val difficultyWeight: Float,
         val accuracyRating: Int,
         val total: Int
     )
 
-    /**
-     * Level/run-independent inputs used to compute difficulty weights.
-     * This lets you show weights in admin UI without needing a FlightLog.
-     */
-    data class DifficultyParameters(
-        val friendliesStart: Int,
-        val enemiesStart: Int,
-        val enemyThreatSum: Float
+    private val ZERO = Breakdown(
+        objectiveType = Level.ObjectiveType.UNKNOWN,
+        base = 0f,
+        healthPoints = 0f,
+        accuracyPoints = 0f,
+        timeBonus = 0f,
+        difficultyWeight = 1f,
+        accuracyRating = 0,
+        total = 0
     )
 
-    private val ZERO = Breakdown(0f, 0f, 0f, 0f, 0f, 1f, 1f, 1f, 0, 0)
+    // --- Accuracy display (unchanged) ---
 
-    /**
-     * Pure function: compute (ratioWeight, mixWeight, difficultyWeight) from inputs.
-     * Safe to call from admin UI / level browser without playing the level.
-     */
-    fun difficultyWeightFrom(input: DifficultyParameters): Triple<Float, Float, Float> {
-        val E0 = input.enemiesStart.coerceAtLeast(0)
-        val F0 = input.friendliesStart.coerceAtLeast(1)
-
-        // No enemies => no meaningful difficulty multiplier.
-        if (E0 <= 0) return Triple(1f, 1f, 1f)
-
-        // Ratio (more enemies per friendly => harder)
-        val r = E0.toFloat() / F0.toFloat()
-        val ratioWeight = (0.8f + 0.6f * r).coerceIn(0.8f, 2.2f)
-
-        // Threat mix (avg threat per enemy). If not supplied, fall back to "1 threat each".
-        val threatSum = input.enemyThreatSum.takeIf { it > 0f } ?: E0.toFloat()
-        val avgThreat = threatSum / E0.toFloat()
-        val mixWeight = avgThreat.coerceIn(1.0f, 2.0f)
-
-        val difficultyWeight = ratioWeight * mixWeight
-        return Triple(ratioWeight, mixWeight, difficultyWeight)
-    }
-
-    /**
-     * Convenience for admin UI: just return the final weight.
-     */
-    fun difficultyWeightOnly(input: DifficultyParameters): Float =
-        difficultyWeightFrom(input).third
-
-
-    /** Player-facing "Accuracy Rating" in 0..100 derived from raw accuracy (0..1). */
     fun displayAccuracyRating(shotsHit: Int, shotsFired: Int): Int {
         val fired = shotsFired.coerceAtLeast(1)
         val hit = shotsHit.coerceIn(0, fired)
@@ -73,82 +55,130 @@ object ScoreCalculatorV1 {
     }
 
     private const val LOW_KNEE = 0.12f
-    private const val LOW_DISPLAY = 0.20f    // display value at LOW_KNEE
+    private const val LOW_DISPLAY = 0.20f
     private const val HIGH_KNEE = 0.25f
-    private const val HIGH_DISPLAY = 0.8f   // display value at HIGH_KNEE
+    private const val HIGH_DISPLAY = 0.8f
 
     fun displayAccuracyRatingFromAcc(acc: Float): Int {
-
         require(LOW_KNEE > 0f && HIGH_KNEE > LOW_KNEE && HIGH_KNEE < 1f)
 
         val a = acc.coerceIn(0f, 1f)
-
         val d = when {
             a <= 0f -> 0f
-
-            a < LOW_KNEE -> {
-                // 0 -> 0, LOW_KNEE -> LOW_DISPLAY
-                lerp(0.0f, LOW_DISPLAY, a / LOW_KNEE)
-            }
-
-            a < HIGH_KNEE -> {
-                // LOW_KNEE -> LOW_DISPLAY, HIGH_KNEE -> HIGH_DISPLAY
-                lerp(
-                    LOW_DISPLAY,
-                    HIGH_DISPLAY,
-                    (a - LOW_KNEE) / (HIGH_KNEE - LOW_KNEE)
-                )
-            }
-
-            else -> {
-                // HIGH_KNEE -> HIGH_DISPLAY, 1.0 -> 1.0
-                lerp(
-                    HIGH_DISPLAY,
-                    1.0f,
-                    (a - HIGH_KNEE) / (1.0f - HIGH_KNEE)
-                )
-            }
+            a < LOW_KNEE -> lerp(0.0f, LOW_DISPLAY, a / LOW_KNEE)
+            a < HIGH_KNEE -> lerp(LOW_DISPLAY, HIGH_DISPLAY, (a - LOW_KNEE) / (HIGH_KNEE - LOW_KNEE))
+            else -> lerp(HIGH_DISPLAY, 1.0f, (a - HIGH_KNEE) / (1.0f - HIGH_KNEE))
         }
-
         return (d * 100f).roundToInt()
     }
 
     private fun lerp(a: Float, b: Float, t: Float): Float =
         a + (b - a) * t.coerceIn(0f, 1f)
 
-    /**
-     * Main scoring function (run-based). Still uses FlightLog to score performance,
-     * but computes difficulty weights via difficultyWeightFrom(...) so the algorithm
-     * is shared with admin tooling.
-     */
+    // --- Tunables ---
+
+    private const val BASE_PER_ENEMY = 1000f
+
+    // CAS
+    private const val CAS_SAVE_MAX = 3000f
+
+    // Shared
+    private const val HEALTH_MAX = 1500f
+    private const val ACC_MAX = 2000f
+
+    // DEFEND
+    private const val DEFEND_POINTS = 2000f
+    private const val DEFEND_TIME_BONUS_MAX = 1500f
+
+    // EVAC
+    private const val EVAC_POINTS_PER_CIVILIAN = 500f
+    private const val EVAC_KILL_BONUS_PER_ENEMY = 40f
+    private const val EVAC_KILL_BONUS_CAP = 1200f
+
+    // --- Public entry ---
+
     fun score(
         log: FlightLog,
         parTimeMs: Int? = null
     ): Breakdown {
-        // Only rank successful runs; also require all enemies destroyed.
-        if (log.completionOutcome != CompletionOutcome.SUCCESS || log.enemiesDestroyed < log.enemiesStart) {
-            return ZERO
+        val lvl = log.level
+        val obj = lvl?.objectiveType ?: Level.ObjectiveType.UNKNOWN
+        val difficultyWeight = (lvl?.difficultyWeight ?: 1.0f).takeIf { it > 0f } ?: 1.0f
+
+        // Only rank successful runs (as before)
+        if (log.completionOutcome != CompletionOutcome.SUCCESS) {
+            return ZERO.copy(objectiveType = obj, difficultyWeight = difficultyWeight)
         }
 
-        val E0 = log.enemiesStart.coerceAtLeast(0)
-        if (E0 <= 0) return ZERO
+        // Require embedded level config to derive objective facts.
+        val summary = lvl?.objectiveSummary()
+            ?: return ZERO.copy(objectiveType = obj, difficultyWeight = difficultyWeight)
 
-        val F0 = log.friendliesStart.coerceAtLeast(1)
-        val Fend = log.friendliesRemaining.coerceIn(0, F0)
+        return when (obj) {
+            Level.ObjectiveType.CAS ->
+                scoreCas(log, parTimeMs, difficultyWeight, summary)
 
-        val base = 1000f * E0
+            Level.ObjectiveType.DEFEND ->
+                scoreDefend(log, difficultyWeight, summary)
 
-        val savedFrac = Fend.toFloat() / F0.toFloat()
-        val savePoints = 3000f * savedFrac
+            Level.ObjectiveType.EVAC ->
+                scoreEvac(log, difficultyWeight, summary)
 
+            else ->
+                ZERO.copy(objectiveType = obj, difficultyWeight = difficultyWeight)
+        }
+    }
+
+    // --- Shared perf ---
+
+    private data class SharedPerf(
+        val healthPoints: Float,
+        val accuracyPoints: Float,
+        val accuracyRating: Int
+    )
+
+    private fun sharedHealthAndAccuracy(log: FlightLog): SharedPerf {
         val hpFrac = log.healthRemaining.coerceIn(0f, 1f)
-        val healthPoints = 1500f * hpFrac
+        val healthPoints = HEALTH_MAX * hpFrac
 
         val fired = log.shotsFired.coerceAtLeast(1)
         val hit = log.shotsHit.coerceIn(0, fired)
         val acc = hit.toFloat() / fired.toFloat()
-        val accuracyPoints = 2000f * sqrt(acc)
+        val accuracyPoints = ACC_MAX * sqrt(acc)
         val accuracyRating = displayAccuracyRatingFromAcc(acc)
+
+        return SharedPerf(
+            healthPoints = healthPoints,
+            accuracyPoints = accuracyPoints,
+            accuracyRating = accuracyRating
+        )
+    }
+
+    // --- CAS ---
+
+    private fun scoreCas(
+        log: FlightLog,
+        parTimeMs: Int?,
+        difficultyWeight: Float,
+        summary: Level.ObjectiveSummary
+    ): Breakdown {
+        val enemiesStart = summary.enemiesStart.coerceAtLeast(0)
+        if (enemiesStart <= 0) return ZERO.copy(objectiveType = Level.ObjectiveType.CAS, difficultyWeight = difficultyWeight)
+
+        // Require all enemies destroyed (rule)
+        if (log.enemiesDestroyed < enemiesStart) {
+            return ZERO.copy(objectiveType = Level.ObjectiveType.CAS, difficultyWeight = difficultyWeight)
+        }
+
+        val friendliesStart = summary.friendliesStart.coerceAtLeast(1)
+        val friendliesEnd = log.friendliesRemaining.coerceIn(0, friendliesStart)
+
+        val base = BASE_PER_ENEMY * enemiesStart
+
+        val savedFrac = friendliesEnd.toFloat() / friendliesStart.toFloat()
+        val savePoints = CAS_SAVE_MAX * savedFrac
+
+        val perf = sharedHealthAndAccuracy(log)
 
         val timeBonus = if (parTimeMs != null && parTimeMs > 0) {
             val frac = (parTimeMs - log.flightTimeMs).toFloat() / parTimeMs.toFloat()
@@ -156,27 +186,95 @@ object ScoreCalculatorV1 {
             500f * clamped
         } else 0f
 
-        // Difficulty weights via shared helper (so admin UI can use same logic)
-        val input = DifficultyParameters(
-            enemiesStart = E0,
-            friendliesStart = F0,
-            enemyThreatSum = log.enemyThreatSum
-        )
-        val (ratioWeight, mixWeight, difficultyWeight) = difficultyWeightFrom(input)
-
-        val raw = base + savePoints + healthPoints + accuracyPoints + timeBonus
+        val raw = base + savePoints + perf.healthPoints + perf.accuracyPoints + timeBonus
         val total = round(difficultyWeight * raw).toInt().coerceAtLeast(0)
 
         return Breakdown(
+            objectiveType = Level.ObjectiveType.CAS,
             base = base,
             savePoints = savePoints,
-            healthPoints = healthPoints,
-            accuracyPoints = accuracyPoints,
+            healthPoints = perf.healthPoints,
+            accuracyPoints = perf.accuracyPoints,
             timeBonus = timeBonus,
-            ratioWeight = ratioWeight,
-            mixWeight = mixWeight,
             difficultyWeight = difficultyWeight,
-            accuracyRating = accuracyRating,
+            accuracyRating = perf.accuracyRating,
+            total = total
+        )
+    }
+
+    // --- DEFEND ---
+
+    private fun scoreDefend(
+        log: FlightLog,
+        difficultyWeight: Float,
+        summary: Level.ObjectiveSummary
+    ): Breakdown {
+        val enemiesStart = summary.enemiesStart.coerceAtLeast(0)
+        if (enemiesStart <= 0) return ZERO.copy(objectiveType = Level.ObjectiveType.DEFEND, difficultyWeight = difficultyWeight)
+
+        // Still require all enemies destroyed (rule)
+        if (log.enemiesDestroyed < enemiesStart) {
+            return ZERO.copy(objectiveType = Level.ObjectiveType.DEFEND, difficultyWeight = difficultyWeight)
+        }
+
+        val base = BASE_PER_ENEMY * enemiesStart
+        val defendPoints = DEFEND_POINTS
+
+        // Duration derived from level config; clamp to 1 to avoid divide-by-zero.
+        val duration = (summary.defendClockDurationMs ?: 1).coerceAtLeast(1)
+
+        // Remaining time snapshot logged at last kill (authoritative, gameplay-semantic)
+        val left = (log.clockRemainingMsAtLastKill ?: 0).coerceIn(0, duration)
+        val timeFrac = left.toFloat() / duration.toFloat()
+        val timeBonus = DEFEND_TIME_BONUS_MAX * timeFrac
+
+        val perf = sharedHealthAndAccuracy(log)
+
+        val raw = base + defendPoints + perf.healthPoints + perf.accuracyPoints + timeBonus
+        val total = round(difficultyWeight * raw).toInt().coerceAtLeast(0)
+
+        return Breakdown(
+            objectiveType = Level.ObjectiveType.DEFEND,
+            base = base,
+            defendPoints = defendPoints,
+            healthPoints = perf.healthPoints,
+            accuracyPoints = perf.accuracyPoints,
+            timeBonus = timeBonus,
+            difficultyWeight = difficultyWeight,
+            accuracyRating = perf.accuracyRating,
+            total = total
+        )
+    }
+
+    // --- EVAC ---
+
+    private fun scoreEvac(
+        log: FlightLog,
+        difficultyWeight: Float,
+        summary: Level.ObjectiveSummary
+    ): Breakdown {
+        val civiliansStart = summary.civiliansStart.coerceAtLeast(0)
+        val evacPoints = EVAC_POINTS_PER_CIVILIAN * civiliansStart
+
+        val killBonus = (EVAC_KILL_BONUS_PER_ENEMY * log.enemiesDestroyed)
+            .coerceAtMost(EVAC_KILL_BONUS_CAP)
+
+        val perf = sharedHealthAndAccuracy(log)
+        val timeBonus = 0f
+
+        val raw = evacPoints + killBonus + perf.healthPoints + perf.accuracyPoints + timeBonus
+        val total = round(difficultyWeight * raw).toInt().coerceAtLeast(0)
+
+        return Breakdown(
+            objectiveType = Level.ObjectiveType.EVAC,
+            base = 0f,
+            evacPoints = evacPoints,
+            killBonus = killBonus,
+            healthPoints = perf.healthPoints,
+            accuracyPoints = perf.accuracyPoints,
+            timeBonus = timeBonus,
+            difficultyWeight = difficultyWeight,
+            accuracyRating = perf.accuracyRating,
             total = total
         )
     }

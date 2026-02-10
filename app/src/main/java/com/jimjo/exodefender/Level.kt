@@ -4,7 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.*
-import kotlin.compareTo
 
 const val MISSIONS_PER_CAMPAIGN = 10
 
@@ -37,8 +36,24 @@ class Level(
         @SerialName("CAS") CAS,
         @SerialName("EVAC") EVAC,
         @SerialName("DEFEND") DEFEND,
-        @SerialName("DESTROY") DESTROY
+        @SerialName("DESTROY") DESTROY;
+
+        fun toCode(): Int = when (this) {
+            UNKNOWN -> 0
+            CAS -> 1
+            EVAC -> 2
+            DEFEND -> 3
+            DESTROY -> 4
+        }
     }
+
+    data class ObjectiveSummary(
+        val enemiesStart: Int,
+        val friendliesStart: Int,
+        val enemyThreatSum: Float,
+        val civiliansStart: Int,
+        val defendClockDurationMs: Int?
+    )
 
     @Serializable
     @JsonIgnoreUnknownKeys
@@ -54,7 +69,78 @@ class Level(
         val shipPosition: Vec3,
         val shipDirection: Double,
         val actors: MutableList<ActorTemplate>
-    )
+    ) {
+        fun stringify(): String = Json.encodeToString(this)
+
+        fun defendClockDurationMsOrNull(): Int? {
+            val structure = actors
+                .filterIsInstance<FriendlyStructureTemplate>()
+                .firstOrNull { it.isDestructibleStructure() }
+                ?: return null
+
+            val seconds = structure.destructSeconds ?: return null
+            return (seconds * 1000f).toInt().coerceAtLeast(0)
+        }
+
+        @Transient
+        private var objSummary: ObjectiveSummary? = null
+        fun objectiveSummary(): ObjectiveSummary {
+
+            objSummary?.let { return it }
+
+            var enemies = 0
+            var friendlies = 0
+            var enemyThreatSum = 0f
+            var civilians = 0
+            var defendMs: Int? = null
+
+            for (a in actors) {
+
+                when (a) {
+
+                    is GroundEnemyTemplate,
+                    is EasyGroundEnemyTemplate,
+                    is FlyingEnemyTemplate,
+                    is EasyFlyingEnemyTemplate,
+                    is AdvFlyingEnemyTemplate -> {
+                        enemies++
+                        enemyThreatSum += a.threat
+                    }
+
+                    is GroundFriendlyTemplate -> {
+                        friendlies++
+                    }
+
+                    is FriendlyStructureTemplate -> {
+
+                        if (a.isDestructibleStructure()) {
+                            defendMs = a.destructSeconds
+                                ?.let { (it * 1000f).toInt().coerceAtLeast(0) }
+
+                            for (b in a.blocks) {
+                                civilians += b.civilianSpec?.initialCount ?: 0
+                            }
+                        }
+                    }
+                    else -> {}
+                }
+            }
+
+
+            val summary = ObjectiveSummary(
+                enemiesStart = enemies,
+                friendliesStart = friendlies,
+                enemyThreatSum = enemyThreatSum,
+                civiliansStart = civilians,
+                defendClockDurationMs = defendMs
+            )
+
+            objSummary = summary
+            return summary
+        }
+
+
+    }
     @Serializable
     @JsonIgnoreUnknownKeys
     data class LevelVersionedSerializable(
@@ -79,6 +165,7 @@ class Level(
 
     // TODO logic to unlock and lock levels
     var unlocked = true
+
 
     fun loadGameMap() {
         world.loadLevel(this)
@@ -107,58 +194,30 @@ class Level(
     fun getFirstDestructibleFriendlyStructureTemplateId(): Int? =
         getDestructibleFriendlyStructureTemplateIds().firstOrNull()
 
-    fun getThreatSum(): Float {
-        return getDifficultyParameters().enemyThreatSum
-    }
-    fun getDifficultyParameters(): ScoreCalculatorV1.DifficultyParameters {
 
-        var friendlyCount = 0
-        var enemyCount = 0
-        var enemyThreatSum = 0f
+    fun getLevelSerializable(): LevelSerializable = LevelSerializable(
+            id,
+            campaignCode,
+            type,
+            objectiveType,
+            name,
+            order,
+            world.mapId,
+            difficultyWeight,
+            shipPosition,
+            shipDirection,
+            actorTemplates)
 
-        for (actorTemplate in actorTemplates) {
-            if (actorTemplate is FriendlyTemplate) {
-                friendlyCount++
-            }
-            else if (actorTemplate is EnemyTemplate) {
-                enemyCount++
-                enemyThreatSum += actorTemplate.threat
-            }
-        }
-        return ScoreCalculatorV1.DifficultyParameters(friendlyCount, enemyCount, enemyThreatSum)
-    }
-
-//    fun getDifficultyWeight(): Float {
-//        if (name == "Initiation") {
-//            println()
-//        }
-//        return ScoreCalculatorV1.difficultyWeightOnly(getDifficultyParameters())
-//    }
-
-    fun stringifyInner(): String {
-        return Json.encodeToString(
-            LevelSerializable(
-                id,
-                campaignCode,
-                type,
-                objectiveType,
-                name,
-                order,
-                world.mapId,
-                difficultyWeight,
-                shipPosition,
-                shipDirection,
-                actorTemplates)
-        )
-    }
 
     fun stringifyFull(): String {
+        val levelSerializable = getLevelSerializable()
+        val innerJson = levelSerializable.stringify()
         return Json.encodeToString(
             LevelVersionedSerializable(
                 id,
                 version,
                 "n/a",
-                this.stringifyInner()
+                innerJson
             )
         )
     }
@@ -260,7 +319,11 @@ data class FriendlyStructureTemplate(
     val blocks: List<BuildingBlockTemplate> = emptyList(),
     val hitpoints: Float = 8000f,
     var destructSeconds: Int? = null
-) : FriendlyTemplate()
+) : FriendlyTemplate() {
+
+    fun isDestructibleStructure(): Boolean = (destructSeconds ?: 0f) != 0f
+
+}
 
 @Serializable
 @SerialName("GroundTrainingTarget")

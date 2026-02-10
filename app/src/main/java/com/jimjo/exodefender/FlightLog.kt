@@ -3,7 +3,6 @@ package com.jimjo.exodefender
 import java.util.Calendar
 import java.util.Date
 import java.util.UUID
-import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import java.time.Instant
 
@@ -40,22 +39,28 @@ class FlightLog(
 
     var id: Long? = null
     var runId = UUID.randomUUID().toString()
+
+    var level: Level.LevelSerializable? = null
+
+
+
+
+
     var completionOutcome = CompletionOutcome.INCOMPLETE
-    var difficultyWeight: Float = 1.0f
+//    var difficultyWeight: Float = 1.0f
 
     var flightTimeMs = 0
+    var clockRemainingMsAtLastKill: Int? = null
 
-    var friendliesStart = 0
+//    var friendliesStart = 0
     var friendliesRemaining = 0
 
-    var enemiesStart = 0
+//    var enemiesStart = 0
     var enemiesDestroyed = 0
 
     var shotsFired = 0
     var shotsHit = 0
     var healthRemaining = 1f
-
-    var enemyThreatSum = 0f
     var scoreVersion = 1
     var replayActive = false
     var replaySeeking = false
@@ -80,9 +85,11 @@ class FlightLog(
         return actorLog
     }
 
+    // for starting a new run
     fun clear() {
         runId = UUID.randomUUID().toString()
         flightTimeMs = 0
+        clockRemainingMsAtLastKill = null
         friendliesRemaining = 0
         enemiesDestroyed = 0
         shotsFired = 0
@@ -100,6 +107,7 @@ class FlightLog(
         id = Instant.now().epochSecond
     }
 
+    // for restarting a replay
     fun reset() {
         shipSnapToOnNextReplayUpdate = true
         replaySeeking = false
@@ -137,26 +145,26 @@ class FlightLog(
         val newFlightLog = FlightLog(levelId, startTime, endTime)
         newFlightLog.createNewId()
         newFlightLog.runId = runId
+        newFlightLog.level = level?.copy()
         newFlightLog.completionOutcome = completionOutcome
         newFlightLog.flightTimeMs = flightTimeMs
-        newFlightLog.difficultyWeight = difficultyWeight
-        newFlightLog.friendliesStart = friendliesStart
+        newFlightLog.clockRemainingMsAtLastKill = clockRemainingMsAtLastKill
+//        newFlightLog.friendliesStart = friendliesStart
         newFlightLog.friendliesRemaining = friendliesRemaining
-        newFlightLog.enemiesStart = enemiesStart
+//        newFlightLog.enemiesStart = enemiesStart
         newFlightLog.enemiesDestroyed = enemiesDestroyed
         newFlightLog.shotsFired = shotsFired
         newFlightLog.shotsHit = shotsHit
         newFlightLog.healthRemaining = healthRemaining
-        newFlightLog.enemyThreatSum = enemyThreatSum
         newFlightLog.scoreVersion = scoreVersion
 
         newFlightLog.shipLog.copy(shipLog)
         for (actorLog in actorLogs) {
             newFlightLog.actorLogs.add(actorLog.createCopy(newFlightLog))
         }
-        if (cameraTrack != null) {
-            newFlightLog.cameraTrack = CameraTrack().apply { copyFrom(cameraTrack!!) }
-        }
+
+        newFlightLog.cameraTrack = cameraTrack?.let { CameraTrack().apply { copyFrom(it) } }
+        newFlightLog.level = level?.copy()
 
         return(newFlightLog)
     }
@@ -212,34 +220,48 @@ class FlightLog(
 
     fun cameraTrackFilename() = id.toString() + ".trk"
 
-    fun stringify() : String {
-        var output = ""
-        output += "[LogData]\n"
-        output += "id=$id\n"
-        output += "levelId=$levelId\n"
-        output += "startTime=${dateTimeFormat.format(startTime)}\n"
-        output += "endTime=${dateTimeFormat.format(endTime)}\n"
-        output += "runId=$runId\n"
-        output += "completionOutcome=$completionOutcome\n"
-        output += "flightTime=$flightTimeMs\n"
-        output += "difficultyWeight=$difficultyWeight\n"
-        output += "friendliesStart=$friendliesStart\n"
-        output += "friendliesRemaining=$friendliesRemaining\n"
-        output += "enemiesStart=$enemiesStart\n"
-        output += "enemiesDestroyed=$enemiesDestroyed\n"
-        output += "shotsFired=$shotsFired\n"
-        output += "shotsHit=$shotsHit\n"
-        output += "healthRemaining=$healthRemaining\n"
-        output += "enemyThreatSum=$enemyThreatSum\n"
-        output += "scoreVersion=$scoreVersion\n"
-        if (cameraTrack != null) output += "cameraTrack=${cameraTrack!!.stringify()}\n"
-        output += shipLog.stringify()
-        for (log in actorLogs) {
-            output += log.stringify()
+    fun stringify(): String {
+        val sb = StringBuilder()
+
+        sb.append("[LogData]\n")
+        sb.append("id=").append(id).append('\n')
+        sb.append("levelId=").append(levelId).append('\n')
+        sb.append("startTime=").append(dateTimeFormat.format(startTime)).append('\n')
+        sb.append("endTime=").append(dateTimeFormat.format(endTime)).append('\n')
+        sb.append("runId=").append(runId).append('\n')
+        sb.append("completionOutcome=").append(completionOutcome).append('\n')
+        sb.append("flightTime=").append(flightTimeMs).append('\n')
+
+        clockRemainingMsAtLastKill?.let {
+            sb.append("clockRemainingMsAtLastKill=").append(it).append('\n')
         }
 
-        return output
+//        sb.append("friendliesStart=").append(friendliesStart).append('\n')
+        sb.append("friendliesRemaining=").append(friendliesRemaining).append('\n')
+//        sb.append("enemiesStart=").append(enemiesStart).append('\n')
+        sb.append("enemiesDestroyed=").append(enemiesDestroyed).append('\n')
+        sb.append("shotsFired=").append(shotsFired).append('\n')
+        sb.append("shotsHit=").append(shotsHit).append('\n')
+        sb.append("healthRemaining=").append(healthRemaining).append('\n')
+        sb.append("scoreVersion=").append(scoreVersion).append('\n')
+
+        level?.let {
+            sb.append("levelConfig=").append(it.stringify()).append('\n')
+        }
+
+        cameraTrack?.let {
+            sb.append("cameraTrack=").append(it.stringify()).append('\n')
+        }
+
+        sb.append(shipLog.stringify())
+
+        for (log in actorLogs) {
+            sb.append(log.stringify())
+        }
+
+        return sb.toString()
     }
+
 
 
     fun parse(input: String): Boolean {
@@ -292,16 +314,16 @@ class FlightLog(
                                     "runId" -> runId = dataParameterText
                                     "completionOutcome" -> completionOutcome = enumValueOf(dataParameterText)
                                     "flightTime" -> flightTimeMs = dataParameterText.toInt()
-                                    "difficultyWeight" -> difficultyWeight = dataParameterText.toFloat()
-                                    "friendliesStart" -> friendliesStart = dataParameterText.toInt()
+//                                    "difficultyWeight" -> difficultyWeight = dataParameterText.toFloat()
+//                                    "friendliesStart" -> friendliesStart = dataParameterText.toInt()
                                     "friendliesRemaining" -> friendliesRemaining = dataParameterText.toInt()
-                                    "enemiesStart" -> enemiesStart = dataParameterText.toInt()
+//                                    "enemiesStart" -> enemiesStart = dataParameterText.toInt()
                                     "enemiesDestroyed" -> enemiesDestroyed = dataParameterText.toInt()
                                     "shotsFired" -> shotsFired = dataParameterText.toInt()
                                     "shotsHit" -> shotsHit = dataParameterText.toInt()
                                     "healthRemaining" -> healthRemaining = dataParameterText.toFloat()
-                                    "enemyThreatSum" -> enemyThreatSum = dataParameterText.toFloat()
                                     "scoreVersion" -> scoreVersion = dataParameterText.toInt()
+                                    "levelConfig" -> parseLevelConfig(dataParameterText)
                                     "cameraTrack" -> parseCameraTrack(dataParameterText)
                                     else -> {}
                                 }
@@ -393,6 +415,9 @@ class FlightLog(
         return true
     }
 
+    fun parseLevelConfig(levelConfigText: String) {
+        level = Json.decodeFromString(Level.LevelSerializable.serializer(), levelConfigText)
+    }
     fun parseCameraTrack(cameraTrackText: String) {
         cameraTrack = Json.decodeFromString(CameraTrack.serializer(), cameraTrackText)
     }
@@ -813,56 +838,58 @@ class ActorLog(val flightLog: FlightLog) {
     }
 
 
-    fun stringify() : String {
-        var output = ""
-        output += "[ActorData]\n"
+    fun stringify(): String {
+        val sb = StringBuilder()
 
-//        if (parent is ShipActor) output += "type=SHIP\n"
-//        else if (parent is GroundFriendlyActor) output += "type=GROUND_FRIENDLY\n"
-//        else if (parent is GroundTrainingTargetActor) output += "type=GROUND_TRAINING_TARGET\n"
-//        else if (parent is EasyGroundEnemyActor) output += "type=EASY_GROUND_ENEMY\n"
-//        else if (parent is GroundEnemyActor) output += "type=GROUND_ENEMY\n"
-//        else if (parent is EasyFlyingEnemyActor) output += "type=EASY_FLYING_ENEMY\n"
-//        else if (parent is FlyingEnemyActor) output += "type=FLYING_ENEMY\n"
-//        else if (parent is AdvFlyingEnemyActor) output += "type=ADV_FLYING_ENEMY\n"
-//        else output += "type=UNKNOWN\n"
+        sb.append("[ActorData]\n")
 
         when (template) {
-            is ShipTemplate -> output += "type=SHIP\n"
-            is GroundFriendlyTemplate -> output += "type=GROUND_FRIENDLY\n"
-            is GroundTargetTemplate -> output += "type=GROUND_TRAINING_TARGET\n"
-            is EasyGroundEnemyTemplate -> output += "type=EASY_GROUND_ENEMY\n"
-            is GroundEnemyTemplate -> output += "type=GROUND_ENEMY\n"
-            is EasyFlyingEnemyTemplate -> output += "type=EASY_FLYING_ENEMY\n"
-            is FlyingEnemyTemplate -> output += "type=FLYING_ENEMY\n"
-            is AdvFlyingEnemyTemplate -> output += "type=ADV_FLYING_ENEMY\n"
-            else -> output += "type=UNKNOWN\n"
+            is ShipTemplate -> sb.append("type=SHIP\n")
+            is GroundFriendlyTemplate -> sb.append("type=GROUND_FRIENDLY\n")
+            is GroundTargetTemplate -> sb.append("type=GROUND_TRAINING_TARGET\n")
+            is EasyGroundEnemyTemplate -> sb.append("type=EASY_GROUND_ENEMY\n")
+            is GroundEnemyTemplate -> sb.append("type=GROUND_ENEMY\n")
+            is EasyFlyingEnemyTemplate -> sb.append("type=EASY_FLYING_ENEMY\n")
+            is FlyingEnemyTemplate -> sb.append("type=FLYING_ENEMY\n")
+            is AdvFlyingEnemyTemplate -> sb.append("type=ADV_FLYING_ENEMY\n")
+            else -> sb.append("type=UNKNOWN\n")
         }
 
-        if (template != null) {
+        template?.let { t ->
+            sb.append("initialPosition=")
+                .append(t.position.x).append(',')
+                .append(t.position.y).append(',')
+                .append(t.position.z).append('\n')
 
-            output += "initialPosition=${template!!.position.x},${template!!.position.y},${template!!.position.z}\n"
-            output += "initialYaw=${template!!.yaw}\n"
+            sb.append("initialYaw=").append(t.yaw).append('\n')
 
-            output += "[Events]\n"
-            events.forEach {
-                output += "${it.timeMs}," +
-                        "${df2.format(it.x)}," +
-                        "${df2.format(it.y)}," +
-                        "${df2.format(it.z)}," +
-                        "${if (it.angleP == 0.0) "" else it.angleP}," +
-                        "${if (it.angleE == 0.0) "" else it.angleE}," +
-                        "${if (it.angleB == 0.0) "" else it.angleB.toFloat()}," +
-                        "${if (it.weaponAngleP == 0.0) "" else it.weaponAngleP}," +
-                        "${if (it.weaponAngleE == 0.0) "" else it.weaponAngleE}," +
-                        "${if (it.firing == 0) "" else it.firing}," +
-                        "${if (it.hit == 0) "" else it.hit}," +
-                        "${if (it.destroyed == 0) "" else it.destroyed}," +
-                        "\n"
+            sb.append("[Events]\n")
+
+            events.forEach { e ->
+                sb.append(e.timeMs).append(',')
+
+                sb.append(df2.format(e.x)).append(',')
+                sb.append(df2.format(e.y)).append(',')
+                sb.append(df2.format(e.z)).append(',')
+
+                sb.append(if (e.angleP == 0.0) "" else e.angleP).append(',')
+                sb.append(if (e.angleE == 0.0) "" else e.angleE).append(',')
+                sb.append(if (e.angleB == 0.0) "" else e.angleB.toFloat()).append(',')
+
+                sb.append(if (e.weaponAngleP == 0.0) "" else e.weaponAngleP).append(',')
+                sb.append(if (e.weaponAngleE == 0.0) "" else e.weaponAngleE).append(',')
+
+                sb.append(if (e.firing == 0) "" else e.firing).append(',')
+                sb.append(if (e.hit == 0) "" else e.hit).append(',')
+                sb.append(if (e.destroyed == 0) "" else e.destroyed).append(',')
+
+                sb.append('\n')
             }
         }
-        return output
+
+        return sb.toString()
     }
+
 }
 
 

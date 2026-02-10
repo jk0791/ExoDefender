@@ -4,6 +4,8 @@ import android.content.Context
 import android.os.Message
 import com.jimjo.exodefender.ServerConfig.getHostServer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 
 class LevelCompletionManager(context: Context): NetworkResponseReceiver {
     val mainActivity = context as MainActivity
@@ -88,27 +90,28 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
                     // submit log mission score
                     if (level.type == Level.LevelType.MISSION && mainActivity.userId != null) {
 
-                        // You want stable idempotency keys. Best is to store this in FlightLog.
-                        // For now, generate it here.
-                        val runId = flightLog.runId
-                        val friendliesStart = flightLog.friendliesStart
-                        val friendliesRemaining = flightLog.friendliesRemaining
-                        val enemiesStart = flightLog.enemiesStart
-                        val enemiesDestroyed = flightLog.enemiesDestroyed
-                        val shotsFired = flightLog.shotsFired
-                        val shotsHit = flightLog.shotsHit
-                        val healthRemaining = flightLog.healthRemaining
-                        val enemyThreatSum = flightLog.enemyThreatSum
-                        val flightTimeMs = flightLog.flightTimeMs
+                        val accuracy = if (flightLog.shotsFired > 0) flightLog.shotsHit.toDouble() / flightLog.shotsFired else 0.0
 
-                        // Breakdown string (optional). Keep it <= 2000 chars.
-                        // If you already have score.breakdown available, stringify it here.
-                        val json = Json {
-                            encodeDefaults = false
-                            explicitNulls = false
-                            ignoreUnknownKeys = true
+                        val remainingMs: Int? =
+                            if (level.objectiveType == Level.ObjectiveType.DEFEND) flightLog.clockRemainingMsAtLastKill else null
+                        val remainingSeconds = remainingMs?.div(1000f)
+                        val enemyThreatSum: Float? = flightLog.level?.objectiveSummary()?.enemyThreatSum
+
+                        val details = buildJsonObject {
+                            put("flight_time_ms", JsonPrimitive(flightLog.flightTimeMs))
+                            put("enemies_destroyed", JsonPrimitive(flightLog.enemiesDestroyed))
+                            enemyThreatSum?.let { put("enemy_threat_sum", JsonPrimitive(it)) }
+                            put("shots_fired", JsonPrimitive(flightLog.shotsFired))
+                            put("shots_hit", JsonPrimitive(flightLog.shotsHit))
+                            put("accuracy", JsonPrimitive(accuracy))
+                            remainingMs?.let { put("remaining_ms", JsonPrimitive(it)) }
                         }
-                        val breakdownJson = json.encodeToString(scoreBreakdown)
+
+                        val highlights = buildJsonObject {
+                            put("flight_time_ms", JsonPrimitive(flightLog.flightTimeMs))
+                            put("accuracy", JsonPrimitive(accuracy))
+                            remainingSeconds?.let { put("remaining_seconds", JsonPrimitive(it)) }
+                        }
 
                         mainActivity.adminLogView.printout("Submitting mission score to server: levelId=${level.id} score=${scoreBreakdown.total}")
 
@@ -116,21 +119,14 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
                             Networker(this, getHostServer(mainActivity)).submitMissionScore(
                                 userId = mainActivity.userId!!,
                                 levelId = level.id,
-                                runId = runId,
-                                clientVersionCode = mainActivity.appVersionCode.toInt(),   // or BuildConfig.VERSION_CODE if you prefer
+                                runId = flightLog.runId,
+                                clientVersionCode = mainActivity.appVersionCode.toInt(),
+                                objectiveType = flightLog.completionOutcome.value,
                                 completionOutcome = flightLog.completionOutcome.value, // ensure this is 1 for SUCCESS
                                 scoreVersion = 1,
                                 scoreTotal = scoreBreakdown.total,
-                                flightTimeMs = flightTimeMs,
-                                friendliesStart = friendliesStart,
-                                friendliesRemaining = friendliesRemaining,
-                                enemiesStart = enemiesStart,
-                                enemiesDestroyed = enemiesDestroyed,
-                                shotsFired = shotsFired,
-                                shotsHit = shotsHit,
-                                healthRemaining = healthRemaining,
-                                enemyThreatSum = enemyThreatSum,
-                                breakdown = breakdownJson
+                                details = details,
+                                highlights = highlights,
                             )
                         }).start()
                     }
@@ -172,7 +168,7 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
 
         when (msg.what) {
             NetworkResponse.SUBMIT_MISSION_SCORE.value -> {
-                val response = msg.obj as Networker.SubmitMissionScoreResponse
+                val response = msg.obj as Networker.ScoreSubmitResult
                 mainActivity.adminLogView.printout("[accepted=${response.accepted};duplicateRun=${response.duplicateRun};rejectReason=${response.rejectReason};submissionId=${response.submissionId};newPersonalBest=${response.newPersonalBest};bestScoreTotal=${response.bestScoreTotal};]")
             }
 

@@ -19,8 +19,8 @@ android {
         buildConfigField(
             "String",
             "DEFAULT_HOST_SERVER",
-//            "\"http://192.168.0.15:7139\""
-            "\"http://20.115.92.169\""
+            "\"http://192.168.0.15:7139\""
+//            "\"http://20.115.92.169\""
         )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

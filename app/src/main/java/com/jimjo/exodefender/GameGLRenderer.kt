@@ -181,9 +181,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         }
         else {
             flightLog.clear()
-            flightLog.enemyThreatSum = level.getThreatSum()
-            flightLog.enemiesStart = level.world.enemyActors.size
-            flightLog.friendliesStart = level.world.friendlyActors.size
+            flightLog.level = level.getLevelSerializable()
             flightLog.startRecording()
         }
         scheduleEndOfFrameChecks()
@@ -338,8 +336,10 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                     if (!flightLog.replayActive) {
                         liveLevelCompleted = true
                         flightLog.completionOutcome = CompletionOutcome.FAILED_STRUCTURE_DESTROYED
+                        flightLog.clockRemainingMsAtLastKill = 0
                         levelCompletedCountdownMs = 4000
                     }
+
                     println("Mission failed!")
                 }
                 else if (
@@ -358,6 +358,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                     if (!flightLog.replayActive) {
                         liveLevelCompleted = true
                         flightLog.completionOutcome = CompletionOutcome.SUCCESS
+                        flightLog.clockRemainingMsAtLastKill = level.world.destructibleStructure?.destructRemainingMs
                         levelCompletedCountdownMs = 4000
 
                         audioPlayer.radio.onMissionComplete(flightTimeMs.toLong())
@@ -372,7 +373,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         endOfFrameChecksScheduled = false
     }
 
-    fun checkIfArmedExacComplete() {
+    fun checkIfArmedEvacComplete() {
         val d = level.world.destructibleStructure
         if (d != null && ship.active) {
 
@@ -603,7 +604,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             }
         }
 
-        if (evacCompletionArmed) checkIfArmedExacComplete()
+        if (evacCompletionArmed) checkIfArmedEvacComplete()
     }
 
     private fun updateWorld() {
