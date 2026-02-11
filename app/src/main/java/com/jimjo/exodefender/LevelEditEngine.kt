@@ -1,5 +1,6 @@
 package com.jimjo.exodefender
 
+import kotlin.math.round
 import kotlin.random.Random
 
 class LevelEditEngine(val level: Level, val world: World) {
@@ -128,7 +129,7 @@ class LevelEditEngine(val level: Level, val world: World) {
         selectedStructure = runtime
     }
 
-    private fun snap1m(v: Float): Float = kotlin.math.round(v) // 1m grid
+    private fun snap1m(v: Float): Float = round(v) // 1m grid
     fun addBlockToFriendlyStructure(structureId: Int, shape: BlockShape) {
 
         val st = level.findFriendlyStructureTemplate(structureId) ?: run {
@@ -170,6 +171,7 @@ class LevelEditEngine(val level: Level, val world: World) {
         // snap to 1m grid
         localBase.x = snap1m(localBase.x)
         localBase.y = snap1m(localBase.y)
+        localBase.z = snap1m(localBase.z)
 
         // Default authoring size (visible and consistent)
         val defaultDims = Vec3(20f, 20f, 20f)
@@ -233,10 +235,10 @@ class LevelEditEngine(val level: Level, val world: World) {
             spawnWorld.z - st.position.z
         )
 
-        // Snap to 1m grid (at least X/Y)
-        localBase.x = kotlin.math.round(localBase.x)
-        localBase.y = kotlin.math.round(localBase.y)
-        // localBase.z = kotlin.math.round(localBase.z) // optional
+        // snap to 1m grid
+        localBase.x = snap1m(localBase.x)
+        localBase.y = snap1m(localBase.y)
+        localBase.z = snap1m(localBase.z)
 
         val dup = src.copy(localBasePos = localBase)
 

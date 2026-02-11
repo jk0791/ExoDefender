@@ -97,10 +97,7 @@ object ScoreCalculatorV1 {
 
     // --- Public entry ---
 
-    fun score(
-        log: FlightLog,
-        parTimeMs: Int? = null
-    ): Breakdown {
+    fun score(log: FlightLog,): Breakdown {
         val lvl = log.level
         val obj = lvl?.objectiveType ?: Level.ObjectiveType.UNKNOWN
         val difficultyWeight = (lvl?.difficultyWeight ?: 1.0f).takeIf { it > 0f } ?: 1.0f
@@ -116,7 +113,7 @@ object ScoreCalculatorV1 {
 
         return when (obj) {
             Level.ObjectiveType.CAS ->
-                scoreCas(log, parTimeMs, difficultyWeight, summary)
+                scoreCas(log, difficultyWeight, summary)
 
             Level.ObjectiveType.DEFEND ->
                 scoreDefend(log, difficultyWeight, summary)
@@ -158,7 +155,6 @@ object ScoreCalculatorV1 {
 
     private fun scoreCas(
         log: FlightLog,
-        parTimeMs: Int?,
         difficultyWeight: Float,
         summary: Level.ObjectiveSummary
     ): Breakdown {
@@ -180,11 +176,7 @@ object ScoreCalculatorV1 {
 
         val perf = sharedHealthAndAccuracy(log)
 
-        val timeBonus = if (parTimeMs != null && parTimeMs > 0) {
-            val frac = (parTimeMs - log.flightTimeMs).toFloat() / parTimeMs.toFloat()
-            val clamped = frac.coerceIn(-0.25f, 0.25f)
-            500f * clamped
-        } else 0f
+        val timeBonus = 0f
 
         val raw = base + savePoints + perf.healthPoints + perf.accuracyPoints + timeBonus
         val total = round(difficultyWeight * raw).toInt().coerceAtLeast(0)

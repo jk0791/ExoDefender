@@ -240,7 +240,7 @@ class MissionSummaryView @JvmOverloads constructor(
 
         // Only score + breakdown for scored missions (MISSION levels by your plan)
         if (model.isLevelTypeScored) {
-            val breakdown = ScoreCalculatorV1.score(flightLog, parTimeMs = parTimeMs)
+            val breakdown = ScoreCalculatorV1.score(flightLog)
             lastBreakdown = breakdown
 
             rowScore.set("Score", fmtInt(breakdown.total), emphasize = true, size = RowSize.LARGE)
@@ -334,7 +334,7 @@ class MissionSummaryView @JvmOverloads constructor(
         if (best != null && objSummary != null) {
             if (model.isLevelTypeScored) {
                 // difficulty from best breakdown if you store it; else recompute
-                val breakdown = ScoreCalculatorV1.score(best, parTimeMs = null)
+                val breakdown = ScoreCalculatorV1.score(best)
                 rowScore.set("Personal Best", fmtInt(breakdown.total), emphasize = true)
                 rowDifficulty.set("Difficulty", "x${fmt2(breakdown.difficultyWeight)}")
                 rowFriendlies.set("Friendlies Saved", "${best.friendliesRemaining} / ${objSummary.friendliesStart}")

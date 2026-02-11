@@ -91,11 +91,16 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
                     if (level.type == Level.LevelType.MISSION && mainActivity.userId != null) {
 
                         val accuracy = if (flightLog.shotsFired > 0) flightLog.shotsHit.toDouble() / flightLog.shotsFired else 0.0
+                        val enemyThreatSum: Float? = flightLog.level?.objectiveSummary()?.enemyThreatSum
+                        val enemiesStart = flightLog.level?.objectiveSummary()?.enemiesStart
+                        var enemyClearance: Double? = null
+                        if (level.objectiveType == Level.ObjectiveType.EVAC && enemiesStart != null && enemiesStart > 0) {
+                            enemyClearance = flightLog.enemiesDestroyed.toDouble() / enemiesStart
+                        }
 
                         val remainingMs: Int? =
                             if (level.objectiveType == Level.ObjectiveType.DEFEND) flightLog.clockRemainingMsAtLastKill else null
                         val remainingSeconds = remainingMs?.div(1000f)
-                        val enemyThreatSum: Float? = flightLog.level?.objectiveSummary()?.enemyThreatSum
 
                         val details = buildJsonObject {
                             put("flight_time_ms", JsonPrimitive(flightLog.flightTimeMs))
@@ -111,6 +116,7 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
                             put("flight_time_ms", JsonPrimitive(flightLog.flightTimeMs))
                             put("accuracy", JsonPrimitive(accuracy))
                             remainingSeconds?.let { put("remaining_seconds", JsonPrimitive(it)) }
+                            enemyClearance?.let { put("enemy_clearance", JsonPrimitive(it)) }
                         }
 
                         mainActivity.adminLogView.printout("Submitting mission score to server: levelId=${level.id} score=${scoreBreakdown.total}")

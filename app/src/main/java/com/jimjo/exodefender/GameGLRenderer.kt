@@ -716,6 +716,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
         level.world.civilianWireBatch = WireBatchRenderer(mProgram)
         level.world.visuals.clear()
+        level.world.destructibleStructure = null
 
         skybox = Skybox(parent.context)
         skybox.init(arrayOf(

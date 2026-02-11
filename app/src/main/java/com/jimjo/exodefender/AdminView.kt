@@ -84,10 +84,16 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
 
         findViewById<Button>(R.id.btnResetUser).apply {
             setOnClickListener {
-                mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
-                    remove(USERID_KEY)
-                    remove(CALLSIGN_KEY)
-                    remove(mainActivity.MANDATORY_TRAINING_COMPLETED)
+                showConfirm(
+                    context = context,
+                    title = "Reset User?",
+                    message = "This will set userid and callsign to null.",
+                ) {
+                    mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
+                        remove(USERID_KEY)
+                        remove(CALLSIGN_KEY)
+                        remove(mainActivity.MANDATORY_TRAINING_COMPLETED)
+                    }
                 }
             }
         }
@@ -164,8 +170,16 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
             }
         }
 
-        findViewById<Button>(R.id.btnGetLatestLevels).apply {
-            setOnClickListener { mainActivity.levelManager.getLatestSyncManifest(true) }
+        findViewById<Button>(R.id.btnSyncLatestLevels).apply {
+            setOnClickListener {
+                showConfirm(
+                    context = context,
+                    title = "Sync Latest Levels?",
+                    message = "This will overwrite all levels (including in dev) with what's on the server.",
+                ) {
+                    mainActivity.levelManager.getLatestSyncManifest(true)
+                }
+            }
         }
 
         findViewById<Button>(R.id.btnCallMaybeAppReview).apply {
