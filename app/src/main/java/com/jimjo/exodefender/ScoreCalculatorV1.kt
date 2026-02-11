@@ -4,8 +4,77 @@ import kotlin.math.round
 import kotlin.math.sqrt
 import kotlin.math.roundToInt
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 object ScoreCalculatorV1 {
+
+    private val json = Json { encodeDefaults = false; explicitNulls = false }
+
+    private fun buildDetailsJson(
+        b: Breakdown,
+        shotsFired: Int,
+        shotsHit: Int,
+        shipIntegrity: Float
+    ): String {
+        val obj = buildJsonObject {
+            put("difficulty_weight", JsonPrimitive(b.difficultyWeight.toDouble()))
+
+            put("enemies_start", JsonPrimitive(b.enemiesStart))
+            put("enemies_destroyed", JsonPrimitive(b.enemiesDestroyed))
+
+            if (b.friendliesStart > 0) put("friendlies_start", JsonPrimitive(b.friendliesStart))
+            if (b.friendliesSaved > 0 || b.friendliesStart > 0) put("friendlies_saved", JsonPrimitive(b.friendliesSaved))
+
+            if (b.civiliansStart > 0) put("civilians_start", JsonPrimitive(b.civiliansStart))
+
+            put("shots_fired", JsonPrimitive(shotsFired))
+            put("shots_hit", JsonPrimitive(shotsHit))
+
+            put("ship_integrity", JsonPrimitive(shipIntegrity.toDouble()))
+
+            // store raw acc as fraction for correctness (UI formats)
+            val fired = shotsFired.coerceAtLeast(1)
+            val hit = shotsHit.coerceIn(0, fired)
+            val acc = hit.toDouble() / fired.toDouble()
+            put("accuracy", JsonPrimitive(acc))
+
+            b.timeRemainingMs?.let { put("time_remaining_ms", JsonPrimitive(it)) }
+        }
+        return obj.toString()
+    }
+
+    private fun buildHighlightsJson(
+        b: Breakdown,
+        shipIntegrity: Float
+    ): String {
+        val obj = buildJsonObject {
+            put("difficulty_weight", JsonPrimitive(b.difficultyWeight.toDouble()))
+            put("ship_integrity", JsonPrimitive(shipIntegrity.toDouble()))
+            put("accuracy_rating", JsonPrimitive(b.accuracyRating))
+
+            when (b.objectiveType) {
+                Level.ObjectiveType.CAS,
+                Level.ObjectiveType.DEFEND -> {
+                    put("friendlies_saved", JsonPrimitive(b.friendliesSaved))
+                    put("friendlies_start", JsonPrimitive(b.friendliesStart))
+                }
+                Level.ObjectiveType.EVAC -> {
+                    put("enemies_destroyed", JsonPrimitive(b.enemiesDestroyed))
+                    put("enemies_start", JsonPrimitive(b.enemiesStart))
+                    // Civilians are implied by success per your design; omit unless you want it shown.
+                }
+                else -> {}
+            }
+
+            b.timeRemainingMs?.let {
+                // store ms; UI formats 0:12
+                put("time_remaining_ms", JsonPrimitive(it))
+            }
+        }
+        return obj.toString()
+    }
 
     @Serializable
     data class Breakdown(
@@ -31,8 +100,21 @@ object ScoreCalculatorV1 {
         // Weights / display
         val difficultyWeight: Float,
         val accuracyRating: Int,
-        val total: Int
+        val total: Int,
+
+        // ---- NEW: raw facts for UI (so MissionSummaryView doesn’t guess)
+        val enemiesStart: Int = 0,
+        val enemiesDestroyed: Int = 0,
+        val friendliesStart: Int = 0,
+        val friendliesSaved: Int = 0,
+        val civiliansStart: Int = 0,
+        val timeRemainingMs: Int? = null,   // DEFEND
+
+        // ---- NEW: JSON payloads for server (Option 1 expects strings)
+        val detailsJson: String? = null,
+        val highlightsJson: String? = null
     )
+
 
     private val ZERO = Breakdown(
         objectiveType = Level.ObjectiveType.UNKNOWN,
@@ -181,7 +263,7 @@ object ScoreCalculatorV1 {
         val raw = base + savePoints + perf.healthPoints + perf.accuracyPoints + timeBonus
         val total = round(difficultyWeight * raw).toInt().coerceAtLeast(0)
 
-        return Breakdown(
+        val b0 = Breakdown(
             objectiveType = Level.ObjectiveType.CAS,
             base = base,
             savePoints = savePoints,
@@ -190,8 +272,18 @@ object ScoreCalculatorV1 {
             timeBonus = timeBonus,
             difficultyWeight = difficultyWeight,
             accuracyRating = perf.accuracyRating,
-            total = total
+            total = total,
+            enemiesStart = enemiesStart,
+            enemiesDestroyed = log.enemiesDestroyed,
+            friendliesStart = friendliesStart,
+            friendliesSaved = friendliesEnd,
+            civiliansStart = summary.civiliansStart.coerceAtLeast(0)
         )
+
+        val detailsJson = buildDetailsJson(b0, log.shotsFired, log.shotsHit, log.healthRemaining)
+        val highlightsJson = buildHighlightsJson(b0, log.healthRemaining)
+
+        return b0.copy(detailsJson = detailsJson, highlightsJson = highlightsJson)
     }
 
     // --- DEFEND ---
@@ -203,6 +295,9 @@ object ScoreCalculatorV1 {
     ): Breakdown {
         val enemiesStart = summary.enemiesStart.coerceAtLeast(0)
         if (enemiesStart <= 0) return ZERO.copy(objectiveType = Level.ObjectiveType.DEFEND, difficultyWeight = difficultyWeight)
+
+        val friendliesStart = summary.friendliesStart.coerceAtLeast(1)
+        val friendliesEnd = log.friendliesRemaining.coerceIn(0, friendliesStart)
 
         // Still require all enemies destroyed (rule)
         if (log.enemiesDestroyed < enemiesStart) {
@@ -225,7 +320,7 @@ object ScoreCalculatorV1 {
         val raw = base + defendPoints + perf.healthPoints + perf.accuracyPoints + timeBonus
         val total = round(difficultyWeight * raw).toInt().coerceAtLeast(0)
 
-        return Breakdown(
+        val b0 = Breakdown(
             objectiveType = Level.ObjectiveType.DEFEND,
             base = base,
             defendPoints = defendPoints,
@@ -234,8 +329,19 @@ object ScoreCalculatorV1 {
             timeBonus = timeBonus,
             difficultyWeight = difficultyWeight,
             accuracyRating = perf.accuracyRating,
-            total = total
+            total = total,
+            enemiesStart = enemiesStart,
+            enemiesDestroyed = log.enemiesDestroyed,
+            friendliesStart = friendliesStart,
+            friendliesSaved = friendliesEnd,
+            civiliansStart = summary.civiliansStart.coerceAtLeast(0),
+            timeRemainingMs = left
         )
+
+        val detailsJson = buildDetailsJson(b0, log.shotsFired, log.shotsHit, log.healthRemaining)
+        val highlightsJson = buildHighlightsJson(b0, log.healthRemaining)
+
+        return b0.copy(detailsJson = detailsJson, highlightsJson = highlightsJson)
     }
 
     // --- EVAC ---
@@ -257,7 +363,9 @@ object ScoreCalculatorV1 {
         val raw = evacPoints + killBonus + perf.healthPoints + perf.accuracyPoints + timeBonus
         val total = round(difficultyWeight * raw).toInt().coerceAtLeast(0)
 
-        return Breakdown(
+        val enemiesStart = summary.enemiesStart.coerceAtLeast(0)
+
+        val b0 = Breakdown(
             objectiveType = Level.ObjectiveType.EVAC,
             base = 0f,
             evacPoints = evacPoints,
@@ -267,7 +375,16 @@ object ScoreCalculatorV1 {
             timeBonus = timeBonus,
             difficultyWeight = difficultyWeight,
             accuracyRating = perf.accuracyRating,
-            total = total
+            total = total,
+            enemiesStart = enemiesStart,
+            enemiesDestroyed = log.enemiesDestroyed,
+            civiliansStart = civiliansStart
         )
+
+        val detailsJson = buildDetailsJson(b0, log.shotsFired, log.shotsHit, log.healthRemaining)
+        val highlightsJson = buildHighlightsJson(b0, log.healthRemaining)
+
+        return b0.copy(detailsJson = detailsJson, highlightsJson = highlightsJson)
+
     }
 }

@@ -597,8 +597,8 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
         completionOutcome: Int,         // SUCCESS=1 etc
         scoreVersion: Int,
         scoreTotal: Int,
-        details: JsonObject? = null,
-        highlights: JsonObject? = null
+        details: String? = null,
+        highlights: String? = null
     ) {
         try {
             val url = "$hostServer/$scoresPath/mission/submit"
@@ -611,9 +611,6 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
             // the client must generate a padding based on the runId that the server will validate
             val padding = makePadding(runId)
 
-            val detailsStr = details?.toString()
-            val highlightsStr = highlights?.toString()
-
             val bodyObj = ScoreSubmitRequest(
                 userId = userId,
                 levelId = levelId,
@@ -623,8 +620,8 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
                 completionOutcome = completionOutcome,
                 scoreVersion = scoreVersion,
                 scoreTotal = scoreTotal,
-                details = detailsStr,
-                highlights = highlightsStr,
+                details = details,
+                highlights = highlights,
                 padding = padding
             )
 

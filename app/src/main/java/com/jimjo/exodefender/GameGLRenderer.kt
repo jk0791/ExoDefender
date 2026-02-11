@@ -349,6 +349,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
                     // mission completion
 
+                    val destructRemainingMsAtLastKill = d.destructRemainingMs
                     d.cancelDestruction()
 
                     for (friendlyActor in level.world.activeFriendliesScratch) {
@@ -358,7 +359,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                     if (!flightLog.replayActive) {
                         liveLevelCompleted = true
                         flightLog.completionOutcome = CompletionOutcome.SUCCESS
-                        flightLog.clockRemainingMsAtLastKill = level.world.destructibleStructure?.destructRemainingMs
+                        flightLog.clockRemainingMsAtLastKill = destructRemainingMsAtLastKill
                         levelCompletedCountdownMs = 4000
 
                         audioPlayer.radio.onMissionComplete(flightTimeMs.toLong())

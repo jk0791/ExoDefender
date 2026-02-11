@@ -90,35 +90,6 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
                     // submit log mission score
                     if (level.type == Level.LevelType.MISSION && mainActivity.userId != null) {
 
-                        val accuracy = if (flightLog.shotsFired > 0) flightLog.shotsHit.toDouble() / flightLog.shotsFired else 0.0
-                        val enemyThreatSum: Float? = flightLog.level?.objectiveSummary()?.enemyThreatSum
-                        val enemiesStart = flightLog.level?.objectiveSummary()?.enemiesStart
-                        var enemyClearance: Double? = null
-                        if (level.objectiveType == Level.ObjectiveType.EVAC && enemiesStart != null && enemiesStart > 0) {
-                            enemyClearance = flightLog.enemiesDestroyed.toDouble() / enemiesStart
-                        }
-
-                        val remainingMs: Int? =
-                            if (level.objectiveType == Level.ObjectiveType.DEFEND) flightLog.clockRemainingMsAtLastKill else null
-                        val remainingSeconds = remainingMs?.div(1000f)
-
-                        val details = buildJsonObject {
-                            put("flight_time_ms", JsonPrimitive(flightLog.flightTimeMs))
-                            put("enemies_destroyed", JsonPrimitive(flightLog.enemiesDestroyed))
-                            enemyThreatSum?.let { put("enemy_threat_sum", JsonPrimitive(it)) }
-                            put("shots_fired", JsonPrimitive(flightLog.shotsFired))
-                            put("shots_hit", JsonPrimitive(flightLog.shotsHit))
-                            put("accuracy", JsonPrimitive(accuracy))
-                            remainingMs?.let { put("remaining_ms", JsonPrimitive(it)) }
-                        }
-
-                        val highlights = buildJsonObject {
-                            put("flight_time_ms", JsonPrimitive(flightLog.flightTimeMs))
-                            put("accuracy", JsonPrimitive(accuracy))
-                            remainingSeconds?.let { put("remaining_seconds", JsonPrimitive(it)) }
-                            enemyClearance?.let { put("enemy_clearance", JsonPrimitive(it)) }
-                        }
-
                         mainActivity.adminLogView.printout("Submitting mission score to server: levelId=${level.id} score=${scoreBreakdown.total}")
 
                         Thread({
@@ -131,8 +102,8 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
                                 completionOutcome = flightLog.completionOutcome.value, // ensure this is 1 for SUCCESS
                                 scoreVersion = 1,
                                 scoreTotal = scoreBreakdown.total,
-                                details = details,
-                                highlights = highlights,
+                                details = scoreBreakdown.detailsJson,
+                                highlights = scoreBreakdown.highlightsJson,
                             )
                         }).start()
                     }
