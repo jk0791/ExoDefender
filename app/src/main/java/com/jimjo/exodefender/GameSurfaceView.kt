@@ -130,7 +130,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
     fun reset() {
         flightControls.reset(levelBuilderMode, flightLog.replayActive)
         startThrottle = flightControls.throttle
-        screenOverlay.reset()
+        screenOverlay.reset(levelBuilderMode)
 
         mDeltaTouchHorzLT = 0f
         mDeltaTouchVertLT = 0f

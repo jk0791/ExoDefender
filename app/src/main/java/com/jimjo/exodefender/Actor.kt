@@ -528,15 +528,12 @@ abstract class EnemyActor(
 
                 sqDistanceToShip = deltaXtoShip * deltaXtoShip + deltaYtoShip * deltaYtoShip + deltaZtoShip * deltaZtoShip
 
-                val nearestFriendly =
-                    if (world.destructibleStructure == null)
-                        world.proximity.nearestFriendlyForEnemy(this, actorIndex, timeMs)
-                    else
-                        null
-                val anyFriendliesAlive = (nearestFriendly != null)
+                val nearestFriendly = world.proximity.nearestFriendlyForEnemy(this, actorIndex, timeMs)
+                val structure = world.destructibleStructure
 
                 val shipTargeted: Boolean
                 val friendlyTargeted: Boolean
+                val structureTargeted: Boolean
                 if (ship.active) {
 
                     shipInRange = sqDistanceToShip < sqTargetingDistanceFurthest
@@ -549,7 +546,7 @@ abstract class EnemyActor(
                     } else {
 
                         // between sqTargetingDistanceNearest and sqTargetingDistanceFurthest
-                        if (!anyFriendliesAlive || targetOnlyShip) {
+                        if (nearestFriendly == null || targetOnlyShip) {
                             shipTargeted = true
                         } else {
 
@@ -576,6 +573,7 @@ abstract class EnemyActor(
 
                 if (shipTargeted) {
                     friendlyTargeted = false
+                    structureTargeted = false
                     targetPosition.set(ship.position)
 
                     if (timeMs >= nextAimUpdateMs) {
@@ -602,36 +600,42 @@ abstract class EnemyActor(
 
                 } else {
                     // target a non-ship friendly
-                    val friendlyTarget: FriendlyActor?
-                    if (world.destructibleStructure != null) {
-                        friendlyTarget = world.destructibleStructure
-                    }
-                    else {
-                        friendlyTarget = nearestFriendly
-                    }
-                    if (friendlyTarget != null) {
+                    val target: FriendlyActor? =
+                        if (nearestFriendly == null) {
+                            // no friendlies (for this enemy): structure if possible
+                            structureTargeted = (structure != null)
+                            friendlyTargeted = false
+                            structure
+                        } else {
+                            // friendlies exist: 50/50 structure vs friendly (only if structure exists)
+                            val chooseStructure = (structure != null) && Random.nextBoolean()
+                            if (chooseStructure) {
+                                structureTargeted = true
+                                friendlyTargeted = false
+                                structure
+                            } else {
+                                structureTargeted = false
+                                friendlyTargeted = true
+                                nearestFriendly
+                            }
+                        }
 
-                        friendlyTargeted = true
-                        targetPosition.set(friendlyTarget.position)
+                    if (target != null) {
+                        targetPosition.set(target.position)
 
-                        // add some random innacuracy
-                        targetPosition.x += Random.nextFloat() * 4 - 2f
-                        targetPosition.y += Random.nextFloat() * 4 - 2f
+                        targetPosition.x += Random.nextFloat() * 4f - 2f
+                        targetPosition.y += Random.nextFloat() * 4f - 2f
                         targetPosition.z += Random.nextFloat() * 2f
-                    }
-                    else {
-                        friendlyTargeted = false
                     }
                 }
 
-                if (shipTargeted || friendlyTargeted) {
+                if (shipTargeted || friendlyTargeted || structureTargeted) {
 
                     weaponYawRad = getPlanAngle(muzzleWorld, targetPosition)
                     weaponPitchRad = getElevationAngle(weaponYawRad,
                         (targetPosition.y - muzzleWorld.y).toDouble(),
                         (targetPosition.z - muzzleWorld.z).toDouble())
 
-//            println("anglePtoDart=${df1.format(anglePtoDart)} anglePtoDart=${df1.format(angleEtoDart)}")
                     laserBoltPool.activateNext(muzzleWorld, weaponYawRad, weaponPitchRad)
 
 
@@ -974,7 +978,7 @@ class GroundFriendlyActor(
 
         if (firingEnabled && world.activeEnemiesScratch.size != 0 && Random.nextInt(400) == 0) {
 
-            val enemyTarget = world.pickRandomActiveActor(ActorType.ENEMY)
+            val enemyTarget = world.pickRandomActiveEnemy()
             if (enemyTarget != null) {
                 firing = 1
 

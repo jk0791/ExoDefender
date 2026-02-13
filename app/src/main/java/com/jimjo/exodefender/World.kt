@@ -59,6 +59,9 @@ class World(val mapId: Int) {
     val activeFriendliesScratch = ArrayList<FriendlyActor>()
     val activeEnemiesScratch = ArrayList<EnemyActor>()
     var destructibleStructure: FriendlyStructureActor? = null
+
+    var numOfStartNonStructFriendlies = 0
+    var numOfActiveNonStructFriendlies = 0
     val visuals = mutableListOf<VisualObject>()
 
     val heightMap: Array<Array<Float>> = Array(MAP_GRID_SIZE) { y -> Array(MAP_GRID_SIZE) { x -> 0f } }
@@ -82,6 +85,7 @@ class World(val mapId: Int) {
         friendlyActors.clear()
         enemyActors.clear()
         enemyThreatSum = 0f
+        numOfActiveNonStructFriendlies = 0
 
         for ((i, actor) in actors.withIndex()) {
             actor.reset()
@@ -99,6 +103,8 @@ class World(val mapId: Int) {
         resetVisualsForLevelStart()
 
         updateActorCounts()
+        numOfStartNonStructFriendlies = numOfActiveNonStructFriendlies
+
         rebuildEnemyGrid()
         rebuildFriendlyGrid()
         proximity.build(actors)
@@ -115,6 +121,7 @@ class World(val mapId: Int) {
 
     fun updateActorCounts() {
         activeEnemiesScratch.clear()
+        numOfActiveNonStructFriendlies = 0
         for (e in enemyActors) {
             if (e.active) {
                 activeEnemiesScratch.add(e)
@@ -125,6 +132,11 @@ class World(val mapId: Int) {
         for (f in friendlyActors) {
             if (f.active) {
                 activeFriendliesScratch.add(f)
+
+                // count active non-structure friendlies
+                if (f !is FriendlyStructureActor && f !is BuildingBlockActor) {
+                    numOfActiveNonStructFriendlies++
+                }
             }
         }
     }
@@ -156,7 +168,7 @@ class World(val mapId: Int) {
     }
 
     fun getEnemyRatio() = activeEnemiesScratch.size / enemyActors.size.toFloat()
-    fun getFriendlyRatio() = activeFriendliesScratch.size / friendlyActors.size.toFloat()
+    fun getFriendlyRatio() = numOfActiveNonStructFriendlies / numOfStartNonStructFriendlies
 
     private fun <T> pickRandomFromActive(list: List<T>): T? {
         if (list.isEmpty()) return null
@@ -164,9 +176,12 @@ class World(val mapId: Int) {
         return list[i]
     }
 
+    fun pickRandomActiveEnemy(): EnemyActor? {
+        return pickRandomFromActive(activeEnemiesScratch)
+    }
     fun pickRandomActiveActor(type: ActorType): Actor? {
         return when (type) {
-            ActorType.FRIENDLY -> pickRandomFromActive(activeFriendliesScratch)
+            ActorType.FRIENDLY -> pickRandomFromActive(activeFriendliesScratch) // NOTE: this also includes strucutres and blocks
             ActorType.ENEMY    -> pickRandomFromActive(activeEnemiesScratch)
             else -> pickRandomFromActive(activeEnemiesScratch)
         }

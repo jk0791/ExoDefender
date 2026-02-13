@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Message
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -52,6 +53,7 @@ class MissionSummaryView @JvmOverloads constructor(
     private lateinit var rowScore: LabelValueRow
     private lateinit var rowDifficulty: LabelValueRow
     private lateinit var rowFriendlies: LabelValueRow
+    private lateinit var rowEnemies: LabelValueRow
     private lateinit var rowIntegrity: LabelValueRow
     private lateinit var rowAccuracy: LabelValueRow
     private lateinit var rowTime: LabelValueRow
@@ -99,6 +101,7 @@ class MissionSummaryView @JvmOverloads constructor(
         rowScore = findViewById(R.id.rowScore)
         rowDifficulty = findViewById(R.id.rowDifficulty)
         rowFriendlies = findViewById(R.id.rowFriendlies)
+        rowEnemies = findViewById(R.id.rowEnemiesDestroyed)
         rowIntegrity = findViewById(R.id.rowIntegrity)
         rowAccuracy = findViewById(R.id.rowAccuracy)
         rowTime = findViewById(R.id.rowTime)
@@ -142,7 +145,7 @@ class MissionSummaryView @JvmOverloads constructor(
             val b = lastBreakdown ?: return@setOnClickListener
 //            val log = currentFlightLog ?: return@setOnClickListener
             val enemiesStart = currentFlightLog?.level?.objectiveSummary()?.enemiesStart ?: return@setOnClickListener
-            breakdownPopup.show(b, enemiesStart = enemiesStart)
+            breakdownPopup.show(b)
         }
 
         // rankings hook (only visible when scoring enabled)
@@ -352,43 +355,44 @@ class MissionSummaryView @JvmOverloads constructor(
         }
     }
 
-    private fun bindScoredSummaryRows(flightLog: FlightLog, b: ScoreCalculatorV1.Breakdown, scoreLabel: String = "Score") {
+    private fun bindScoredSummaryRows(
+        flightLog: FlightLog,
+        b: ScoreCalculatorV1.Breakdown,
+        scoreLabel: String = "Score"
+    ) {
         rowScore.set(scoreLabel, fmtInt(b.total), emphasize = true, size = RowSize.LARGE)
         rowDifficulty.set("Difficulty", "x${fmt2(b.difficultyWeight)}")
         rowIntegrity.set("Ship Integrity", "${(flightLog.healthRemaining * 100f).toInt()}%")
         rowAccuracy.set("Accuracy Rating", "${b.accuracyRating}%")
 
-        when (b.objectiveType) {
-            Level.ObjectiveType.CAS -> {
-                rowFriendlies.visibility = VISIBLE
-                rowTime.visibility = VISIBLE
-                rowFriendlies.set("Friendlies Saved", "${b.friendliesSaved} / ${b.friendliesStart}")
-                rowTime.set("Time", fmtTime(flightLog.flightTimeMs))
-            }
+        // Friendlies row
+        if (b.friendliesStart > 0) {
+            rowFriendlies.visibility = VISIBLE
+            rowFriendlies.set("Friendlies Saved", "${b.friendliesSaved} / ${b.friendliesStart}")
+        } else {
+            rowFriendlies.visibility = GONE
+        }
 
-            Level.ObjectiveType.DEFEND -> {
-                rowFriendlies.visibility = VISIBLE
-                rowTime.visibility = VISIBLE
-                rowFriendlies.set("Friendlies Saved", "${b.friendliesSaved} / ${b.friendliesStart}")
-                rowTime.set("Time remaining", fmtTime(b.timeRemainingMs ?: 0))
-            }
+        // Enemies row: only show when performance-based (EVAC only)
+        val enemiesBonus = b.enemiesBonus
+        if (enemiesBonus != null) {
+            rowEnemies.visibility = VISIBLE
+            val start = b.enemiesStart.coerceAtLeast(0)
+            val value = if (start > 0) "${b.enemiesDestroyed} / $start" else "${b.enemiesDestroyed}"
+            rowEnemies.set("Enemies Destroyed", value)
+        } else {
+            rowEnemies.visibility = GONE
+        }
 
-            Level.ObjectiveType.EVAC -> {
-                rowFriendlies.visibility = VISIBLE
-                rowTime.visibility = GONE
-                val start = b.enemiesStart.coerceAtLeast(0)
-                val value = if (start > 0) "${b.enemiesDestroyed} / $start" else "${b.enemiesDestroyed}"
-                rowFriendlies.set("Enemies Destroyed", value)
-            }
-
-            else -> {
-                rowFriendlies.visibility = GONE
-                rowTime.visibility = VISIBLE
-                rowTime.set("Time", fmtTime(flightLog.flightTimeMs))
-            }
+        // Time row: show remaining if present
+        val remaining = b.timeRemainingMs
+        if (remaining != null) {
+            rowTime.visibility = VISIBLE
+            rowTime.set("Time remaining", fmtTime(remaining))
+        } else {
+            rowTime.visibility = GONE
         }
     }
-
 
     fun getPlayerRankings() {
 
@@ -410,27 +414,12 @@ class MissionSummaryView @JvmOverloads constructor(
         rowScore.visibility = v
         rowDifficulty.visibility = v
         rowFriendlies.visibility = v
+        rowEnemies.visibility = v
         rowIntegrity.visibility = v
         rowAccuracy.visibility = v
         rowTime.visibility = v
     }
 
-    private fun fmtTime(ms: Int): String {
-        val totalSec = ms / 1000
-        val m = totalSec / 60
-        val s = totalSec % 60
-        return "%d:%02d".format(m, s)
-    }
-
-    private fun pct(hit: Int, fired: Int): String {
-        val f = fired.coerceAtLeast(1)
-        val p = (100f * hit.coerceIn(0, f) / f.toFloat()).toInt()
-        return "$p%"
-    }
-
-    private fun fmtInt(x: Int): String = "%,d".format(x)
-    private fun fmt2(x: Float): String = "%.2f".format(x)
-    private fun fmtSigned(delta: Int): String = if (delta >= 0) "+$delta" else delta.toString()
 
     override fun handleNetworkMessage(msg: Message) {
 
@@ -463,6 +452,7 @@ class LabelValueRow @JvmOverloads constructor(
 ) : ConstraintLayout(context, attrs) {
 
     private val labelView: TextView
+    private val detailView: TextView
     private val valueView: TextView
 
     private val defaultGreen = 0xFF5ADC00.toInt()
@@ -484,6 +474,7 @@ class LabelValueRow @JvmOverloads constructor(
             .inflate(R.layout.label_value_row, this, true)
 
         labelView = findViewById(R.id.label)
+        detailView = findViewById(R.id.detail)
         valueView = findViewById(R.id.value)
 
         labelView.setTextColor(defaultGreen)
@@ -494,11 +485,21 @@ class LabelValueRow @JvmOverloads constructor(
     fun set(
         label: String,
         value: String,
+        detailText: String? = null,
         emphasize: Boolean = false,
         size: RowSize = RowSize.DEFAULT
     ) {
         labelView.text = label
         valueView.text = value
+
+
+        if (detailText.isNullOrBlank()) {
+            detailView.visibility = GONE
+        } else {
+            detailView.visibility = VISIBLE
+            detailView.text = detailText
+        }
+
         setEmphasis(emphasize)
         applySize(size)
     }
@@ -506,6 +507,7 @@ class LabelValueRow @JvmOverloads constructor(
     fun setEmphasis(emphasize: Boolean) {
         val color = if (emphasize) emphasisWhite else defaultGreen
         labelView.setTextColor(color)
+        detailView.setTextColor(color)
         valueView.setTextColor(color)
     }
 

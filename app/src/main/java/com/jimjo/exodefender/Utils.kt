@@ -26,6 +26,27 @@ const val COORDS_PER_VERTEX_2D = 2
 const val COORDS_PER_VERTEX = 3
 const val TAU = Math.PI * 2
 
+// Format functions
+fun fmtTime(ms: Int): String {
+    val totalSec = ms / 1000
+    val m = totalSec / 60
+    val s = totalSec % 60
+    return "%d:%02d".format(m, s)
+}
+
+fun pct(hit: Int, fired: Int): String {
+    val f = fired.coerceAtLeast(1)
+    val p = (100f * hit.coerceIn(0, f) / f.toFloat()).toInt()
+    return "$p%"
+}
+
+fun fmtInt(x: Int): String = "%,d".format(x)
+fun fmt2(x: Float): String = "%.2f".format(x)
+fun fmtSigned(delta: Int): String = if (delta >= 0) "+${fmtInt(delta)}" else fmtInt(delta)
+
+
+
+
 fun loadShader(type: Int, shaderCode: String): Int {
 
     // create a vertex shader type (GLES20.GL_VERTEX_SHADER)

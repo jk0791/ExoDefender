@@ -287,8 +287,10 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
         if (liveLevelCompleted) return
 
+        // CAS (and UNKNOWN)
+
         if (level.objectiveType == Level.ObjectiveType.CAS || level.objectiveType == Level.ObjectiveType.UNKNOWN) {
-            if (level.world.activeFriendliesScratch.size == 0 && level.world.friendlyActors.size != 0) {
+            if (level.world.numOfActiveNonStructFriendlies == 0 && level.world.numOfStartNonStructFriendlies != 0) {
                 if (!flightLog.replayActive) {
                     liveLevelCompleted = true
                     flightLog.completionOutcome = CompletionOutcome.FAILED_ZERO_FRIENDLIES
@@ -309,25 +311,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                 }
             }
         }
-        else if (level.objectiveType == Level.ObjectiveType.EVAC) {
-            val d = level.world.destructibleStructure
-            if (d != null) {
 
-                val remaining = d.getCiviliansRemaining()
+        // DEFEND
 
-                if (d.destroyed && remaining > 0) {
-                    if (!flightLog.replayActive) {
-                        liveLevelCompleted = true
-                        flightLog.completionOutcome = CompletionOutcome.FAILED_CIVILIANS_NOT_RESCUED
-                        levelCompletedCountdownMs = 2000
-                    }
-                }
-                else if (remaining == 0) {
-                    // mission completion
-                    evacCompletionArmed = true
-                }
-            }
-        }
         else if (level.objectiveType == Level.ObjectiveType.DEFEND) {
             val d = level.world.destructibleStructure
             if (d != null) {
@@ -370,6 +356,30 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         }
 
 
+        // EVAC
+
+        else if (level.objectiveType == Level.ObjectiveType.EVAC) {
+            val d = level.world.destructibleStructure
+            if (d != null) {
+
+                val remaining = d.getCiviliansRemaining()
+
+                if (d.destroyed && remaining > 0) {
+                    if (!flightLog.replayActive) {
+                        liveLevelCompleted = true
+                        flightLog.completionOutcome = CompletionOutcome.FAILED_CIVILIANS_NOT_RESCUED
+                        levelCompletedCountdownMs = 2000
+                    }
+                }
+                else if (remaining == 0) {
+                    // mission completion
+                    evacCompletionArmed = true
+                }
+            }
+        }
+
+
+
         handler.sendEmptyMessage(UPDATE_SCREEN)
         endOfFrameChecksScheduled = false
     }
@@ -380,7 +390,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
             val enemyWithinRadius = level.world.hasEnemyWithinRadius(ship.position, 500f)
 
-            if (!enemyWithinRadius) {
+            if (!enemyWithinRadius || (level.world.activeEnemiesScratch.size == 0 && level.world.enemyActors.size != 0)) {
 
                 for (friendlyActor in level.world.activeFriendliesScratch) {
                     friendlyActor.startFlashSignal(flightTimeMs)
@@ -509,7 +519,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     fun finalizeLevel(replay: Boolean) {
         if (!replay) {
             parent.setPause(true)
-            flightLog.friendliesRemaining = level.world.activeFriendliesScratch.size
+            flightLog.friendliesRemaining = level.world.numOfActiveNonStructFriendlies // level.world.activeFriendliesScratch.size
             flightLog.enemiesDestroyed = level.world.enemyActors.size - level.world.activeEnemiesScratch.size
             flightLog.shotsFired = ship.shotsFired
             flightLog.healthRemaining = ship.hitPoints / ship.maxHitPoints.toFloat()

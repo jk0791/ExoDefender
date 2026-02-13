@@ -1,22 +1,17 @@
 package com.jimjo.exodefender
 
-import kotlin.math.round
 import kotlin.math.sqrt
 import kotlin.math.roundToInt
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 object ScoreCalculatorV1 {
 
-    private val json = Json { encodeDefaults = false; explicitNulls = false }
-
     private fun buildDetailsJson(
         b: Breakdown,
         shotsFired: Int,
         shotsHit: Int,
-        shipIntegrity: Float
     ): String {
         val obj = buildJsonObject {
             put("difficulty_weight", JsonPrimitive(b.difficultyWeight.toDouble()))
@@ -25,33 +20,35 @@ object ScoreCalculatorV1 {
             put("enemies_destroyed", JsonPrimitive(b.enemiesDestroyed))
 
             if (b.friendliesStart > 0) put("friendlies_start", JsonPrimitive(b.friendliesStart))
-            if (b.friendliesSaved > 0 || b.friendliesStart > 0) put("friendlies_saved", JsonPrimitive(b.friendliesSaved))
+            if (b.friendliesStart > 0) put("friendlies_saved", JsonPrimitive(b.friendliesSaved))
 
             if (b.civiliansStart > 0) put("civilians_start", JsonPrimitive(b.civiliansStart))
 
             put("shots_fired", JsonPrimitive(shotsFired))
             put("shots_hit", JsonPrimitive(shotsHit))
 
-            put("ship_integrity", JsonPrimitive(shipIntegrity.toDouble()))
+            put("ship_integrity", JsonPrimitive(b.shipIntegrity.toDouble()))
 
             // store raw acc as fraction for correctness (UI formats)
             val fired = shotsFired.coerceAtLeast(1)
             val hit = shotsHit.coerceIn(0, fired)
             val acc = hit.toDouble() / fired.toDouble()
-            put("accuracy", JsonPrimitive(acc))
+            put("accuracy_raw", JsonPrimitive(acc))
+
+            // Optional: store which bonuses applied (handy for debugging)
+            b.friendliesBonus?.let { put("friendlies_bonus", JsonPrimitive(it.toDouble())) }
+            b.timeBonus?.let { put("time_bonus", JsonPrimitive(it.toDouble())) }
+            b.enemiesBonus?.let { put("enemies_bonus", JsonPrimitive(it.toDouble())) }
 
             b.timeRemainingMs?.let { put("time_remaining_ms", JsonPrimitive(it)) }
         }
         return obj.toString()
     }
 
-    private fun buildHighlightsJson(
-        b: Breakdown,
-        shipIntegrity: Float
-    ): String {
+    private fun buildHighlightsJson(b: Breakdown): String {
         val obj = buildJsonObject {
             put("difficulty_weight", JsonPrimitive(b.difficultyWeight.toDouble()))
-            put("ship_integrity", JsonPrimitive(shipIntegrity.toDouble()))
+            put("ship_integrity", JsonPrimitive(b.shipIntegrity.toDouble()))
             put("accuracy_rating", JsonPrimitive(b.accuracyRating))
 
             when (b.objectiveType) {
@@ -63,15 +60,11 @@ object ScoreCalculatorV1 {
                 Level.ObjectiveType.EVAC -> {
                     put("enemies_destroyed", JsonPrimitive(b.enemiesDestroyed))
                     put("enemies_start", JsonPrimitive(b.enemiesStart))
-                    // Civilians are implied by success per your design; omit unless you want it shown.
                 }
                 else -> {}
             }
 
-            b.timeRemainingMs?.let {
-                // store ms; UI formats 0:12
-                put("time_remaining_ms", JsonPrimitive(it))
-            }
+            b.timeRemainingMs?.let { put("time_remaining_ms", JsonPrimitive(it)) }
         }
         return obj.toString()
     }
@@ -80,51 +73,44 @@ object ScoreCalculatorV1 {
     data class Breakdown(
         val objectiveType: Level.ObjectiveType,
 
-        val base: Float,
+        // all objectives
+        val basePoints: Int,
+        val healthBonus: Int,
+        val accuracyBonus: Int,
 
-        // CAS only
-        val savePoints: Float = 0f,
-
-        // DEFEND only
-        val defendPoints: Float = 0f,
-
-        // EVAC only
-        val evacPoints: Float = 0f,
-        val killBonus: Float = 0f,
-
-        // Shared performance
-        val healthPoints: Float,
-        val accuracyPoints: Float,
-        val timeBonus: Float,
+        // objective-specific
+        val friendliesBonus: Int? = null, // CAS, DEFEND only
+        val timeBonus: Int? = null,       // DEFEND only
+        val enemiesBonus: Int? = null,    // EVAC only
 
         // Weights / display
         val difficultyWeight: Float,
-        val accuracyRating: Int,
         val total: Int,
 
-        // ---- NEW: raw facts for UI (so MissionSummaryView doesn’t guess)
+        val accuracyRating: Int,
+        val shipIntegrity: Float,
+
         val enemiesStart: Int = 0,
         val enemiesDestroyed: Int = 0,
         val friendliesStart: Int = 0,
         val friendliesSaved: Int = 0,
         val civiliansStart: Int = 0,
-        val timeRemainingMs: Int? = null,   // DEFEND
+        val timeRemainingMs: Int? = null,   // DEFEND only
 
-        // ---- NEW: JSON payloads for server (Option 1 expects strings)
+        // JSON payloads for server
         val detailsJson: String? = null,
         val highlightsJson: String? = null
     )
 
-
     private val ZERO = Breakdown(
         objectiveType = Level.ObjectiveType.UNKNOWN,
-        base = 0f,
-        healthPoints = 0f,
-        accuracyPoints = 0f,
-        timeBonus = 0f,
+        basePoints = 0,
+        healthBonus = 0,
+        accuracyBonus = 0,
         difficultyWeight = 1f,
+        total = 0,
         accuracyRating = 0,
-        total = 0
+        shipIntegrity = 0f
     )
 
     // --- Accuracy display (unchanged) ---
@@ -159,71 +145,63 @@ object ScoreCalculatorV1 {
 
     // --- Tunables ---
 
-    private const val BASE_PER_ENEMY = 1000f
+    private const val BASE_PER_ENEMY = 180
 
     // CAS
-    private const val CAS_SAVE_MAX = 3000f
+    private const val CAS_SAVE_MAX = 3000
 
     // Shared
-    private const val HEALTH_MAX = 1500f
-    private const val ACC_MAX = 2000f
+    private const val HEALTH_MAX = 1500
+    private const val ACC_MAX = 2000
 
     // DEFEND
-    private const val DEFEND_POINTS = 2000f
-    private const val DEFEND_TIME_BONUS_MAX = 1500f
+    private const val STRUCTURE_SAVE_POINTS = 2000
+    private const val DEFEND_TIME_BONUS_MAX = 1500
+    private const val DEFEND_FRIENDLIES_SAVE_MAX = 2000
 
     // EVAC
-    private const val EVAC_POINTS_PER_CIVILIAN = 500f
-    private const val EVAC_KILL_BONUS_PER_ENEMY = 40f
-    private const val EVAC_KILL_BONUS_CAP = 1200f
+    private const val EVAC_POINTS_PER_CIVILIAN = 1000
+    private const val EVAC_KILL_BONUS_PER_ENEMY = 240
 
     // --- Public entry ---
 
-    fun score(log: FlightLog,): Breakdown {
+    fun score(log: FlightLog): Breakdown {
         val lvl = log.level
         val obj = lvl?.objectiveType ?: Level.ObjectiveType.UNKNOWN
         val difficultyWeight = (lvl?.difficultyWeight ?: 1.0f).takeIf { it > 0f } ?: 1.0f
 
-        // Only rank successful runs (as before)
+        // Only rank successful runs
         if (log.completionOutcome != CompletionOutcome.SUCCESS) {
             return ZERO.copy(objectiveType = obj, difficultyWeight = difficultyWeight)
         }
 
-        // Require embedded level config to derive objective facts.
         val summary = lvl?.objectiveSummary()
             ?: return ZERO.copy(objectiveType = obj, difficultyWeight = difficultyWeight)
 
         return when (obj) {
-            Level.ObjectiveType.CAS ->
-                scoreCas(log, difficultyWeight, summary)
-
-            Level.ObjectiveType.DEFEND ->
-                scoreDefend(log, difficultyWeight, summary)
-
-            Level.ObjectiveType.EVAC ->
-                scoreEvac(log, difficultyWeight, summary)
-
-            else ->
-                ZERO.copy(objectiveType = obj, difficultyWeight = difficultyWeight)
+            Level.ObjectiveType.CAS -> scoreCas(log, difficultyWeight, summary)
+            Level.ObjectiveType.DEFEND -> scoreDefend(log, difficultyWeight, summary)
+            Level.ObjectiveType.EVAC -> scoreEvac(log, difficultyWeight, summary)
+            else -> ZERO.copy(objectiveType = obj, difficultyWeight = difficultyWeight)
         }
     }
 
     // --- Shared perf ---
 
     private data class SharedPerf(
-        val healthPoints: Float,
-        val accuracyPoints: Float,
+        val healthPoints: Int,
+        val accuracyPoints: Int,
         val accuracyRating: Int
     )
 
     private fun sharedHealthAndAccuracy(log: FlightLog): SharedPerf {
         val hpFrac = log.healthRemaining.coerceIn(0f, 1f)
-        val healthPoints = HEALTH_MAX * hpFrac
+        val healthPoints = (HEALTH_MAX * hpFrac).roundToInt()
 
         val fired = log.shotsFired.coerceAtLeast(1)
         val hit = log.shotsHit.coerceIn(0, fired)
         val acc = hit.toFloat() / fired.toFloat()
-        val accuracyPoints = ACC_MAX * sqrt(acc)
+        val accuracyPoints = (ACC_MAX * sqrt(acc)).roundToInt()
         val accuracyRating = displayAccuracyRatingFromAcc(acc)
 
         return SharedPerf(
@@ -231,6 +209,13 @@ object ScoreCalculatorV1 {
             accuracyPoints = accuracyPoints,
             accuracyRating = accuracyRating
         )
+    }
+
+    private fun calcFriendliesSavedPoints(start: Int, remaining: Int, maxBonus: Int): Int {
+        if (start <= 0 || maxBonus <= 0) return 0
+        val clampedRemaining = remaining.coerceIn(0, start)
+        val savedFrac = clampedRemaining.toFloat() / start.toFloat()
+        return (maxBonus * savedFrac.coerceIn(0f, 1f)).roundToInt()
     }
 
     // --- CAS ---
@@ -243,45 +228,43 @@ object ScoreCalculatorV1 {
         val enemiesStart = summary.enemiesStart.coerceAtLeast(0)
         if (enemiesStart <= 0) return ZERO.copy(objectiveType = Level.ObjectiveType.CAS, difficultyWeight = difficultyWeight)
 
-        // Require all enemies destroyed (rule)
+        // Require all enemies destroyed
         if (log.enemiesDestroyed < enemiesStart) {
             return ZERO.copy(objectiveType = Level.ObjectiveType.CAS, difficultyWeight = difficultyWeight)
         }
 
-        val friendliesStart = summary.friendliesStart.coerceAtLeast(1)
-        val friendliesEnd = log.friendliesRemaining.coerceIn(0, friendliesStart)
-
         val base = BASE_PER_ENEMY * enemiesStart
 
-        val savedFrac = friendliesEnd.toFloat() / friendliesStart.toFloat()
-        val savePoints = CAS_SAVE_MAX * savedFrac
+        val friendliesStart = summary.friendliesStart.coerceAtLeast(0)
+        val friendliesRemaining = log.friendliesRemaining.coerceIn(0, friendliesStart)
+        val friendliesPoints = calcFriendliesSavedPoints(friendliesStart, friendliesRemaining, CAS_SAVE_MAX)
 
         val perf = sharedHealthAndAccuracy(log)
 
-        val timeBonus = 0f
-
-        val raw = base + savePoints + perf.healthPoints + perf.accuracyPoints + timeBonus
-        val total = round(difficultyWeight * raw).toInt().coerceAtLeast(0)
+        val raw = base + friendliesPoints + perf.healthPoints + perf.accuracyPoints
+        val total = (difficultyWeight * raw).roundToInt().coerceAtLeast(0)
 
         val b0 = Breakdown(
             objectiveType = Level.ObjectiveType.CAS,
-            base = base,
-            savePoints = savePoints,
-            healthPoints = perf.healthPoints,
-            accuracyPoints = perf.accuracyPoints,
-            timeBonus = timeBonus,
+            basePoints = base,
+            healthBonus = perf.healthPoints,
+            accuracyBonus = perf.accuracyPoints,
+            friendliesBonus = friendliesPoints,
+            timeBonus = null,
+            enemiesBonus = null,
             difficultyWeight = difficultyWeight,
-            accuracyRating = perf.accuracyRating,
             total = total,
+            accuracyRating = perf.accuracyRating,
+            shipIntegrity = log.healthRemaining,
             enemiesStart = enemiesStart,
             enemiesDestroyed = log.enemiesDestroyed,
             friendliesStart = friendliesStart,
-            friendliesSaved = friendliesEnd,
+            friendliesSaved = friendliesRemaining,
             civiliansStart = summary.civiliansStart.coerceAtLeast(0)
         )
 
-        val detailsJson = buildDetailsJson(b0, log.shotsFired, log.shotsHit, log.healthRemaining)
-        val highlightsJson = buildHighlightsJson(b0, log.healthRemaining)
+        val detailsJson = buildDetailsJson(b0, log.shotsFired, log.shotsHit)
+        val highlightsJson = buildHighlightsJson(b0)
 
         return b0.copy(detailsJson = detailsJson, highlightsJson = highlightsJson)
     }
@@ -296,50 +279,49 @@ object ScoreCalculatorV1 {
         val enemiesStart = summary.enemiesStart.coerceAtLeast(0)
         if (enemiesStart <= 0) return ZERO.copy(objectiveType = Level.ObjectiveType.DEFEND, difficultyWeight = difficultyWeight)
 
-        val friendliesStart = summary.friendliesStart.coerceAtLeast(1)
-        val friendliesEnd = log.friendliesRemaining.coerceIn(0, friendliesStart)
-
-        // Still require all enemies destroyed (rule)
+        // Require all enemies destroyed
         if (log.enemiesDestroyed < enemiesStart) {
             return ZERO.copy(objectiveType = Level.ObjectiveType.DEFEND, difficultyWeight = difficultyWeight)
         }
 
-        val base = BASE_PER_ENEMY * enemiesStart
-        val defendPoints = DEFEND_POINTS
+        val base = BASE_PER_ENEMY * enemiesStart + STRUCTURE_SAVE_POINTS
 
-        // Duration derived from level config; clamp to 1 to avoid divide-by-zero.
+        val friendliesStart = summary.friendliesStart.coerceAtLeast(0)
+        val friendliesRemaining = log.friendliesRemaining.coerceIn(0, friendliesStart)
+        val friendliesPoints = calcFriendliesSavedPoints(friendliesStart, friendliesRemaining, DEFEND_FRIENDLIES_SAVE_MAX)
+
         val duration = (summary.defendClockDurationMs ?: 1).coerceAtLeast(1)
-
-        // Remaining time snapshot logged at last kill (authoritative, gameplay-semantic)
         val left = (log.clockRemainingMsAtLastKill ?: 0).coerceIn(0, duration)
         val timeFrac = left.toFloat() / duration.toFloat()
-        val timeBonus = DEFEND_TIME_BONUS_MAX * timeFrac
+        val timeBonus = (DEFEND_TIME_BONUS_MAX * timeFrac).roundToInt()
 
         val perf = sharedHealthAndAccuracy(log)
 
-        val raw = base + defendPoints + perf.healthPoints + perf.accuracyPoints + timeBonus
-        val total = round(difficultyWeight * raw).toInt().coerceAtLeast(0)
+        val raw = base + friendliesPoints + perf.healthPoints + perf.accuracyPoints + timeBonus
+        val total = (difficultyWeight * raw).roundToInt().coerceAtLeast(0)
 
         val b0 = Breakdown(
             objectiveType = Level.ObjectiveType.DEFEND,
-            base = base,
-            defendPoints = defendPoints,
-            healthPoints = perf.healthPoints,
-            accuracyPoints = perf.accuracyPoints,
+            basePoints = base,
+            healthBonus = perf.healthPoints,
+            accuracyBonus = perf.accuracyPoints,
+            friendliesBonus = friendliesPoints,
             timeBonus = timeBonus,
+            enemiesBonus = null,
             difficultyWeight = difficultyWeight,
-            accuracyRating = perf.accuracyRating,
             total = total,
+            accuracyRating = perf.accuracyRating,
+            shipIntegrity = log.healthRemaining,
             enemiesStart = enemiesStart,
             enemiesDestroyed = log.enemiesDestroyed,
             friendliesStart = friendliesStart,
-            friendliesSaved = friendliesEnd,
+            friendliesSaved = friendliesRemaining,
             civiliansStart = summary.civiliansStart.coerceAtLeast(0),
             timeRemainingMs = left
         )
 
-        val detailsJson = buildDetailsJson(b0, log.shotsFired, log.shotsHit, log.healthRemaining)
-        val highlightsJson = buildHighlightsJson(b0, log.healthRemaining)
+        val detailsJson = buildDetailsJson(b0, log.shotsFired, log.shotsHit)
+        val highlightsJson = buildHighlightsJson(b0)
 
         return b0.copy(detailsJson = detailsJson, highlightsJson = highlightsJson)
     }
@@ -352,39 +334,37 @@ object ScoreCalculatorV1 {
         summary: Level.ObjectiveSummary
     ): Breakdown {
         val civiliansStart = summary.civiliansStart.coerceAtLeast(0)
-        val evacPoints = EVAC_POINTS_PER_CIVILIAN * civiliansStart
+        val base = EVAC_POINTS_PER_CIVILIAN * civiliansStart
 
-        val killBonus = (EVAC_KILL_BONUS_PER_ENEMY * log.enemiesDestroyed)
-            .coerceAtMost(EVAC_KILL_BONUS_CAP)
+        val killBonus = EVAC_KILL_BONUS_PER_ENEMY * log.enemiesDestroyed
 
         val perf = sharedHealthAndAccuracy(log)
-        val timeBonus = 0f
 
-        val raw = evacPoints + killBonus + perf.healthPoints + perf.accuracyPoints + timeBonus
-        val total = round(difficultyWeight * raw).toInt().coerceAtLeast(0)
+        val raw = base + killBonus + perf.healthPoints + perf.accuracyPoints
+        val total = (difficultyWeight * raw).roundToInt().coerceAtLeast(0)
 
         val enemiesStart = summary.enemiesStart.coerceAtLeast(0)
 
         val b0 = Breakdown(
             objectiveType = Level.ObjectiveType.EVAC,
-            base = 0f,
-            evacPoints = evacPoints,
-            killBonus = killBonus,
-            healthPoints = perf.healthPoints,
-            accuracyPoints = perf.accuracyPoints,
-            timeBonus = timeBonus,
+            basePoints = base,
+            healthBonus = perf.healthPoints,
+            accuracyBonus = perf.accuracyPoints,
+            friendliesBonus = null,
+            timeBonus = null,
+            enemiesBonus = killBonus,
             difficultyWeight = difficultyWeight,
-            accuracyRating = perf.accuracyRating,
             total = total,
+            accuracyRating = perf.accuracyRating,
+            shipIntegrity = log.healthRemaining,
             enemiesStart = enemiesStart,
             enemiesDestroyed = log.enemiesDestroyed,
             civiliansStart = civiliansStart
         )
 
-        val detailsJson = buildDetailsJson(b0, log.shotsFired, log.shotsHit, log.healthRemaining)
-        val highlightsJson = buildHighlightsJson(b0, log.healthRemaining)
+        val detailsJson = buildDetailsJson(b0, log.shotsFired, log.shotsHit)
+        val highlightsJson = buildHighlightsJson(b0)
 
         return b0.copy(detailsJson = detailsJson, highlightsJson = highlightsJson)
-
     }
 }

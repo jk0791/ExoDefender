@@ -30,9 +30,9 @@ class ScoreBreakdownPopupView @JvmOverloads constructor(
         findViewById<View>(R.id.card).setOnClickListener { hide() }
     }
 
-    fun show(b: ScoreCalculatorV1.Breakdown, enemiesStart: Int) {
-        bind(b, enemiesStart)
-        visibility = View.VISIBLE
+    fun show(b: ScoreCalculatorV1.Breakdown) {
+        bind(b)
+        visibility = VISIBLE
         bringToFront()
     }
 
@@ -40,13 +40,12 @@ class ScoreBreakdownPopupView @JvmOverloads constructor(
         visibility = View.GONE
     }
 
-    private fun bind(b: ScoreCalculatorV1.Breakdown, enemiesStart: Int) {
+    private fun bind(b: ScoreCalculatorV1.Breakdown) {
         rowsContainer.removeAllViews()
 
-        // Helper to add a row using LabelValueRow
-        fun addRow(label: String, value: String, emphasize: Boolean = false) {
+        fun addRow(label: String, value: String, detail: String? = null, emphasize: Boolean = false) {
             val row = LabelValueRow(context)
-            row.set(label, value, emphasize)
+            row.set(label, value, detail, emphasize)
             rowsContainer.addView(row)
         }
 
@@ -59,42 +58,72 @@ class ScoreBreakdownPopupView @JvmOverloads constructor(
                 topMargin = dp(10)
                 bottomMargin = dp(10)
             }
-            v.setBackgroundColor(0x995ADC00.toInt()) // faint green line
+            v.setBackgroundColor(0x995ADC00.toInt())
             rowsContainer.addView(v)
         }
 
-        // Build values
-        val base = b.base
-        val save = b.savePoints
-        val hp = b.healthPoints
-        val acc = b.accuracyPoints
-        val time = b.timeBonus
+        val base = b.basePoints
+        val friendliesBonus = b.friendliesBonus
+        val enemiesBonus = b.enemiesBonus
+        val hp = b.healthBonus
+        val acc = b.accuracyBonus
+        val timeBonus = b.timeBonus
 
-        addRow("Base ($enemiesStart Enemies)", fmtInt(base), emphasize = false)
-        addRow("Friendlies Saved", fmtSigned(save))
-        addRow("Ship Integrity", fmtSigned(hp))
-        addRow("Accuracy", fmtSigned(acc))
-        if (time != 0f) addRow("Time Bonus", fmtSigned(time))
+        val baseDetails = when (b.objectiveType) {
+            Level.ObjectiveType.CAS -> "${b.enemiesStart} Enemies"
+            Level.ObjectiveType.DEFEND -> "Structure + ${b.enemiesStart} Enemies"
+            Level.ObjectiveType.EVAC -> "${b.civiliansStart} Civilians"
+            else -> null
+        }
+
+        addRow("Base", fmtInt(base), detail = baseDetails)
+
+        // CAS/DEFEND only: show if applicable (non-null), even if 0
+        friendliesBonus?.let {
+            addRow(
+                "Friendlies Saved",
+                fmtSigned(it),
+                detail = "${b.friendliesSaved}/${b.friendliesStart}"
+            )
+        }
+
+        // EVAC only: show if applicable (non-null), even if 0
+        enemiesBonus?.let {
+            addRow(
+                "Enemies Destroyed",
+                fmtSigned(it),
+                detail = "${b.enemiesDestroyed}/${b.enemiesStart}"
+            )
+        }
+
+        addRow("Ship Integrity", fmtSigned(hp), detail = "${(b.shipIntegrity * 100f).toInt()}%")
+        addRow("Accuracy", fmtSigned(acc), detail = "${b.accuracyRating}%")
+
+        // DEFEND only: show if applicable (non-null), even if 0
+        timeBonus?.let {
+            addRow(
+                "Time Bonus",
+                fmtSigned(it),
+                detail = fmtTime(b.timeRemainingMs ?: 0)
+            )
+        }
 
         addDivider()
 
-        val subtotal = base + save + hp + acc + time
-        // You can choose whether to emphasize subtotal; I usually keep it green.
-        addRow("Subtotal", fmtInt(subtotal), emphasize = false)
-        addRow("Difficulty Multiplier", "x${fmt2(b.difficultyWeight)}", emphasize = false)
+        // Subtotal includes only applicable bonuses
+        val subtotal =
+            base +
+                    (friendliesBonus ?: 0) +
+                    (enemiesBonus ?: 0) +
+                    hp + acc +
+                    (timeBonus ?: 0)
 
-        // Final score row at bottom (emphasized = white)
-        finalRow.set("Final Score", fmtInt(b.total.toFloat()), emphasize = true)
+        addRow("Subtotal", fmtInt(subtotal))
+        addRow("Difficulty Multiplier", "x${fmt2(b.difficultyWeight)}")
+
+        finalRow.set("Final Score", fmtInt(b.total), emphasize = true)
     }
 
-    private fun fmtSigned(x: Float): String =
-        if (x >= 0f) "+${fmtInt(x)}" else "-${fmtInt(-x)}"
-
-    private fun fmtInt(x: Float): String =
-        "%,d".format(x.toInt())
-
-    private fun fmt2(x: Float): String =
-        "%.2f".format(x)
 
     private fun dp(v: Int): Int =
         (v * resources.displayMetrics.density).toInt()

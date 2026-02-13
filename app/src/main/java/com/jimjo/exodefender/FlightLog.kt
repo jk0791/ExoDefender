@@ -314,10 +314,8 @@ class FlightLog(
                                     "runId" -> runId = dataParameterText
                                     "completionOutcome" -> completionOutcome = enumValueOf(dataParameterText)
                                     "flightTime" -> flightTimeMs = dataParameterText.toInt()
-//                                    "difficultyWeight" -> difficultyWeight = dataParameterText.toFloat()
-//                                    "friendliesStart" -> friendliesStart = dataParameterText.toInt()
+                                    "clockRemainingMsAtLastKill" -> clockRemainingMsAtLastKill = dataParameterText.toInt()
                                     "friendliesRemaining" -> friendliesRemaining = dataParameterText.toInt()
-//                                    "enemiesStart" -> enemiesStart = dataParameterText.toInt()
                                     "enemiesDestroyed" -> enemiesDestroyed = dataParameterText.toInt()
                                     "shotsFired" -> shotsFired = dataParameterText.toInt()
                                     "shotsHit" -> shotsHit = dataParameterText.toInt()

@@ -60,6 +60,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     private var isReplayEnded = false
 
     var replayMode = false
+    var levelBuilderMode = false
     var replayStudioEnabled = false
     var replayEditorVisible = false
     var downloadedReplay = false
@@ -277,7 +278,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         zoomLevelText.visibility = GONE
         setDisplayFrozen(false)
 
-        reset()
+        reset(levelBuilderMode)
 
         if (currentLevel.type == Level.LevelType.TRAINING) {
             actorStatsDisplay.showFriendlyStats(false)
@@ -349,10 +350,12 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
-    fun reset() {
+    fun reset(levelBuilderMode: Boolean) {
+        this.levelBuilderMode = levelBuilderMode
+
         setDisplayFrozen(false)
 
-        if (currentLevel.getFirstDestructibleFriendlyStructureTemplateId() != null) {
+        if (!levelBuilderMode && currentLevel.getFirstDestructibleFriendlyStructureTemplateId() != null) {
             txtStructureTimeRemaining.visibility = VISIBLE
             startCountdownTicker()
         }
@@ -532,8 +535,8 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
     fun updateScreenDisplay() {
         actorStatsDisplay.update(
-            currentLevel.world.activeFriendliesScratch.size,
-            currentLevel.world.friendlyActors.size,
+            currentLevel.world.numOfActiveNonStructFriendlies,
+            currentLevel.world.numOfStartNonStructFriendlies,
             currentLevel.world.activeEnemiesScratch.size,
             currentLevel.world.enemyActors.size,
         )
@@ -554,18 +557,20 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     }
 
     private fun updateStructureCountdown() {
-        val s = currentLevel.world.destructibleStructure
-        if (s != null && s.destructEnabled && !s.destroyed) {
-            val timeMs = gLView.renderer.flightTimeMs
+        if (!levelBuilderMode) {
+            val s = currentLevel.world.destructibleStructure
+            if (s != null && s.destructEnabled && !s.destroyed) {
+                val timeMs = gLView.renderer.flightTimeMs
 
-            // Cinematic: countdown hits 0 at "zero" and stays at 0 during the post-zero beat.
-            val msLeftToZero = (s.destructEndMs - timeMs).coerceAtLeast(0)
-            val secondsLeft = (msLeftToZero + 999) / 1000  // ceil
+                // Cinematic: countdown hits 0 at "zero" and stays at 0 during the post-zero beat.
+                val msLeftToZero = (s.destructEndMs - timeMs).coerceAtLeast(0)
+                val secondsLeft = (msLeftToZero + 999) / 1000  // ceil
 
-            txtStructureTimeRemaining.visibility = VISIBLE
-            txtStructureTimeRemaining.text = "STRUCTURE: ${secondsLeft}s"
-        } else {
-            txtStructureTimeRemaining.visibility = GONE
+                txtStructureTimeRemaining.visibility = VISIBLE
+                txtStructureTimeRemaining.text = "STRUCTURE: ${secondsLeft}s"
+            } else {
+                txtStructureTimeRemaining.visibility = GONE
+            }
         }
     }
 
