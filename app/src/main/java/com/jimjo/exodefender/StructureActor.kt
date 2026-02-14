@@ -15,6 +15,8 @@ class BuildingBlockActor(
     val structure: FriendlyStructureActor,
 ) : FriendlyActor(instance, renderer) {
 
+    override val replayPolicy = ReplayPolicy.DRIVEN_BY_PARENT
+
     override val maxHitPoints: Int = 1 // unused; structure owns HP
     override val continuous = false
     override val qInterval = 400
@@ -28,7 +30,7 @@ class BuildingBlockActor(
 
 
     override fun onHit(timeMs: Int, enemyHit: Boolean, hitPosition: Vec3) {
-        if (!log.flightLog.replayActive) {
+        if (!world.replayActive) {
             renderer.flashLinesOnce(timeMs)
             explosionPool.activateSmall(hitPosition)
             explosionFlash?.spawnWorldLarge(hitPosition)
@@ -150,7 +152,8 @@ class FriendlyStructureActor(
     }
 
     fun applyDamageFromEnemy(timeMs: Int, hitPosition: Vec3) {
-        if (!log.flightLog.replayActive && hitPoints > 0) {
+
+        if (!world.replayActive && hitPoints > 0) {
             renderer.flashLinesOnce(timeMs)
             hitPoints--
 

@@ -54,7 +54,6 @@ class ShipActor(
     override val renderer: WireRenderer
 ): Actor() {
 
-
     // Angular velocities (radians per second)
     var yawVel = 0.0   // was rvelocityP
     var pitchVel = 0.0 // was rvelocityE
@@ -275,19 +274,23 @@ class ShipActor(
     }
 
     override fun onHit(timeMs: Int, enemyHit: Boolean, hitPosition: Vec3) {
-        if (!log.flightLog.replayActive && hitPoints > 0) {
-            hitPoints--
-            if (hitPoints == 0) {
-                active = false
-                parent.shipHit(true)
-                logEvent(timeMs, includeDirection = true, hit = 1, destroyed = 1)
-                explosion?.activateLarge(instance.position)
-            } else {
-                parent.shipHit(false)
-                renderer.flashLinesOnce(timeMs)
-                explosion?.activateSmall(instance.position)
-                logEvent(timeMs, includeDirection = true, hit = 1)
-            }
+
+        if (world.replayActive) return
+
+        if (hitPoints == 0)  return
+
+        hitPoints--
+
+        if (hitPoints == 0) {
+            active = false
+            parent.shipHit(true)
+            logEvent(timeMs, includeDirection = true, hit = 1, destroyed = 1)
+            explosion?.activateLarge(instance.position)
+        } else {
+            parent.shipHit(false)
+            renderer.flashLinesOnce(timeMs)
+            explosion?.activateSmall(instance.position)
+            logEvent(timeMs, includeDirection = true, hit = 1)
         }
     }
 
@@ -636,20 +639,17 @@ class ShipActor(
 
         renderer.nozzleGlow = engineGlowFromThrottle(fwdPower)
 
+        instance.setPosition(position.x, position.y, position.z)
+        instance.setDirection(yawRad, pitchRad, rollRad)
+        instance.update()
+
+        val log = log ?: return
         if (log.recording) {
             msSinceLastEvent += dtMs
             if (msSinceLastEvent > qInterval || firing == 1) {
                 logEvent(timeMs, includeDirection = true)
             }
         }
-
-
-
-
-        instance.setPosition(position.x, position.y, position.z)
-        instance.setDirection(yawRad, pitchRad, rollRad)
-        instance.update()
-
     }
 
     fun computeDesiredPosition(dt: Float, authority: Float) {

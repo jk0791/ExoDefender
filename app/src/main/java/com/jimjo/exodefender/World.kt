@@ -21,6 +21,10 @@ class World(val mapId: Int) {
 
 //    val filename = "map_" + mapId.toString().padStart(3, '0') + ".dat"
 
+    var flightLog: FlightLog? = null
+    val replayActive: Boolean
+        get() = flightLog?.replayActive == true
+
     var renderer: GameGLRenderer? = null
     var civilianWireBatch: WireBatchRenderer? = null
     var gpuModelCache: GpuModelCache? = null

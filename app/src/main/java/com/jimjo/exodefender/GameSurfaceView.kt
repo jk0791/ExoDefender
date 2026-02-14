@@ -90,8 +90,10 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         flightControls.gyroMode = !flightLog.replayActive && !levelBuilderMode
         renderer.flightControls = flightControls
         flightControls.receiver = renderer
+        this.level.world.flightLog = flightLog
         renderer.level = this.level
         renderer.flightLog = this.flightLog
+
         renderer.level.initialize(renderer)
         renderer.textAtlas = TextAtlas(context)
         renderer.initialize(context)

@@ -431,15 +431,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
             if (actor != null) {
                 for (blockActor in actor.blocks) {
-                    if (flightLog.replayActive) {
-
-                        // TODO load structure for replay!
-
-                    }
-                    else {
-                        val blockLog = flightLog.createActorLog(blockActor, actorTemplate)
-                        blockActor.initialize(this, level.world, blockLog, ship, laserBoltPool, null, explosionFlash)
-                    }
+                    blockActor.initialize(this, level.world, null, ship, laserBoltPool, null, explosionFlash)
                 }
             }
         }
@@ -576,42 +568,73 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
         for (actor in level.world.actors) {
             if (actor.active && !flightLog.replayActive && !parent.levelBuilderMode) {
-                // live game
-                actor.update(interval, intervalMs, flightTimeMs)
-            }
-            else if (flightLog.replayActive) {
-                // replay
-                val event: ActorLog.LogEvent?
-                var updatedRequired = true
-                if (actor.continuous) {
-                    event = actor.log.interpolateEventAtTime(flightTimeMs, null)
 
-                    // check if actor should be deactivated or activated
-                    if ((event == null) != (!actor.active)) {
-                        actor.active = (event != null)
+                // LIVE GAME
+                actor.update(interval, intervalMs, flightTimeMs)
+                continue
+
+            }
+
+            if (!flightLog.replayActive) continue
+
+            // REPLAY
+
+            val log = actor.log
+
+            if (log == null) {
+                when (actor.replayPolicy) {
+                    Actor.ReplayPolicy.DRIVEN_BY_PARENT -> {
+                        // Parent will handle it
+                        continue
+                    }
+                    Actor.ReplayPolicy.STATIC_NO_LOG -> {
+                        // Do nothing; keep as-is
+                        continue
+                    }
+                    Actor.ReplayPolicy.ANIMATED_NO_LOG -> {
+                        // Run deterministic animation update
+                        actor.replayUpdateMinimum(interval, flightTimeMs)
+                        continue
+                    }
+                    Actor.ReplayPolicy.REQUIRES_LOG -> {
+                        // Missing log for something that needs it
+                        actor.active = false // or keep prior state, but this makes issues obvious
+                        continue
+                    }
+                }
+            }
+
+            // ActorLog exists
+            val event: ActorLog.LogEvent?
+            var updatedRequired = true
+            if (actor.continuous) {
+                event = log.interpolateEventAtTime(flightTimeMs, null)
+
+                // check if actor should be deactivated or activated
+                if ((event == null) != (!actor.active)) {
+                    actor.active = (event != null)
+                }
+            }
+            else {
+                val cursorEvent = log.cursor.get(flightTimeMs)
+                event = cursorEvent.event
+                if (cursorEvent.changed) {
+                    if (cursorEvent.beforeFirst) {
+                        actor.resetPosition()
+                    }
+                    else {
+                        actor.active = !cursorEvent.afterLast || !cursorEvent.lastDestroyed
+                        if (actor.active) actor.resetRenderer()
                     }
                 }
                 else {
-                    val cursorEvent = actor.log.cursor.get(flightTimeMs)
-                    event = cursorEvent.event
-                    if (cursorEvent.changed) {
-                        if (cursorEvent.beforeFirst) {
-                            actor.resetPosition()
-                        }
-                        else {
-                            actor.active = !cursorEvent.afterLast || !cursorEvent.lastDestroyed
-                            if (actor.active) actor.resetRenderer()
-                        }
-                    }
-                    else {
-                        updatedRequired = false
-                        actor.replayUpdateMinimum(interval, flightTimeMs)
-                    }
+                    updatedRequired = false
+                    actor.replayUpdateMinimum(interval, flightTimeMs)
                 }
+            }
 
-                if (updatedRequired) {
-                    actor.replayUpdate(flightLog, event, interval, intervalMs, flightTimeMs)
-                }
+            if (updatedRequired) {
+                actor.replayUpdate(flightLog, event, interval, intervalMs, flightTimeMs)
             }
         }
 
@@ -620,7 +643,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
     private fun updateWorld() {
 
-        // UPDATE ACTORS
+        // UPDATE SHIP
+
         if (parent.levelBuilderMode) {
 
             // playing level builder
@@ -671,21 +695,24 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         }
         else if (flightLog.replayActive) {
 
-            val event = ship.log.interpolateEventAtTime(flightTimeMs, ship.replayVelocity)
-            ship.replayUpdate(flightLog, event, interval, intervalMs, flightTimeMs)
+            val log = ship.log
 
-            if (camera.posedByTrack && flightLog.cameraTrack != null && flightLog.cameraTrack!!.events.isNotEmpty()) {
+            if (log != null) {
 
-                flightLog.cameraTrack!!.evalInto(flightTimeMs, cameraSample)
-                camera.updateReplayPosed(cameraSample)
-            }
-            else {
-                camera.updateReplay(interval)
-            }
+                val event = log.interpolateEventAtTime(flightTimeMs, ship.replayVelocity)
+                ship.replayUpdate(flightLog, event, interval, intervalMs, flightTimeMs)
 
-            if (flightTimeMs > flightLog.flightTimeMs && !flightLog.replaySeeking && !finalized) {
-                println(flightTimeMs)
-                finalizeLevel(true)
+                if (camera.posedByTrack && flightLog.cameraTrack != null && flightLog.cameraTrack!!.events.isNotEmpty()) {
+
+                    flightLog.cameraTrack!!.evalInto(flightTimeMs, cameraSample)
+                    camera.updateReplayPosed(cameraSample)
+                } else {
+                    camera.updateReplay(interval)
+                }
+                if (flightTimeMs > flightLog.flightTimeMs && !flightLog.replaySeeking && !finalized) {
+                    finalizeLevel(true)
+                }
+
             }
 
         } else {
@@ -694,6 +721,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             ship.update(interval, intervalMs, flightTimeMs)
             camera.updateForChase()
         }
+
+
+        // UPDATE EVERYTHING ELSE
 
         if (!flightLog.replayPaused) {
 
@@ -763,6 +793,14 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             flightLog.actorLogs
                 .mapNotNull { it.template }
                 .forEach { loadActor(it) }
+
+            // load actors from FlightLog level
+            flightLog.level?.actors?.forEach {
+                // do seomthing with "it"
+                if (it is FriendlyStructureTemplate) {
+                    loadActor(it)
+                }
+            }
 
         }
         else {

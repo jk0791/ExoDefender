@@ -17,12 +17,24 @@ enum class ActorType {
     FRIENDLY, ENEMY, GROUND_FRIENDLY, EASY_GROUND_ENEMY, GROUND_ENEMY, EASY_FLYING_ENEMY, FLYING_ENEMY, ADV_FLYING_ENEMY, FRIENDLY_STRUCTURE,
 }
 abstract class Actor: GridActor {
+    enum class ReplayPolicy {
+        REQUIRES_LOG,        // default: if replaying and no log => treat as error/inactive
+        STATIC_NO_LOG,       // safe without log: exists in replay, no state syncing needed
+        ANIMATED_NO_LOG,     // safe without log: update deterministically from time
+        DRIVEN_BY_PARENT     // safe without log: parent sets my active/transform
+    }
+
+    open val replayPolicy: ReplayPolicy
+        get() = ReplayPolicy.REQUIRES_LOG
+
     override abstract val instance: ModelInstance
     protected abstract val renderer: WireRenderer
     protected lateinit var parent: ModelParent
     lateinit var world: World
     lateinit var ship: ShipActor
-    lateinit var log: ActorLog
+    var log: ActorLog? = null
+    open val replayDrivenByParent: Boolean get() = false
+
     lateinit var laserBoltPool: SingleLaserBoltPool
     var explosion: Explosion? = null
     var explosionFlash: ExplosionFlashSystem? = null
@@ -179,6 +191,7 @@ abstract class Actor: GridActor {
     open fun update(dt: Float, dtMs: Int, timeMs: Int) {
 
         if (!enableLogging) return
+        val log = log ?: return
 
         if (log.recording) {
             if (firing == 1) {
@@ -224,26 +237,27 @@ abstract class Actor: GridActor {
     }
 
     open fun onHit(timeMs: Int, enemyHit: Boolean, hitPosition: Vec3) {
-        if (!log.flightLog.replayActive)  {
-            if (enemyHit) {
-                log.flightLog.shotsHit++
-            }
-            if (hitPoints > 0){
-                renderer.flashLinesOnce(timeMs)
-                hitPoints--
-                if (hitPoints == 0) {
-                    active = false
-                    world.removeActorFromWorld(this)
-                    logEvent(timeMs, hit = 1, destroyed = 1)
-                    parent.notifyActorDestroyed(playSoundWhenDestroyed, this is FriendlyActor)
-                    explosion?.activateLarge(position)
-                    explosionFlash?.spawnWorldLarge(position)
-                } else {
-                    logEvent(timeMs, hit = 1)
-                    explosion?.activateSmall(position)
-                    explosionFlash?.spawnWorldSmall(position)
-                }
 
+        if (world.replayActive) return
+        val log = log ?: return
+
+        if (enemyHit) {
+            log.flightLog.shotsHit++
+        }
+        if (hitPoints > 0){
+            renderer.flashLinesOnce(timeMs)
+            hitPoints--
+            if (hitPoints == 0) {
+                active = false
+                world.removeActorFromWorld(this)
+                logEvent(timeMs, hit = 1, destroyed = 1)
+                parent.notifyActorDestroyed(playSoundWhenDestroyed, this is FriendlyActor)
+                explosion?.activateLarge(position)
+                explosionFlash?.spawnWorldLarge(position)
+            } else {
+                logEvent(timeMs, hit = 1)
+                explosion?.activateSmall(position)
+                explosionFlash?.spawnWorldSmall(position)
             }
         }
     }
@@ -278,6 +292,7 @@ abstract class Actor: GridActor {
     fun logEvent(flightTimeMs: Int, hit: Int = 0, destroyed: Int = 0, includeDirection: Boolean = false, includeWeaponDirection: Boolean = false) {
 
         if (!enableLogging) return
+        val log = log ?: return
 
         log.events.add(
             ActorLog.LogEvent(
