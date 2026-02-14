@@ -157,7 +157,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
                 if (!isProgrammaticSeekbarChange) {
 
-                    gLView.renderer.replaySeekBarChanged(timeFromSeekbarProgress(mapReplaySeekBar.progress), false)
+                    gLView.renderer.replaySeekBarChanged(timeFromSeekbarProgress(mapReplaySeekBar.progress), true)
 
                     // return to pre-seek pause state
                     gLView.setPause(gLView.renderer.flightLog.pausedBeforeSeeking)
@@ -563,7 +563,16 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
                 val timeMs = gLView.renderer.flightTimeMs
 
                 // Cinematic: countdown hits 0 at "zero" and stays at 0 during the post-zero beat.
-                val msLeftToZero = (s.destructEndMs - timeMs).coerceAtLeast(0)
+//                val msLeftToZero = (s.destructEndMs - timeMs).coerceAtLeast(0)
+
+
+                val msLeftToZero =
+                    if (replayMode) {
+                        currentLevel.world.flightLog?.missionLog?.msLeftToZeroAt(timeMs) ?: 0
+                    } else {
+                        (s.destructEndMs - timeMs).coerceAtLeast(0)
+                    }
+
                 val secondsLeft = (msLeftToZero + 999) / 1000  // ceil
 
                 txtStructureTimeRemaining.visibility = VISIBLE

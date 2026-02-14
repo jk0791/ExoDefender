@@ -34,7 +34,7 @@ class FlightLog(
     ) {
 
     enum class FlightLogSection {
-        NULL, LOG_DATA, ACTOR_DATA, EVENTS
+        NULL, LOG_DATA, MISSION_LOG, ACTOR_DATA, EVENTS
     }
 
     var id: Long? = null
@@ -42,7 +42,8 @@ class FlightLog(
 
     var level: Level.LevelSerializable? = null
 
-
+    val missionLog = MissionLog(this)
+    val shipLog = ActorLog(this)
 
 
 
@@ -69,7 +70,6 @@ class FlightLog(
 
     val shipInitialPosition = Vec3()
     var shipInitialDirection = 0.0
-    val shipLog = ActorLog(this)
     val replayActorTemplates = mutableListOf<ActorTemplate>()
     val actorLogs = mutableListOf<ActorLog>()
 
@@ -96,6 +96,7 @@ class FlightLog(
         shotsHit = 0
         healthRemaining = 1f
         shipLog.events.clear()
+        missionLog.clear()
         for (log in actorLogs) {
             log.events.clear()
         }
@@ -158,13 +159,13 @@ class FlightLog(
         newFlightLog.healthRemaining = healthRemaining
         newFlightLog.scoreVersion = scoreVersion
 
-        newFlightLog.shipLog.copy(shipLog)
+        newFlightLog.shipLog.copyFrom(shipLog)
+        newFlightLog.missionLog.copyFrom(missionLog)
         for (actorLog in actorLogs) {
             newFlightLog.actorLogs.add(actorLog.createCopy(newFlightLog))
         }
 
         newFlightLog.cameraTrack = cameraTrack?.let { CameraTrack().apply { copyFrom(it) } }
-        newFlightLog.level = level?.copy()
 
         return(newFlightLog)
     }
@@ -184,6 +185,7 @@ class FlightLog(
     fun startRecording() {
         clear()
         startTime = Calendar.getInstance().time
+        missionLog.recording = true
         recordingActive = true
         setRecordingState(true)
 
@@ -194,6 +196,7 @@ class FlightLog(
         if (!shipLog.events.isEmpty()) {
             flightTimeMs = shipLog.events.last().timeMs
         }
+        missionLog.recording = false
         recordingActive = false
         setRecordingState(false)
         postRecordingProcessing()
@@ -252,6 +255,7 @@ class FlightLog(
         cameraTrack?.let {
             sb.append("cameraTrack=").append(it.stringify()).append('\n')
         }
+        sb.append(missionLog.stringify())
 
         sb.append(shipLog.stringify())
 
@@ -273,6 +277,7 @@ class FlightLog(
         var currentActorInitialYaw:Double? = null
         var rowIndex = 0
         var rowText = ""
+        val mb = StringBuilder()
 
         try {
 
@@ -284,7 +289,11 @@ class FlightLog(
                     if (rowText.startsWith("[")) {
                         if (rowText.startsWith("[LogData]")) {
                             sectionType = FlightLogSection.LOG_DATA
-                        } else if (rowText.startsWith("[ActorData]")) {
+                        }
+                        else if (rowText.startsWith("[Mission]")) {
+                            sectionType = FlightLogSection.MISSION_LOG
+                        }
+                        else if (rowText.startsWith("[ActorData]")) {
                             sectionType = FlightLogSection.ACTOR_DATA
                             currentActorTemplate = null
                             currentActorTypeText = null
@@ -327,6 +336,9 @@ class FlightLog(
                                 }
                             }
 
+                            FlightLogSection.MISSION_LOG -> {
+                                mb.append(rowText).append("\n")
+                            }
                             FlightLogSection.ACTOR_DATA -> {
                                 // TODO create ActorTemplate or flag that following flight path is for ship
                                 // TODO assign following flight path to correct ActorTemplate of ship
@@ -404,6 +416,8 @@ class FlightLog(
                 }
                 rowIndex++
             }
+            val missionBlock = mb.toString()
+            missionLog.parse(missionBlock)
         }
         catch (e: Exception) {
             println("ERROR: unable to parse flight record ${sectionType} section ${e.message!!}")
@@ -676,7 +690,7 @@ class ActorLog(val flightLog: FlightLog) {
         return(newActorLog)
     }
 
-    fun copy(sourceActorLog: ActorLog) {
+    fun copyFrom(sourceActorLog: ActorLog) {
         events.clear()
         copy(sourceActorLog, this)
     }

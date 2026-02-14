@@ -28,9 +28,11 @@ class BuildingBlockActor(
     var relocateLocalBasePos = Vec3()
     var relocateLocalYaw: Double = 0.0
 
+    fun padKey(): PadKey =
+        PadKey(structureId = structure.templateId, blockIndex = blockIndex)
 
     override fun onHit(timeMs: Int, enemyHit: Boolean, hitPosition: Vec3) {
-        if (!world.replayActive) {
+//        if (!world.replayActive) {
             renderer.flashLinesOnce(timeMs)
             explosionPool.activateSmall(hitPosition)
             explosionFlash?.spawnWorldLarge(hitPosition)
@@ -39,7 +41,7 @@ class BuildingBlockActor(
 //            if (enemyHit) log.flightLog.shotsHit++
 
             structure.applyDamageFromEnemy(timeMs, hitPosition)
-        }
+//        }
     }
 
     override fun toTemplate() = null
@@ -53,6 +55,8 @@ class FriendlyStructureActor(
     val initialDestructSeconds: Int? = null,
     val explosionPool: ExplosionPool,
 ) : FriendlyActor(instance, renderer) {
+
+    override val replayPolicy = ReplayPolicy.ANIMATED_MISSION_LOG
 
     override val continuous = false
     override val qInterval = 400
@@ -101,7 +105,9 @@ class FriendlyStructureActor(
     private val flashCooldownMs = 120
     private var emittedBurstCount = 0
 
-    val editorBoundsAabb = Aabb(Vec3(), Vec3())
+    val boundsAabb = Aabb(Vec3(), Vec3())
+
+    private var lastReplayTimeMs: Int = Int.MIN_VALUE
 
     init {
         playSoundWhenDestroyed = true
@@ -111,6 +117,7 @@ class FriendlyStructureActor(
 
     override fun reset() {
         super.reset()
+        updateBoundsAabb()
         resetDestructionState()
     }
 
@@ -180,7 +187,7 @@ class FriendlyStructureActor(
 
     override fun select() {
         super.select()
-        updateEditorBoundsAabb()
+        updateBoundsAabb()
     }
 
     fun getCiviliansRemaining(): Int =
@@ -200,6 +207,67 @@ class FriendlyStructureActor(
         }
     }
 
+    override fun replayUpdateMinimum(dt: Float, timeMs: Int) {
+        lastLevelTimeMs = timeMs
+
+        // If this level/mission doesn't have a destruct timeline, keep current visuals.
+        val ds = world.flightLog?.missionLog?.getDestructStart() ?: run {
+            lastReplayTimeMs = timeMs
+            return
+        }
+
+        // Live structure uses destructEndMs as "zero moment" (ms since level start).
+        // MissionLog durationMs is time-to-zero (not including post-zero beat).
+        val zeroMs = ds.timeMs + ds.durationMs
+        val failMs = zeroMs + destructPostZeroBeatMs
+        val hideMs = failMs + 350  // match your onDestroyed() hide beat
+
+        // Detect time direction change (scrub backwards).
+        val wentBackwards = (lastReplayTimeMs != Int.MIN_VALUE && timeMs < lastReplayTimeMs)
+
+        // Desired states at this time
+        val shouldBeDestroyed = timeMs >= failMs
+        val shouldBeActive = timeMs < hideMs
+
+        if (wentBackwards) {
+            // If we scrubbed back before destruction, restore "alive" visuals so it can be destroyed again.
+            if (!shouldBeDestroyed) {
+                destroyed = false
+                hideAtMs = null
+
+                // reset VFX state so crossing forward replays the sequence
+                scheduledBursts.clear()
+                didFoundationFlash = false
+                lastFlashMs = Int.MIN_VALUE
+                emittedBurstCount = 0
+            }
+        }
+
+        // Rising-edge trigger: crossed fail moment going forward
+        val crossedFailForward =
+            (lastReplayTimeMs == Int.MIN_VALUE || lastReplayTimeMs < failMs) && timeMs >= failMs
+
+        if (crossedFailForward) {
+            destroyed = true
+            updateBoundsAabb()
+
+            // schedule bursts from the canonical fail time (not "now") so jumping ahead still looks right
+            startDestructionVfx(failMs, boundsAabb)
+            hideAtMs = hideMs
+        }
+
+        // Apply visibility without removing from world
+        active = shouldBeActive
+        for (b in blocks) b.active = shouldBeActive
+
+        // Emit any bursts that are due at current replay time
+        if (destroyed) {
+            updateDestructionVfx(timeMs)
+        }
+
+        lastReplayTimeMs = timeMs
+    }
+
     /**
      * Single-trigger model:
      * - At (destructEndMs + destructPostZeroBeatMs): mark destroyed and start VFX immediately.
@@ -215,8 +283,8 @@ class FriendlyStructureActor(
     }
 
     private fun onDestroyed(timeMs: Int) {
-        updateEditorBoundsAabb()
-        startDestructionVfx(timeMs, editorBoundsAabb)
+        updateBoundsAabb()
+        startDestructionVfx(timeMs, boundsAabb)
 
         // Let the initial boom read before disappearing.
         hideAtMs = timeMs + 350  // 350–600 feels good
@@ -256,15 +324,15 @@ class FriendlyStructureActor(
 
     override fun draw(vpMatrix: FloatArray, timeMs: Int) {
         if (drawEditorBounds) {
-            renderer.drawAabbWire(vpMatrix, editorBoundsAabb, renderer.highlightLineColor)
+            renderer.drawAabbWire(vpMatrix, boundsAabb, renderer.highlightLineColor)
         }
     }
 
     override fun toTemplate() = null
 
-    fun updateEditorBoundsAabb(): Boolean {
-        editorBoundsAabb.min.set(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        editorBoundsAabb.max.set(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
+    fun updateBoundsAabb(): Boolean {
+        boundsAabb.min.set(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        boundsAabb.max.set(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
 
         var any = false
         for (b in blocks) {
@@ -281,20 +349,20 @@ class FriendlyStructureActor(
             val y1 = c.y + h.y
             val z1 = c.z + h.z
 
-            if (x0 < editorBoundsAabb.min.x) editorBoundsAabb.min.x = x0
-            if (y0 < editorBoundsAabb.min.y) editorBoundsAabb.min.y = y0
-            if (z0 < editorBoundsAabb.min.z) editorBoundsAabb.min.z = z0
+            if (x0 < boundsAabb.min.x) boundsAabb.min.x = x0
+            if (y0 < boundsAabb.min.y) boundsAabb.min.y = y0
+            if (z0 < boundsAabb.min.z) boundsAabb.min.z = z0
 
-            if (x1 > editorBoundsAabb.max.x) editorBoundsAabb.max.x = x1
-            if (y1 > editorBoundsAabb.max.y) editorBoundsAabb.max.y = y1
-            if (z1 > editorBoundsAabb.max.z) editorBoundsAabb.max.z = z1
+            if (x1 > boundsAabb.max.x) boundsAabb.max.x = x1
+            if (y1 > boundsAabb.max.y) boundsAabb.max.y = y1
+            if (z1 > boundsAabb.max.z) boundsAabb.max.z = z1
         }
 
         if (!any) return false
 
         val pad = 2f
-        editorBoundsAabb.min.x -= pad; editorBoundsAabb.min.y -= pad; editorBoundsAabb.min.z -= pad
-        editorBoundsAabb.max.x += pad; editorBoundsAabb.max.y += pad; editorBoundsAabb.max.z += pad
+        boundsAabb.min.x -= pad; boundsAabb.min.y -= pad; boundsAabb.min.z -= pad
+        boundsAabb.max.x += pad; boundsAabb.max.y += pad; boundsAabb.max.z += pad
         return true
     }
 

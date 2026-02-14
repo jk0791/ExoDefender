@@ -180,9 +180,15 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             camera.updateForChase()
         }
         else {
-            flightLog.clear()
             flightLog.level = level.getLevelSerializable()
-            flightLog.startRecording()
+            flightLog.startRecording() // clears on start
+            level.world.destructibleStructure?.let { s ->
+                val secs = s.initialDestructSeconds ?: return@let
+                if (secs <= 0f) return@let
+
+                val durationMs = (secs * 1000f).toInt() // or roundToInt() if you prefer
+                level.world.flightLog?.missionLog?.logDestructStart(0, durationMs)
+            }
         }
         scheduleEndOfFrameChecks()
 
@@ -415,25 +421,29 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         var actorLog: ActorLog? = null
 
 
-        if (actorTemplate is GroundFriendlyTemplate) {
-            actor = level.world.spawnGroundFriendly(actorTemplate.position.x, actorTemplate.position.y, actorTemplate.position.z)
-            laserBoltPool = friendlyLaserBoltPool
-            explosion = friendlyExplosion
-        }
-        else if (actorTemplate is FriendlyStructureTemplate) {
+        if (actorTemplate is FriendlyStructureTemplate) {
             actor = level.world.spawnFriendlyStructure(actorTemplate)
             laserBoltPool = friendlyLaserBoltPool
 
-            // set first destrucutible structure as THE only destructible structure
+            // set first destructible structure as THE only destructible structure
             if (level.world.destructibleStructure == null && actorTemplate.destructSeconds != null) {
                 level.world.destructibleStructure = actor
             }
 
             if (actor != null) {
+                actor.initialize(this, level.world, null, ship, laserBoltPool, explosion, explosionFlash)
                 for (blockActor in actor.blocks) {
                     blockActor.initialize(this, level.world, null, ship, laserBoltPool, null, explosionFlash)
                 }
             }
+
+            return
+        }
+
+        if (actorTemplate is GroundFriendlyTemplate) {
+            actor = level.world.spawnGroundFriendly(actorTemplate.position.x, actorTemplate.position.y, actorTemplate.position.z)
+            laserBoltPool = friendlyLaserBoltPool
+            explosion = friendlyExplosion
         }
         else if (actorTemplate is EnemyTemplate) {
             laserBoltPool = enemyLaserBoltPool
@@ -591,14 +601,16 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                         // Do nothing; keep as-is
                         continue
                     }
-                    Actor.ReplayPolicy.ANIMATED_NO_LOG -> {
+                    Actor.ReplayPolicy.ANIMATED_MISSION_LOG,
+                    Actor.ReplayPolicy.ANIMATED_NO_LOG-> {
                         // Run deterministic animation update
                         actor.replayUpdateMinimum(interval, flightTimeMs)
                         continue
                     }
-                    Actor.ReplayPolicy.REQUIRES_LOG -> {
+                    Actor.ReplayPolicy.REQUIRES_ACTOR_LOG -> {
                         // Missing log for something that needs it
                         actor.active = false // or keep prior state, but this makes issues obvious
+                        println("ERROR: Actor has null ActorLog is null but this actor type requires one")
                         continue
                     }
                 }

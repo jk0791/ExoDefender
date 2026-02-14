@@ -78,7 +78,7 @@ class LevelEditEngine(val level: Level, val world: World) {
     }
 
 
-    fun nextStructureId(): Int {
+    fun nextStructureTemplateId(): Int {
         val maxExisting = level.actorTemplates
             .filterIsInstance<FriendlyStructureTemplate>()
             .maxOfOrNull { it.id } ?: 0
@@ -92,7 +92,7 @@ class LevelEditEngine(val level: Level, val world: World) {
             return
         }
 
-        val id = nextStructureId()
+        val id = nextStructureTemplateId()
 
         val structureBasePos = target.copy().apply {
             z = groundZ
@@ -144,13 +144,13 @@ class LevelEditEngine(val level: Level, val world: World) {
 
         if (runtime != null) {
             // Ensure bounds are current (cheap + safe)
-            val ok = runtime.updateEditorBoundsAabb()
+            val ok = runtime.updateBoundsAabb()
             if (!ok) {
                 // fallback: use structure base
                 spawnWorld.set(st.position.x + 5f, st.position.y, st.position.z)
             } else {
-                val min = runtime.editorBoundsAabb.min
-                val max = runtime.editorBoundsAabb.max
+                val min = runtime.boundsAabb.min
+                val max = runtime.boundsAabb.max
                 spawnWorld.x = max.x + 5f
                 spawnWorld.y = (min.y + max.y) * 0.5f
                 val groundZ = world.terrainElevationAt(spawnWorld.x, spawnWorld.y)
@@ -214,10 +214,10 @@ class LevelEditEngine(val level: Level, val world: World) {
         // Decide spawn point in WORLD space (same rules as addBlock)
         val spawnWorld = Vec3()
         if (runtime != null) {
-            runtime.updateEditorBoundsAabb()
+            runtime.updateBoundsAabb()
 
-            val min = runtime.editorBoundsAabb.min
-            val max = runtime.editorBoundsAabb.max
+            val min = runtime.boundsAabb.min
+            val max = runtime.boundsAabb.max
 
             spawnWorld.x = max.x + 5f
             spawnWorld.y = (min.y + max.y) * 0.5f
@@ -570,7 +570,7 @@ class LevelEditEngine(val level: Level, val world: World) {
             b.setPositionAndUpdate(b.position.x + dx, b.position.y + dy, b.position.z)
         }
 
-        if (s.drawEditorBounds) s.updateEditorBoundsAabb()
+        if (s.drawEditorBounds) s.updateBoundsAabb()
     }
 
 //    fun applyStructureRelocateRotateInPlace(s: FriendlyStructureActor, newBasePos: Vec3, newYawRad: Double, lockZ: Boolean = false) {

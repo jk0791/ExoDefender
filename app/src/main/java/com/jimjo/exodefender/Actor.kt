@@ -18,14 +18,15 @@ enum class ActorType {
 }
 abstract class Actor: GridActor {
     enum class ReplayPolicy {
-        REQUIRES_LOG,        // default: if replaying and no log => treat as error/inactive
-        STATIC_NO_LOG,       // safe without log: exists in replay, no state syncing needed
-        ANIMATED_NO_LOG,     // safe without log: update deterministically from time
-        DRIVEN_BY_PARENT     // safe without log: parent sets my active/transform
+        REQUIRES_ACTOR_LOG,         // default: if replaying and no log => treat as error/inactive
+        STATIC_NO_LOG,        // safe without log: exists in replay, no state syncing needed
+        ANIMATED_MISSION_LOG, // safe without log: update deterministically from mission log
+        ANIMATED_NO_LOG,      // safe without log: update deterministically from time
+        DRIVEN_BY_PARENT      // safe without log: parent sets my active/transform
     }
 
     open val replayPolicy: ReplayPolicy
-        get() = ReplayPolicy.REQUIRES_LOG
+        get() = ReplayPolicy.REQUIRES_ACTOR_LOG
 
     override abstract val instance: ModelInstance
     protected abstract val renderer: WireRenderer
@@ -285,7 +286,7 @@ abstract class Actor: GridActor {
         }
     }
 
-    fun replayUpdateMinimum(dt: Float, timeMs: Int) {
+    open fun replayUpdateMinimum(dt: Float, timeMs: Int) {
         setDirectionAndUpdate(yawRad = spinUpdateGetYaw(dt, timeMs))
     }
 
@@ -622,26 +623,32 @@ abstract class EnemyActor(
                             friendlyTargeted = false
                             structure
                         } else {
+
                             // friendlies exist: 50/50 structure vs friendly (only if structure exists)
                             val chooseStructure = (structure != null) && Random.nextBoolean()
+
                             if (chooseStructure) {
                                 structureTargeted = true
                                 friendlyTargeted = false
+
+                                targetPosition.set(structure.boundsAabb.center())
+                                targetPosition.x += Random.nextFloat() * 8f - 4f
+                                targetPosition.y += Random.nextFloat() * 8f - 8f
+                                targetPosition.z += Random.nextFloat() * 6f - 3f
+
                                 structure
                             } else {
                                 structureTargeted = false
                                 friendlyTargeted = true
+
+                                targetPosition.set(nearestFriendly.position)
+                                targetPosition.x += Random.nextFloat() * 4f - 2f
+                                targetPosition.y += Random.nextFloat() * 4f - 2f
+                                targetPosition.z += Random.nextFloat() * 2f - 1f
+
                                 nearestFriendly
                             }
                         }
-
-                    if (target != null) {
-                        targetPosition.set(target.position)
-
-                        targetPosition.x += Random.nextFloat() * 4f - 2f
-                        targetPosition.y += Random.nextFloat() * 4f - 2f
-                        targetPosition.z += Random.nextFloat() * 2f
-                    }
                 }
 
                 if (shipTargeted || friendlyTargeted || structureTargeted) {
