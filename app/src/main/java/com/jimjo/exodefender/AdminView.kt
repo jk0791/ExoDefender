@@ -154,7 +154,7 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
         unlockAllLevelsSwitch.isChecked = mainActivity.unlockAllLevels
         unlockAllLevelsSwitch.setOnCheckedChangeListener { _, isChecked ->
             mainActivity.unlockAllLevels = isChecked
-            mainActivity.refreshCurrentLevelsView()
+            mainActivity.refreshAllLevels()
         }
 
         findViewById<Button>(R.id.btnResetAllLevels).apply {

@@ -84,9 +84,6 @@ class LevelsView(context: Context, attrs: AttributeSet? = null) :
 
     fun loadLevels(levelType: Level.LevelType, gotoMissionLevelId: Int? = null, gotoCampaignCode: String? = null) {
 
-        // TODO calculate campaign index based on last played level/highest level playable
-        // TODO grey out locked levels
-
         this.levelType = levelType
 
 

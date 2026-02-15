@@ -445,7 +445,7 @@ class CustomHandler(looper: Looper, val gLView: GameSurfaceView): Handler(looper
             }
             LEVEL_COMPLETE_REPLAY_MODE -> {
                 gLView.screenOverlay.setReplayEndState(true)
-                gLView.screenOverlay.stopCountdownTicker()
+//                gLView.screenOverlay.stopCountdownTicker()
                 if (!gLView.screenOverlay.replayEditorVisible) {
                     gLView.mainActivity.completeLevel(true)
                 }

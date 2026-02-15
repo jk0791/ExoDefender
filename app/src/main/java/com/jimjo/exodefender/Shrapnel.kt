@@ -11,7 +11,7 @@ import java.nio.ShortBuffer
 import kotlin.random.Random
 
 interface ShrapnelParent {
-    fun notifyDeactivtaion()
+    fun notifyDeactivation()
 }
 
 class Shrapnel(val parent: ShrapnelParent, size: Float, val lineColor: FloatArray, sideOffset: Float):
@@ -135,7 +135,7 @@ class Shrapnel(val parent: ShrapnelParent, size: Float, val lineColor: FloatArra
 //            }
             if (duration > maxDuration) {
                 active = false
-                parent.notifyDeactivtaion()
+                parent.notifyDeactivation()
             }
         }
     }

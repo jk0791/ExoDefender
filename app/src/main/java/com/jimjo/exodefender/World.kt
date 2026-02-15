@@ -417,7 +417,7 @@ class World(val mapId: Int) {
         structure.resetPosition()
         actors.add(structure)
         friendlyActors.add(structure)
-        updateFriendlyInGrid(structure)
+//        updateFriendlyInGrid(structure)
 
         // --- 2) Blocks (collision + visuals; forward hits to structure) ---
         for ((blockIndex, b) in t.blocks.withIndex()) {
@@ -576,7 +576,6 @@ class World(val mapId: Int) {
                 removeActorFromWorld(b)
             }
         }
-
         if (actor is FriendlyActor) {
             removeFriendlyActorFromWorld(actor)
         }
@@ -602,6 +601,10 @@ class World(val mapId: Int) {
     fun findFriendlyStructureActor(id: Int): FriendlyStructureActor? =
         friendlyActors.firstOrNull { it is FriendlyStructureActor && it.templateId == id && it.active} as? FriendlyStructureActor
 
+    fun findPadBlockActor(key: PadKey): BuildingBlockActor? {
+        val structure = findFriendlyStructureActor(key.structureId) ?: return null
+        return structure.blocks.firstOrNull { it.blockIndex == key.blockIndex && it.active }
+    }
     fun findIntersectingActor(currentActor: Actor, aabb: Aabb): Actor? {
         for (actor in actors) {
             if (actor.active && actor !== currentActor && actor.instance.worldAabb.intersects(aabb)) {
@@ -694,7 +697,11 @@ class World(val mapId: Int) {
 
     /** Call after spawning/removing enemies or when an enemy moves significantly. */
     fun rebuildEnemyGrid() = enemyGrid.rebuild(enemyActors)
-    fun rebuildFriendlyGrid() = friendlyGrid.rebuild(friendlyActors)
+    fun rebuildFriendlyGrid() {
+        friendlyGrid.rebuild(friendlyActors.filter {
+            it !is FriendlyStructureActor
+        })
+    }
 
     /** If an enemy's AABB has changed (moved), call this to update just that one. */
     fun updateEnemyInGrid(enemy: Actor) = enemyGrid.upsert(enemy)

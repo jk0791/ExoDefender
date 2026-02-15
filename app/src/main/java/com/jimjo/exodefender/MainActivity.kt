@@ -57,7 +57,7 @@ enum class Feature {
     UNKNOWN,
 }
 
-class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlListener, NetworkResponseReceiver {
+class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseReceiver {
 
     // DEBUG SETTINGS
 //    val defaultHostServer = "http://192.168.0.15:7139" // live server
@@ -669,6 +669,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
 //            mainLayout.removeView(screenOverlay)
 //        }
         screenOverlay.visibility = GONE
+        screenOverlay.stopCountdownTicker()
         screenOverlay.showScreenAnnotations(false)
         levelBuilderToolbar.visibility = GONE
         currentReplayFlightLog = null
@@ -708,30 +709,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
             levelCompletionManager.completeLevel(currentLevel!!, gLView!!.flightLog, replayMode)
         }
     }
-
-//    override fun onSensorChanged(event: SensorEvent?) {
-//        if (event!!.sensor.getType() == Sensor.TYPE_GRAVITY) {
-//            val x = event.values[0]
-//            val y = event.values[1]
-//            val z = event.values[2]
-//
-////            println("x=${df1.format(x)} y=${df1.format(y)} z=${df1.format(z)}")
-//
-//            if (gLView != null && gLView!!.flightControls.gyroMode) {
-//
-//                if (gLView!!.flightControls.setDeviceNeutral) {
-//                    neutralDeviceValue = x
-//                    gLView!!.flightControls.setDeviceNeutral = false
-//                }
-//                gLView!!.flightControls.rotationHorz = max(min(y / 4f * rotationalFactor, 1f), -1f)
-//                gLView!!.flightControls.rotationVert = max(min((neutralDeviceValue - x) / 3f * rotationalFactor, 1f), -1f)
-//
-//                screenOverlay.attitudeDisplay.update(gLView!!.flightControls.rotationHorz, gLView!!.flightControls.rotationVert)
-////                println("gLView!!.flightControls.rotationVert=${gLView!!.flightControls.rotationVert}   neutralDeviceValue=$neutralDeviceValue     x=$x")
-//
-//            }
-//        }
-//    }
 
     private fun wrapPi(a: Float): Float {
         var x = a
@@ -789,55 +766,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
         )
     }
 
-//    override fun onSensorChanged(event: SensorEvent?) {
-//        val e = event ?: return
-//        if (e.sensor.type != Sensor.TYPE_GRAVITY) return
-//
-//        var x = e.values[0]
-//        var y = e.values[1]
-//        val z = e.values[2]
-//
-//        if (gLView != null && gLView!!.flightControls.gyroMode) {
-//
-//            // Map device gravity axes into a consistent "landscape game" frame
-//            val rot = (this.display?.rotation) ?: Surface.ROTATION_0
-//            if (rot != lastRotation) {
-//                gLView!!.flightControls.setDeviceNeutral = true
-//                lastRotation = rot
-//            }
-//
-//            when (rot) {
-//                Surface.ROTATION_90 -> {
-//                    // landscape one way: keep as-is
-//                }
-//                Surface.ROTATION_270 -> {
-//                    // landscape flipped 180°: invert both axes
-//                    x = -x
-//                    y = -y
-//                }
-//                // If you ever allow portrait, you can decide what to do here:
-//                Surface.ROTATION_0, Surface.ROTATION_180 -> {
-//                    // optional: treat as one of the landscape modes or ignore
-//                }
-//            }
-//
-//            if (gLView!!.flightControls.setDeviceNeutral) {
-//                neutralDeviceValue = x
-//                gLView!!.flightControls.setDeviceNeutral = false
-//            }
-//
-//            gLView!!.flightControls.rotationHorz =
-//                (y / 4f * rotationalFactor).coerceIn(-1f, 1f)
-//
-//            gLView!!.flightControls.rotationVert =
-//                ((neutralDeviceValue - x) / 3f * rotationalFactor).coerceIn(-1f, 1f)
-//
-//            screenOverlay.attitudeDisplay.update(
-//                gLView!!.flightControls.rotationHorz,
-//                gLView!!.flightControls.rotationVert
-//            )
-//        }
-//    }
 
     fun updateRotSensitivity(value: Int) {
         rotationalFactor = getSensitivityFactor(value, 0.5f, 3f)
@@ -874,21 +802,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
         }
     }
 
-
-    override fun buttonControlClicked(caller: ButtonControl) {
-        when (caller) {
-////            setNeutralButton -> gLView.flightControls.setDeviceNeutral = true
-//            pauseGameButton -> showPauseMission()
-//            else -> println("Error: unrecognized button")
-        }
-    }
-
     fun showHomeView() {
         hideAllViews()
         audioPlayer.startMusic(0)
         homeView.visibility = VISIBLE
         homeView.bringToFront()
-//        insetContentBySidebar.bringToFront()
         setCurrentFeature(Feature.HOME)
     }
 
@@ -955,6 +873,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
         trainingOutcomeView.visibility = GONE
     }
 
+    fun refreshAllLevels() {
+        levelsView.loadLevels(Level.LevelType.MILKRUN)
+        levelsView.loadLevels(Level.LevelType.MISSION)
+    }
+
     fun refreshCurrentLevelsView() {
         if (currentlyUsedFeature == Feature.MILKRUNS) {
             levelsView.loadLevels(Level.LevelType.MILKRUN)
@@ -968,8 +891,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
         levelsView.loadLevels(levelType, gotoMissionLevelId = gotoMissionLevelId)
         hideAllViews()
         levelsView.visibility = VISIBLE
-//        insetContentBySidebar.visibility = VISIBLE
-//        insetContentBySidebar.bringToFront()
         levelsView.bringToFront()
 
         if (audioPlayer.currentMusicIndex == null) audioPlayer.startMusic(0)
@@ -1036,20 +957,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener, ButtonControlList
         levelEditorView.loadLevels()
         levelEditorMetadataView.visibility = GONE
     }
-
-//    fun showEndMission(flightLog: FlightLog, replayMode: Boolean) {
-//        if (gLView != null) {
-//            levelActive = false
-//            endMissionView.load(flightLog, replayMode, currentlyUsedFeature)
-//            endMissionView.visibility = VISIBLE
-//            endMissionView.isClickable = !replayMode  // allow clicking through to seekbar
-//            endMissionView.bringToFront()
-//        }
-//    }
-//
-//    fun closeEndMission() {
-//        endMissionView.visibility = GONE
-//    }
 
 
     fun showSettings() {

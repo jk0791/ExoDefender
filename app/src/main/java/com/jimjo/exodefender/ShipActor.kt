@@ -78,6 +78,7 @@ class ShipActor(
     var halfLength = 0f
     val replayVelocity = Vec3()
     var lastReplayTimeMs = 0
+    private var lastReplayPadLatchKey: PadKey? = null
 
     lateinit var localCorners: Array<Vec3>
     val cornersShipWorld = Array(3) { Vec3() }
@@ -97,11 +98,11 @@ class ShipActor(
     val desiredPosition = Vec3()
 
     val collisionInfo = CollisionInfo()
-    var isGrounded = false
-    var isTerrainGrounded = false
-    var groundNormal = Vec3(0f, 0f, 1f)
-    var groundedOnLandingPad = false
-    private var groundedUntilMs = 0
+//    var isGrounded = false
+//    var isTerrainGrounded = false
+//    var groundNormal = Vec3(0f, 0f, 1f)
+//    var groundedOnLandingPad = false
+//    private var groundedUntilMs = 0
     private var lastPadBlock: BuildingBlockActor? = null
 
     // Local-space muzzle offsets (relative to ship/model origin)
@@ -162,6 +163,8 @@ class ShipActor(
     var civiliansOnboard: Int = 0
     val carryingCapacity: Int = 2
 
+    override fun getDestructionSound(audio: AudioPlayer): AudioPlayer.Soundfile = audio.explosion2
+
     val debugLogger  = DebugLogger()
 
     init {
@@ -199,6 +202,8 @@ class ShipActor(
 
         rescueTransfer.reset()
         civiliansOnboard = 0
+
+        lastReplayPadLatchKey = null
     }
 
     fun getHealth(): Float {
@@ -528,7 +533,7 @@ class ShipActor(
             isConfirmed = padConfirmed && restLatched
         }
 
-        // --- SIMPLE LATCH: time-based only ---
+        // --- SIMPLE LATCH ON TERRAIN OR SURFACES: time-based only ---
         if (!restLatched) {
             if (levelAtRest) {
 
@@ -536,17 +541,16 @@ class ShipActor(
                 pitchRad = dampTo(pitchRad, 0.0, LEVEL_RATE, dt.toDouble())
                 rollRad  = dampTo(rollRad,  0.0, LEVEL_RATE, dt.toDouble())
 
-                // Stop angular motion
-//                pitchVel = 0.0
-//                yawVel   = 0.0
-
                 // Latch when basically level
                 if (abs(pitchRad) < LEVEL_EPS && abs(rollRad)  < LEVEL_EPS) {
 
                     restLatched = true
                     latchedYaw = yawRad
-                }
 
+                    if (padConfirmed) {
+                        flightLog.missionLog.logPadLatchOn(timeMs, padBlock.padKey())
+                    }
+                }
             }
         }
 
@@ -555,6 +559,8 @@ class ShipActor(
         if (restLatched && wantsTakeoff) {
             restLatched = false
             restTimer = 0f
+
+            flightLog.missionLog.logPadLatchOff(timeMs) // only logs if currently latched to a pad
         }
 
         if (padConfirmed && restLatched) {
@@ -855,6 +861,9 @@ class ShipActor(
             for (a in candidateTargets) {
 
                 if (!a.active) continue
+
+                // identify enemies close to ship for "storm" attack
+                if (a is EnemyActor) a.closeToShip = true
 
                 if (a === frameSupportActor) {
                     // position.z is ship center; if it's at/above the top plane (with a small tolerance), skip
@@ -1220,6 +1229,32 @@ class ShipActor(
                 smoothCam.pos.y,
                 smoothCam.pos.z
             )
+
+            // landing pad latch highlighting
+            val keyNow = flightLog.missionLog.padLatchedPadAt(timeMs).pad
+            if (keyNow != lastReplayPadLatchKey) {
+
+                // clear old highlight
+                lastReplayPadLatchKey?.let { old ->
+                    world.findPadBlockActor(old)?.renderer?.landingPadOverlay?.apply {
+                        isConfirmed = false
+                        isWithin = false
+                    }
+                }
+
+                // set new highlight
+                keyNow?.let { now ->
+                    world.findPadBlockActor(now)?.renderer?.landingPadOverlay?.apply {
+                        isConfirmed = true
+                        isWithin = true
+                    }
+                }
+
+
+
+                lastReplayPadLatchKey = keyNow
+            }
+
 
             lastReplayTimeMs = event.timeMs
 

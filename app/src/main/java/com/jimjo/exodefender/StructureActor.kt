@@ -105,13 +105,15 @@ class FriendlyStructureActor(
     private val flashCooldownMs = 120
     private var emittedBurstCount = 0
 
+    override fun getDestructionSound(audio: AudioPlayer): AudioPlayer.Soundfile = audio.explosion4
+
     val boundsAabb = Aabb(Vec3(), Vec3())
 
     private var lastReplayTimeMs: Int = Int.MIN_VALUE
 
-    init {
-        playSoundWhenDestroyed = true
-    }
+//    init {
+//        playSoundWhenDestroyed = true
+//    }
 
     private fun destructFailMs(): Int = destructEndMs + destructPostZeroBeatMs
 
@@ -168,7 +170,8 @@ class FriendlyStructureActor(
                 active = false
                 world.removeActorFromWorld(this)
                 logEvent(timeMs, hit = 1, destroyed = 1)
-                parent.notifyActorDestroyed(playSoundWhenDestroyed, true)
+//                parent.notifyActorDestroyed(playSoundWhenDestroyed, true)
+                parent.notifyActorDestroyed(this)
 
                 explosion?.activateLarge(hitPosition)
                 explosionFlash?.spawnWorldLarge(hitPosition)
@@ -237,6 +240,7 @@ class FriendlyStructureActor(
 
                 // reset VFX state so crossing forward replays the sequence
                 scheduledBursts.clear()
+                explosionPool.cancelAll()
                 didFoundationFlash = false
                 lastFlashMs = Int.MIN_VALUE
                 emittedBurstCount = 0
@@ -254,6 +258,11 @@ class FriendlyStructureActor(
             // schedule bursts from the canonical fail time (not "now") so jumping ahead still looks right
             startDestructionVfx(failMs, boundsAabb)
             hideAtMs = hideMs
+
+//            if (playSoundWhenDestroyed) {
+//                parent.notifyActorDestroyed(true, false)
+//            }
+            parent.notifyActorDestroyed(this)
         }
 
         // Apply visibility without removing from world
@@ -289,7 +298,8 @@ class FriendlyStructureActor(
         // Let the initial boom read before disappearing.
         hideAtMs = timeMs + 350  // 350–600 feels good
 
-        parent.notifyActorDestroyed(playSoundWhenDestroyed, false)
+//        parent.notifyActorDestroyed(playSoundWhenDestroyed, false)
+        parent.notifyActorDestroyed(this)
     }
 
     private fun updateDestructionVfx(timeMs: Int) {

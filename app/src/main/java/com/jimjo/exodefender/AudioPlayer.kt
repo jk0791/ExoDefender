@@ -42,6 +42,7 @@ class AudioPlayer(val context: Context) {
     val explosion1 = Soundfile(R.raw.explosion1, 1f)
     val explosion2 = Soundfile(R.raw.explosion2, 1f)
     val explosion3 = Soundfile(R.raw.explosion3, 1.5f)
+    val explosion4 = Soundfile(R.raw.explosion4, 0.3f)
 
     val ai_intro = Soundfile(R.raw.ai_intro, 1f)
     val ai_yaw = Soundfile(R.raw.ai_yaw, 1f)
@@ -146,6 +147,7 @@ class AudioPlayer(val context: Context) {
         explosion1.loadIntoSoundPool(context, soundPool)
         explosion2.loadIntoSoundPool(context, soundPool)
         explosion3.loadIntoSoundPool(context, soundPool)
+        explosion4.loadIntoSoundPool(context, soundPool)
 
         // load AI voices
         ai_intro.loadIntoSoundPool(context, soundPool)

@@ -34,8 +34,6 @@ abstract class Actor: GridActor {
     lateinit var world: World
     lateinit var ship: ShipActor
     var log: ActorLog? = null
-    open val replayDrivenByParent: Boolean get() = false
-
     lateinit var laserBoltPool: SingleLaserBoltPool
     var explosion: Explosion? = null
     var explosionFlash: ExplosionFlashSystem? = null
@@ -58,7 +56,7 @@ abstract class Actor: GridActor {
     protected val weaponRight   = Vec3()
     protected val weaponUp      = Vec3()
 
-    var playSoundWhenDestroyed = false
+//    var playSoundWhenDestroyed = false
 
     val initialPosition = Vec3()
     var initialYawRad = 0.0
@@ -92,6 +90,7 @@ abstract class Actor: GridActor {
     abstract val qInterval: Int
     protected var msSinceLastEvent = 0
 
+    open fun getDestructionSound(audio: AudioPlayer): AudioPlayer.Soundfile? = audio.explosion1
 
     open fun initialize(parent: ModelParent, world: World, log: ActorLog?, ship: ShipActor, laserBoltPool: SingleLaserBoltPool, explosion: Explosion?, explosionFlash: ExplosionFlashSystem?) {
 
@@ -252,7 +251,8 @@ abstract class Actor: GridActor {
                 active = false
                 world.removeActorFromWorld(this)
                 logEvent(timeMs, hit = 1, destroyed = 1)
-                parent.notifyActorDestroyed(playSoundWhenDestroyed, this is FriendlyActor)
+//                parent.notifyActorDestroyed(playSoundWhenDestroyed, this is FriendlyActor)
+                parent.notifyActorDestroyed(this)
                 explosion?.activateLarge(position)
                 explosionFlash?.spawnWorldLarge(position)
             } else {
@@ -275,7 +275,8 @@ abstract class Actor: GridActor {
 
             if (event.destroyed == 1) {
                 active = false
-                parent.notifyActorDestroyed(playSoundWhenDestroyed && !flightLog.replaySeeking, this is FriendlyActor)
+//                parent.notifyActorDestroyed(playSoundWhenDestroyed && !flightLog.replaySeeking, this is FriendlyActor)
+                parent.notifyActorDestroyed(this)
                 explosion?.activateLarge(position)
                 explosionFlash?.spawnWorldLarge(position)
             } else if (event.hit == 1) {
@@ -512,9 +513,9 @@ abstract class EnemyActor(
     val cachedAimVelocity = Vec3()
 
 
-    init {
-        playSoundWhenDestroyed = true
-    }
+//    init {
+//        playSoundWhenDestroyed = true
+//    }
 
     override fun reset() {
         super.reset()
@@ -988,6 +989,8 @@ class GroundFriendlyActor(
     override val continuous = false
     override val qInterval = 400
     override val randomInitialYaw = true
+
+    override fun getDestructionSound(audio: AudioPlayer): AudioPlayer.Soundfile? = null
 
     init {
         spinRate = 0.5

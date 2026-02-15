@@ -20,7 +20,7 @@ import java.util.Locale
 interface ModelParent {
     val audioPlayer: AudioPlayer
     fun shipHit(destroyed: Boolean)
-    fun notifyActorDestroyed(playSound: Boolean, friendly: Boolean)
+    fun notifyActorDestroyed(actor: Actor)
 
     fun civiliansOnboardChanged(
         newCount: Int,
@@ -259,20 +259,34 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
     }
 
-    override fun notifyActorDestroyed(playSound: Boolean, friendly: Boolean) {
-        if (playSound) {
-            parent.mainActivity.audioPlayer.playSound(parent.mainActivity.audioPlayer.explosion1)
+//    override fun notifyActorDestroyed(playSound: Boolean, friendly: Boolean) {
+//        if (playSound) {
+//            parent.mainActivity.audioPlayer.playSound(parent.mainActivity.audioPlayer.explosion1)
+//        }
+//
+//        if (friendly) {
+//            audioPlayer.radio.onFriendlyKilled(flightTimeMs.toLong())
+//        }
+//        else {
+//            audioPlayer.radio.onEnemyKilled(flightTimeMs.toLong())
+//        }
+//
+//        if (!flightLog.replaySeeking) scheduleEndOfFrameChecks()
+//    }
+
+    override fun notifyActorDestroyed(actor: Actor) {
+        if (flightLog.replaySeeking) return
+
+        actor.getDestructionSound(parent.mainActivity.audioPlayer)?.let { s ->
+            parent.mainActivity.audioPlayer.playSound(s)
         }
 
-        if (friendly) {
-            audioPlayer.radio.onFriendlyKilled(flightTimeMs.toLong())
-        }
-        else {
-            audioPlayer.radio.onEnemyKilled(flightTimeMs.toLong())
-
+        when (actor) {
+            is FriendlyActor -> audioPlayer.radio.onFriendlyKilled(flightTimeMs.toLong())
+            else -> audioPlayer.radio.onEnemyKilled(flightTimeMs.toLong())
         }
 
-        if (!flightLog.replaySeeking) scheduleEndOfFrameChecks()
+        scheduleEndOfFrameChecks()
     }
 
     override fun civiliansOnboardChanged(

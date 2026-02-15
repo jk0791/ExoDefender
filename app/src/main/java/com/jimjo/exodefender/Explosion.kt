@@ -40,6 +40,10 @@ class ExplosionPool(
         cursor = (cursor + 1) % pool.size
         e.activateSmall(pos)
     }
+
+    fun cancelAll() {
+        for (e in pool) e.active = false
+    }
 }
 
 class Explosion(val world: World, val size: Float, val lineColor: FloatArray): ShrapnelParent {
@@ -97,7 +101,7 @@ class Explosion(val world: World, val size: Float, val lineColor: FloatArray): S
         }
     }
 
-    override fun notifyDeactivtaion() {
+    override fun notifyDeactivation() {
         active = false
         for (shrapnel in activeShrapnelList) {
             if (shrapnel.active) {

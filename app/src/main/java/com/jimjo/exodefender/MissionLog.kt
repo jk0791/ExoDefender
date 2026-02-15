@@ -16,16 +16,16 @@ data class DestructStart(
     val durationMs: Int
 ) : MissionEvent
 
-sealed interface LatchEvent : MissionEvent
+sealed interface PadLatchEvent : MissionEvent
 
-data class LatchOn(
+data class PadLatchOn(
     override val timeMs: Int,
     val pad: PadKey
-) : LatchEvent
+) : PadLatchEvent
 
-data class LatchOff(
+data class PadLatchOff(
     override val timeMs: Int
-) : LatchEvent
+) : PadLatchEvent
 
 data class ShipOnboard(
     override val timeMs: Int,
@@ -54,7 +54,7 @@ class MissionLog(
 
     // ---- Stored events (separate channels) ----
     private var destructStart: DestructStart? = null
-    private val latchEvents = mutableListOf<LatchEvent>()
+    private val padLatchEvents = mutableListOf<PadLatchEvent>()
     private val shipOnboardEvents = mutableListOf<ShipOnboard>()
     private val padWaitingEventsByPad = mutableMapOf<PadKey, MutableList<PadWaiting>>()
 
@@ -62,13 +62,6 @@ class MissionLog(
     private var lastLatchedPad: PadKey? = null
     private var lastShipOnboard: Int? = null
     private val lastPadWaiting = mutableMapOf<PadKey, Int>()
-
-    fun resetRecordingCaches() {
-        // Call at the start of a new recording run (or after loading).
-        lastLatchedPad = null
-        lastShipOnboard = null
-        lastPadWaiting.clear()
-    }
 
     // -------------------------
     // Writers (capture events)
@@ -80,17 +73,17 @@ class MissionLog(
         destructStart = DestructStart(timeMs, durationMs)
     }
 
-    fun logLatchOn(timeMs: Int, pad: PadKey) {
+    fun logPadLatchOn(timeMs: Int, pad: PadKey) {
         if (!enableLogging() || !recording) return
         if (lastLatchedPad == pad) return
-        latchEvents.add(LatchOn(timeMs, pad))
+        padLatchEvents.add(PadLatchOn(timeMs, pad))
         lastLatchedPad = pad
     }
 
-    fun logLatchOff(timeMs: Int) {
+    fun logPadLatchOff(timeMs: Int) {
         if (!enableLogging() || !recording) return
         if (lastLatchedPad == null) return
-        latchEvents.add(LatchOff(timeMs))
+        padLatchEvents.add(PadLatchOff(timeMs))
         lastLatchedPad = null
     }
 
@@ -115,9 +108,9 @@ class MissionLog(
         clear()
         recording = false
 
-        destructStart = src.destructStart // data class; safe to share or copy
+        destructStart = src.destructStart?.copy()
 
-        latchEvents.addAll(src.latchEvents)
+        padLatchEvents.addAll(src.padLatchEvents)
 
         shipOnboardEvents.addAll(src.shipOnboardEvents)
 
@@ -132,7 +125,7 @@ class MissionLog(
 
         // Clear stored events
         destructStart = null
-        latchEvents.clear()
+        padLatchEvents.clear()
         shipOnboardEvents.clear()
         padWaitingEventsByPad.clear()
 
@@ -187,11 +180,69 @@ class MissionLog(
         )
     }
 
+    data class PadLatchLookup(
+        val pad: PadKey?,          // null if not latched
+        val changed: Boolean,      // different from last returned result
+        val beforeFirst: Boolean,  // timeMs before first latch event
+        val afterLast: Boolean     // timeMs after last latch event
+    )
+
+    private var lastPadLatchLookupPad: PadKey? = null
+    private var lastPadLatchLookupIdx: Int = -2  // -2 = “never looked up yet”
+
+    fun padLatchedPadAt(timeMs: Int): PadLatchLookup {
+        val events = padLatchEvents
+        if (events.isEmpty()) {
+            val changed = (lastPadLatchLookupIdx != -1 || lastPadLatchLookupPad != null)
+            lastPadLatchLookupIdx = -1
+            lastPadLatchLookupPad = null
+            return PadLatchLookup(pad = null, changed = changed, beforeFirst = true, afterLast = false)
+        }
+
+        // binary search for last event with time <= query
+        var lo = 0
+        var hi = events.lastIndex
+        var res = -1
+        while (lo <= hi) {
+            val mid = (lo + hi) ushr 1
+            if (events[mid].timeMs <= timeMs) {
+                res = mid
+                lo = mid + 1
+            } else {
+                hi = mid - 1
+            }
+        }
+
+        if (res == -1) {
+            val changed = (lastPadLatchLookupIdx != -1 || lastPadLatchLookupPad != null)
+            lastPadLatchLookupIdx = -1
+            lastPadLatchLookupPad = null
+            return PadLatchLookup(pad = null, changed = changed, beforeFirst = true, afterLast = false)
+        }
+
+        val ev = events[res]
+        val pad = when (ev) {
+            is PadLatchOn -> ev.pad
+            is PadLatchOff -> null
+        }
+
+        val afterLast = (res == events.lastIndex && timeMs > events.last().timeMs)
+        val changed = (res != lastPadLatchLookupIdx) || (pad != lastPadLatchLookupPad)
+
+        lastPadLatchLookupIdx = res
+        lastPadLatchLookupPad = pad
+
+        return PadLatchLookup(pad = pad, changed = changed, beforeFirst = false, afterLast = afterLast)
+    }
+
+
+
+
+
+
     // Convenience helpers
     fun countdownRemainingMsAt(timeMs: Int): Int = countdownAt(timeMs).remainingMs
     fun isDestroyedAt(timeMs: Int): Boolean = countdownAt(timeMs).destroyed
-
-
 
 
 
@@ -214,13 +265,13 @@ class MissionLog(
         }
 
         // Latch events (as recorded order)
-        for (e in latchEvents) {
+        for (e in padLatchEvents) {
             when (e) {
-                is LatchOn -> sb.append("latchOn=")
+                is PadLatchOn -> sb.append("padLatchOn=")
                     .append(e.timeMs).append(',')
                     .append(e.pad.structureId).append(',')
                     .append(e.pad.blockIndex).append('\n')
-                is LatchOff -> sb.append("latchOff=")
+                is PadLatchOff -> sb.append("padLatchOff=")
                     .append(e.timeMs).append('\n')
             }
         }
@@ -285,20 +336,20 @@ class MissionLog(
                     }
                 }
 
-                "latchOn" -> {
+                "padLatchOn" -> {
                     val parts = value.split(',')
                     if (parts.size >= 3) {
                         val timeMs = parts[0].toInt()
                         val structureId = parts[1].toInt()
                         val blockIndex = parts[2].toInt()
                         val pad = PadKey(structureId, blockIndex)
-                        latchEvents.add(LatchOn(timeMs, pad))
+                        padLatchEvents.add(PadLatchOn(timeMs, pad))
                     }
                 }
 
-                "latchOff" -> {
+                "padLatchOff" -> {
                     val timeMs = value.toInt()
-                    latchEvents.add(LatchOff(timeMs))
+                    padLatchEvents.add(PadLatchOff(timeMs))
                 }
 
                 "shipOnboard" -> {
@@ -340,8 +391,8 @@ class MissionLog(
         }
 
         // Latch
-        lastLatchedPad = when (val last = latchEvents.lastOrNull()) {
-            is LatchOn -> last.pad
+        lastLatchedPad = when (val last = padLatchEvents.lastOrNull()) {
+            is PadLatchOn -> last.pad
             else -> null
         }
     }
@@ -352,7 +403,7 @@ class MissionLog(
     // These are just for debugging/tests now; sampling can come later.
 
     fun getDestructStart(): DestructStart? = destructStart
-    fun getLatchEvents(): List<LatchEvent> = latchEvents
+    fun getPadLatchEvents(): List<PadLatchEvent> = padLatchEvents
     fun getShipOnboardEvents(): List<ShipOnboard> = shipOnboardEvents
     fun getPadWaitingEvents(pad: PadKey): List<PadWaiting> = padWaitingEventsByPad[pad].orEmpty()
 }
