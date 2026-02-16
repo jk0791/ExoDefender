@@ -183,15 +183,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             flightLog.level = level.getLevelSerializable()
             flightLog.startRecording() // clears on start
 
-            level.world.destructibleStructure?.let { s ->
-                val secs = s.initialDestructSeconds ?: return@let
-                if (secs <= 0f) return@let
+            initialLogging()
 
-                val durationMs = (secs * 1000f).toInt()
-                level.world.flightLog?.missionLog?.logDestructStart(0, durationMs)
-
-            }
-            level.world.flightLog?.missionLog?.logShipOnboard(0, ship.civiliansOnboard, firstTime = true)
         }
         scheduleEndOfFrameChecks()
 
@@ -205,6 +198,30 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
         parent.setPause(paused)
 
+    }
+
+    fun initialLogging() {
+        val t0 = 0
+
+        // destructible strucutre
+        level.world.destructibleStructure?.let { s ->
+            val secs = s.initialDestructSeconds ?: return@let
+            if (secs <= 0f) return@let
+
+            val durationMs = (secs * 1000f).toInt()
+            level.world.flightLog?.missionLog?.logDestructStart(t0, durationMs)
+
+        }
+        // civs on board
+        level.world.flightLog?.missionLog?.logShipOnboard(t0, ship.civiliansOnboard, firstTime = true)
+
+        // pad waiting
+        for (structure in level.world.friendlyActors.filterIsInstance<FriendlyStructureActor>()) {
+            for (block in structure.blocks) {
+                val cluster = block.civilianCluster ?: continue
+                flightLog.missionLog.logPadWaiting(t0, block.padKey(), cluster.count)
+            }
+        }
     }
 
     // do not call this directly, instead call GameSurfaceView.setPause()

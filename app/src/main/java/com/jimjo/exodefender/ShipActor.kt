@@ -37,7 +37,10 @@ class DebugLogger {
     }
 
     fun add(line: String, timeMs: Int) {
-        if (log == "") currentTimeMs = timeMs
+        if (log == "") {
+            currentTimeMs = timeMs
+            println("------ $currentTimeMs -------")
+        }
 
         if (timeMs == currentTimeMs) {
             log += "$timeMs; $line\n"
@@ -45,7 +48,6 @@ class DebugLogger {
     }
 
     fun printout() {
-        println("-------------")
         println(log)
 
         reset()
@@ -1313,30 +1315,6 @@ class ShipActor(
                 lastReplayShipOnboard = onboardNow
             }
 
-            // 2) PadWaiting (only meaningful if latched)
-//            val padNow = keyNow
-//            if (padNow != null) {
-//                val waitingLookup = flightLog.missionLog.padWaitingAt(timeMs, padNow)
-//                val waitingNow = waitingLookup.count
-//
-//                if (forceApply || waitingLookup.changed || waitingNow != lastReplayPadWaiting) {
-//                    val padBlock = world.findPadBlockActor(padNow)
-//                    val cluster = padBlock?.civilianCluster
-//                    if (cluster != null) {
-//
-//                        if (canAnimate) {
-//                            cluster.requestCount(waitingNow, timeMs)
-//                        } else {
-//                            cluster.setCountImmediateForReplay(waitingNow)    // snap on seek/jumps
-//                        }
-//                    }
-//                    lastReplayPadWaiting = waitingNow
-//                }
-//            } else {
-//                // Not latched: optional reset so next latch forces update
-//                lastReplayPadWaiting = Int.MIN_VALUE
-//            }
-
             val canAnimatePads =
                 !flightLog.replaySeeking &&
                         !flightLog.shipSnapToOnNextReplayUpdate &&
@@ -1411,7 +1389,6 @@ class ShipActor(
             instance.setPosition(position.x, position.y, position.z)
             instance.setDirection(yawRad, pitchRad, rollRad)
             instance.update()
-
         }
     }
 
