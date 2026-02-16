@@ -182,13 +182,16 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         else {
             flightLog.level = level.getLevelSerializable()
             flightLog.startRecording() // clears on start
+
             level.world.destructibleStructure?.let { s ->
                 val secs = s.initialDestructSeconds ?: return@let
                 if (secs <= 0f) return@let
 
-                val durationMs = (secs * 1000f).toInt() // or roundToInt() if you prefer
+                val durationMs = (secs * 1000f).toInt()
                 level.world.flightLog?.missionLog?.logDestructStart(0, durationMs)
+
             }
+            level.world.flightLog?.missionLog?.logShipOnboard(0, ship.civiliansOnboard, firstTime = true)
         }
         scheduleEndOfFrameChecks()
 

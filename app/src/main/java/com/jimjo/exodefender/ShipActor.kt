@@ -22,6 +22,12 @@ data class CollisionInfo(
     var supportActor: Actor? = null
 )
 
+
+
+// DebugLogger:
+// logs out a block per frame
+// add lines to a block with add() pass in timeMs for that frame
+// at the end of the frame call printout()
 class DebugLogger {
     var log = ""
     var currentTimeMs = 0
@@ -79,6 +85,8 @@ class ShipActor(
     val replayVelocity = Vec3()
     var lastReplayTimeMs = 0
     private var lastReplayPadLatchKey: PadKey? = null
+    private var lastReplayShipOnboard: Int = Int.MIN_VALUE
+    private var lastReplayPadWaiting: Int = Int.MIN_VALUE
 
     lateinit var localCorners: Array<Vec3>
     val cornersShipWorld = Array(3) { Vec3() }
@@ -163,9 +171,14 @@ class ShipActor(
     var civiliansOnboard: Int = 0
     val carryingCapacity: Int = 2
 
+    val debugLogger  = DebugLogger()
+
+    private var lastDbgT = -1
+    private val lastDbgPos = Vec3()
+
     override fun getDestructionSound(audio: AudioPlayer): AudioPlayer.Soundfile = audio.explosion2
 
-    val debugLogger  = DebugLogger()
+
 
     init {
 
@@ -204,6 +217,8 @@ class ShipActor(
         civiliansOnboard = 0
 
         lastReplayPadLatchKey = null
+        lastReplayShipOnboard = Int.MIN_VALUE
+        lastReplayPadWaiting = Int.MIN_VALUE
     }
 
     fun getHealth(): Float {
@@ -583,6 +598,16 @@ class ShipActor(
 
         if (deltaCiviliansOnboard != 0) {
             parent.civiliansOnboardChanged(civiliansOnboard, deltaCiviliansOnboard)
+            flightLog.missionLog.logShipOnboard(timeMs = timeMs, count = civiliansOnboard)
+        }
+
+        // Pad waiting: log whenever we have a current pad+cluster (MissionLog will dedupe)
+        if (padConfirmed && restLatched) {
+            val block = lastPadBlock
+            val cluster = block?.civilianCluster
+            if (block != null && cluster != null) {
+                flightLog.missionLog.logPadWaiting(timeMs, block.padKey(), cluster.count)
+            }
         }
 
 
@@ -1188,6 +1213,11 @@ class ShipActor(
 
             setPosition(event.x, event.y, event.z, event.angleP, event.angleE, event.angleB)
 
+            // DEBUG: uncomment to "catch" discontinuous jumps in replays
+            debugJump(event.timeMs, event.x, event.y, event.z)
+
+            val forceApply = flightLog.replaySeeking || flightLog.shipSnapToOnNextReplayUpdate || (event.timeMs - lastReplayTimeMs >= 1000)
+
             computeBodyBasisNoRoll()
 
             smoothForward.updateTowards(moveForward, dtMs, stiffness = 0.005f)
@@ -1241,22 +1271,105 @@ class ShipActor(
                         isWithin = false
                     }
                 }
-
                 // set new highlight
                 keyNow?.let { now ->
-                    world.findPadBlockActor(now)?.renderer?.landingPadOverlay?.apply {
+
+                    val block = world.findPadBlockActor(now)
+
+                    block?.renderer?.landingPadOverlay?.apply {
                         isConfirmed = true
                         isWithin = true
                     }
+
+                    // SNAP cluster to correct state immediately on latch change
+                    val waitingLookup = flightLog.missionLog.padWaitingAt(timeMs, now)
+                    block?.civilianCluster?.setCountImmediateForReplay(waitingLookup.count)
+
+                    lastReplayPadWaiting = waitingLookup.count
                 }
-
-
-
                 lastReplayPadLatchKey = keyNow
+            }
+            lastReplayTimeMs = event.timeMs
+
+
+            if (timeMs % 1000 < dtMs) {
+                val latchEvents = flightLog.missionLog.getPadLatchEvents().size
+                val latchedNow = flightLog.missionLog.padLatchedPadAt(timeMs).pad
+                println("t=$timeMs latchEvents=$latchEvents latchedNow=$latchedNow")
             }
 
 
-            lastReplayTimeMs = event.timeMs
+            // --- Mission sampling for replay (onboard + pad waiting) ---
+
+            // 1) ShipOnboard
+            val onboardLookup = flightLog.missionLog.shipOnboardAt(timeMs)
+            val onboardNow = onboardLookup.count
+            if (forceApply || onboardLookup.changed || onboardNow != lastReplayShipOnboard) {
+
+                // Set the actual replay state the HUD reads
+                civiliansOnboard = onboardNow
+
+                // calculate delta and pass to callback
+                val prev = if (lastReplayShipOnboard == Int.MIN_VALUE) onboardNow else lastReplayShipOnboard
+                val delta = onboardNow - prev
+                parent.civiliansOnboardChanged(onboardNow, delta)
+
+                lastReplayShipOnboard = onboardNow
+            }
+
+            // 2) PadWaiting (only meaningful if latched)
+//            val padNow = keyNow
+//            if (padNow != null) {
+//                val waitingLookup = flightLog.missionLog.padWaitingAt(timeMs, padNow)
+//                val waitingNow = waitingLookup.count
+//
+//                if (forceApply || waitingLookup.changed || waitingNow != lastReplayPadWaiting) {
+//                    val padBlock = world.findPadBlockActor(padNow)
+//                    val cluster = padBlock?.civilianCluster
+//                    if (cluster != null) {
+//
+//                        if (canAnimate) {
+//                            cluster.requestCount(waitingNow, timeMs)
+//                        } else {
+//                            cluster.setCountImmediateForReplay(waitingNow)    // snap on seek/jumps
+//                        }
+//                    }
+//                    lastReplayPadWaiting = waitingNow
+//                }
+//            } else {
+//                // Not latched: optional reset so next latch forces update
+//                lastReplayPadWaiting = Int.MIN_VALUE
+//            }
+
+            val canAnimatePads =
+                !flightLog.replaySeeking &&
+                        !flightLog.shipSnapToOnNextReplayUpdate &&
+                        !flightLog.replayPaused
+
+            // 2) PadWaiting (drive from events, not latch)
+            for (padKey in flightLog.replayPadsWithWaiting) {
+
+                val waitingLookup = flightLog.missionLog.padWaitingAt(timeMs, padKey)
+
+                // IMPORTANT: before the first event, leave the cluster at its authored initialCount.
+                if (waitingLookup.beforeFirst) continue
+
+                if (forceApply || waitingLookup.changed) {
+
+                    val padBlock = world.findPadBlockActor(padKey) ?: continue
+                    val cluster = padBlock.civilianCluster ?: continue
+
+                    val waitingNow = waitingLookup.count
+
+                    if (canAnimatePads) {
+                        cluster.requestCount(waitingNow, timeMs)          // animate during normal playback
+                    } else {
+                        cluster.setCountImmediateForReplay(waitingNow)    // snap on seek/pause/jumps
+                    }
+                }
+            }
+
+
 
 
 //            println(chaseFocalPointWorld)
@@ -1304,6 +1417,23 @@ class ShipActor(
             instance.update()
 
         }
+    }
+
+    private fun debugJump(timeMs: Int, x: Float, y: Float, z: Float) {
+        if (lastDbgT >= 0) {
+            val dt = (timeMs - lastDbgT).coerceAtLeast(1)
+            val dx = x - lastDbgPos.x
+            val dy = y - lastDbgPos.y
+            val dz = z - lastDbgPos.z
+            val dist = kotlin.math.sqrt(dx*dx + dy*dy + dz*dz)
+            val speed = dist / (dt / 1000f)
+
+            if (speed > 80f) { // pick a threshold that shouldn't happen on takeoff
+                println("JUMP? t=$timeMs dt=$dt dist=$dist speed=$speed pos=($x,$y,$z) d=($dx,$dy,$dz)")
+            }
+        }
+        lastDbgT = timeMs
+        lastDbgPos.set(x, y, z)
     }
 
     fun computeCameraTargetFromVelocity(

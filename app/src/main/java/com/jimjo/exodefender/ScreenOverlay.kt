@@ -350,6 +350,56 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
+    fun updateScreenDisplay() {
+        actorStatsDisplay.update(
+            currentLevel.world.numOfActiveNonStructFriendlies,
+            currentLevel.world.numOfStartNonStructFriendlies,
+            currentLevel.world.activeEnemiesScratch.size,
+            currentLevel.world.enemyActors.size,
+        )
+        shipHealthDisplay.update(gLView.renderer.ship.getHealth())
+        civiliansOnboardDisplay.update(gLView.renderer.ship.civiliansOnboard)
+
+    }
+
+    fun startCountdownTicker() {
+        if (countdownRunning) return
+        countdownRunning = true
+        uiHandler.post(countdownTick)
+    }
+
+    fun stopCountdownTicker() {
+        countdownRunning = false
+        uiHandler.removeCallbacks(countdownTick)
+    }
+
+    private fun updateStructureCountdown() {
+        if (!levelBuilderMode) {
+            val s = currentLevel.world.destructibleStructure
+            if (s != null && s.destructEnabled && !s.destroyed) {
+                val timeMs = gLView.renderer.flightTimeMs
+
+                // Cinematic: countdown hits 0 at "zero" and stays at 0 during the post-zero beat.
+//                val msLeftToZero = (s.destructEndMs - timeMs).coerceAtLeast(0)
+
+
+                val msLeftToZero =
+                    if (replayMode) {
+                        currentLevel.world.flightLog?.missionLog?.msLeftToZeroAt(timeMs) ?: 0
+                    } else {
+                        (s.destructEndMs - timeMs).coerceAtLeast(0)
+                    }
+
+                val secondsLeft = (msLeftToZero + 999) / 1000  // ceil
+
+                txtStructureTimeRemaining.visibility = VISIBLE
+                txtStructureTimeRemaining.text = "STRUCTURE: ${secondsLeft}s"
+            } else {
+                txtStructureTimeRemaining.visibility = GONE
+            }
+        }
+    }
+
     fun reset(levelBuilderMode: Boolean) {
         this.levelBuilderMode = levelBuilderMode
 
@@ -363,6 +413,12 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
             txtStructureTimeRemaining.visibility = GONE
         }
     }
+
+    override fun joystickDisplayClicked(caller: JoystickDisplay) {
+        mainActivity.setNeutral()
+    }
+
+
 
     override fun onRendererReady() {
         if (replayMode) {
@@ -401,6 +457,63 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
             }
         }
     }
+
+    fun cameraModeClicked(mode: CameraMode) {
+        if (replayMode) {
+            gLView.renderer.camera.posedByTrack = false
+            gLView.renderer.camera.setCameraMode(mode)
+        }
+    }
+
+    fun setReplayPause(pause: Boolean) {
+        gLView.renderer.setReplayPause(pause)
+        if (pause) {
+            mapReplayPlayButtonState = MapReplayPlayButtonState.PLAY
+            mapReplayPlayPauseButton.setImageResource(R.drawable.map_play_button)
+        }
+        else {
+            mapReplayPlayButtonState = MapReplayPlayButtonState.PAUSE
+            mapReplayPlayPauseButton.setImageResource(R.drawable.map_pause_button)
+        }
+    }
+
+    fun setReplayEndState(ended: Boolean) {
+        gLView.setPause(ended)
+        isReplayEnded = ended
+        setDisplayFrozen(ended)
+        if (!ended) {
+            gLView.renderer.resetFinalizedState()
+            mainActivity.closeMissionSummary()
+        }
+    }
+
+    fun showScreenAnnotations(show: Boolean) {
+        screenAnnotationsActive = show
+        if (show) {
+            screenAnnotations.bringToFront()
+            screenAnnotations.visibility = VISIBLE
+            screenAnnotations.start()
+            actorStatsDisplay.visibility = INVISIBLE
+            shipHealthDisplay.visibility = INVISIBLE
+        }
+        else {
+            screenAnnotations.visibility = GONE
+            actorStatsDisplay.visibility = VISIBLE
+            shipHealthDisplay.visibility = VISIBLE
+        }
+    }
+    fun showMandatoryTraining(show: Boolean) {
+        manadatoryTrainingActive = show
+        if (manadatoryTrainingActive) {
+            homeButton.visibility = GONE
+        }
+        else {
+            homeButton.visibility = VISIBLE
+        }
+    }
+
+
+    // REPLAY EDITOR
 
     fun setDisplayFrozen(frozen: Boolean) {
         shipHealthDisplay.pauseFlashing(frozen)
@@ -477,117 +590,6 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
     fun addCameraButtonClicked() {
         addCurrentCameraEvent(gLView.renderer.flightTimeMs)
-    }
-
-    fun cameraModeClicked(mode: CameraMode) {
-        if (replayMode) {
-            gLView.renderer.camera.posedByTrack = false
-            gLView.renderer.camera.setCameraMode(mode)
-        }
-    }
-
-    fun setReplayPause(pause: Boolean) {
-        gLView.renderer.setReplayPause(pause)
-        if (pause) {
-            mapReplayPlayButtonState = MapReplayPlayButtonState.PLAY
-            mapReplayPlayPauseButton.setImageResource(R.drawable.map_play_button)
-        }
-        else {
-            mapReplayPlayButtonState = MapReplayPlayButtonState.PAUSE
-            mapReplayPlayPauseButton.setImageResource(R.drawable.map_pause_button)
-        }
-    }
-
-    fun setReplayEndState(ended: Boolean) {
-        gLView.setPause(ended)
-        isReplayEnded = ended
-        setDisplayFrozen(ended)
-        if (!ended) {
-            gLView.renderer.resetFinalizedState()
-            mainActivity.closeMissionSummary()
-        }
-    }
-
-    fun showScreenAnnotations(show: Boolean) {
-        screenAnnotationsActive = show
-        if (show) {
-            screenAnnotations.bringToFront()
-            screenAnnotations.visibility = VISIBLE
-            screenAnnotations.start()
-            actorStatsDisplay.visibility = INVISIBLE
-            shipHealthDisplay.visibility = INVISIBLE
-        }
-        else {
-            screenAnnotations.visibility = GONE
-            actorStatsDisplay.visibility = VISIBLE
-            shipHealthDisplay.visibility = VISIBLE
-        }
-    }
-    fun showMandatoryTraining(show: Boolean) {
-        manadatoryTrainingActive = show
-        if (manadatoryTrainingActive) {
-            homeButton.visibility = GONE
-        }
-        else {
-            homeButton.visibility = VISIBLE
-        }
-    }
-
-    fun updateScreenDisplay() {
-        actorStatsDisplay.update(
-            currentLevel.world.numOfActiveNonStructFriendlies,
-            currentLevel.world.numOfStartNonStructFriendlies,
-            currentLevel.world.activeEnemiesScratch.size,
-            currentLevel.world.enemyActors.size,
-        )
-        shipHealthDisplay.update(gLView.renderer.ship.getHealth())
-        civiliansOnboardDisplay.update(gLView.renderer.ship.civiliansOnboard)
-
-    }
-
-    fun startCountdownTicker() {
-        if (countdownRunning) return
-        countdownRunning = true
-        uiHandler.post(countdownTick)
-    }
-
-    fun stopCountdownTicker() {
-        countdownRunning = false
-        uiHandler.removeCallbacks(countdownTick)
-    }
-
-    private fun updateStructureCountdown() {
-        if (!levelBuilderMode) {
-            val s = currentLevel.world.destructibleStructure
-            if (s != null && s.destructEnabled && !s.destroyed) {
-                val timeMs = gLView.renderer.flightTimeMs
-
-                // Cinematic: countdown hits 0 at "zero" and stays at 0 during the post-zero beat.
-//                val msLeftToZero = (s.destructEndMs - timeMs).coerceAtLeast(0)
-
-
-                val msLeftToZero =
-                    if (replayMode) {
-                        currentLevel.world.flightLog?.missionLog?.msLeftToZeroAt(timeMs) ?: 0
-                    } else {
-                        (s.destructEndMs - timeMs).coerceAtLeast(0)
-                    }
-
-                val secondsLeft = (msLeftToZero + 999) / 1000  // ceil
-
-                txtStructureTimeRemaining.visibility = VISIBLE
-                txtStructureTimeRemaining.text = "STRUCTURE: ${secondsLeft}s"
-            } else {
-                txtStructureTimeRemaining.visibility = GONE
-            }
-        }
-    }
-
-
-
-
-    override fun joystickDisplayClicked(caller: JoystickDisplay) {
-        mainActivity.setNeutral()
     }
 
     override fun notifyWriteFileRequestOutcome(msg: Message) {

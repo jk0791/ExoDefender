@@ -89,8 +89,9 @@ class CivilianClusterVisual(
     fun isIdle(): Boolean = !transferActive && mode == TransferMode.NONE
 
     fun resetToInitial() {
-        count = initialCount
+//        count = initialCount
         active = true
+        setCountImmediateForReplay(initialCount)
     }
 
     fun requestCount(newCount: Int, timeMs: Int) {
@@ -259,5 +260,26 @@ class CivilianClusterVisual(
                 a = a
             )
         }
+    }
+
+    fun setCountImmediateForReplay(newCount: Int) {
+        val clamped = newCount.coerceIn(0, maxSlots)
+
+        // If already correct and idle, nothing to do.
+        if (count == clamped && !transferActive && mode == TransferMode.NONE && targetCount == clamped) return
+
+        // Cancel any pending/active transfer animation.
+        transferActive = false
+        mode = TransferMode.NONE
+        activeIndex = -1
+
+        // Snap state.
+        count = clamped
+        targetCount = clamped
+
+        // Prevent the scheduler from immediately starting something leftover.
+        // (Not strictly necessary once mode=NONE, but keeps invariants tight.)
+        activeStartMs = 0
+        nextStartMs = 0
     }
 }

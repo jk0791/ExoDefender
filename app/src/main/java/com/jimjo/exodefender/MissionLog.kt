@@ -46,6 +46,27 @@ data class CountdownLookup(
     val endTimeMs: Int          // start + duration (or -1 if none)
 )
 
+data class PadLatchLookup(
+    val pad: PadKey?,          // null if not latched
+    val changed: Boolean,      // different from last returned result
+    val beforeFirst: Boolean,  // timeMs before first latch event
+    val afterLast: Boolean     // timeMs after last latch event
+)
+
+data class ShipOnboardLookup(
+    val count: Int,
+    val changed: Boolean,
+    val beforeFirst: Boolean,
+    val afterLast: Boolean
+)
+
+data class PadWaitingLookup(
+    val count: Int,
+    val changed: Boolean,
+    val beforeFirst: Boolean,
+    val afterLast: Boolean
+)
+
 class MissionLog(
     val flightLog: FlightLog,
     private val enableLogging: () -> Boolean = { true } // pass { enableLogging } if you have a global flag
@@ -58,10 +79,25 @@ class MissionLog(
     private val shipOnboardEvents = mutableListOf<ShipOnboard>()
     private val padWaitingEventsByPad = mutableMapOf<PadKey, MutableList<PadWaiting>>()
 
+
+    // state
+    private var lastPadLatchLookupPad: PadKey? = null
+    private var lastPadLatchLookupIdx: Int = -2  // -2 = “never looked up yet”
+
+    private var lastShipOnboardLookupIdx: Int = -2
+    private var lastShipOnboardLookupCount: Int = -1
+
+
+    private val lastPadWaitingLookupIdx = mutableMapOf<PadKey, Int>()
+    private val lastPadWaitingLookupCount = mutableMapOf<PadKey, Int>()
+
+
     // ---- Dedupe caches ----
     private var lastLatchedPad: PadKey? = null
     private var lastShipOnboard: Int? = null
     private val lastPadWaiting = mutableMapOf<PadKey, Int>()
+
+
 
     // -------------------------
     // Writers (capture events)
@@ -87,9 +123,9 @@ class MissionLog(
         lastLatchedPad = null
     }
 
-    fun logShipOnboard(timeMs: Int, count: Int) {
+    fun logShipOnboard(timeMs: Int, count: Int, firstTime: Boolean = false) {
         if (!enableLogging() || !recording) return
-        if (lastShipOnboard == count) return
+        if (lastShipOnboard == count && !firstTime) return
         shipOnboardEvents.add(ShipOnboard(timeMs, count))
         lastShipOnboard = count
     }
@@ -117,6 +153,8 @@ class MissionLog(
         for ((pad, list) in src.padWaitingEventsByPad) {
             padWaitingEventsByPad[pad] = list.toMutableList()
         }
+
+        clearSamplerCaches()
     }
 
     fun clear() {
@@ -129,10 +167,24 @@ class MissionLog(
         shipOnboardEvents.clear()
         padWaitingEventsByPad.clear()
 
+        clearSamplerCaches()
+
         // Clear dedupe caches
         lastLatchedPad = null
         lastShipOnboard = null
         lastPadWaiting.clear()
+    }
+
+
+    private fun clearSamplerCaches() {
+        lastPadLatchLookupPad = null
+        lastPadLatchLookupIdx = -2
+
+        lastShipOnboardLookupIdx = -2
+        lastShipOnboardLookupCount = -1
+
+        lastPadWaitingLookupIdx.clear()
+        lastPadWaitingLookupCount.clear()
     }
 
 
@@ -180,16 +232,6 @@ class MissionLog(
         )
     }
 
-    data class PadLatchLookup(
-        val pad: PadKey?,          // null if not latched
-        val changed: Boolean,      // different from last returned result
-        val beforeFirst: Boolean,  // timeMs before first latch event
-        val afterLast: Boolean     // timeMs after last latch event
-    )
-
-    private var lastPadLatchLookupPad: PadKey? = null
-    private var lastPadLatchLookupIdx: Int = -2  // -2 = “never looked up yet”
-
     fun padLatchedPadAt(timeMs: Int): PadLatchLookup {
         val events = padLatchEvents
         if (events.isEmpty()) {
@@ -236,14 +278,95 @@ class MissionLog(
     }
 
 
+    fun shipOnboardAt(timeMs: Int): ShipOnboardLookup {
+        val events = shipOnboardEvents
+        if (events.isEmpty()) {
+            val changed = (lastShipOnboardLookupIdx != -1 || lastShipOnboardLookupCount != 0)
+            lastShipOnboardLookupIdx = -1
+            lastShipOnboardLookupCount = 0
+            return ShipOnboardLookup(count = 0, changed = changed, beforeFirst = true, afterLast = false)
+        }
+
+        // Binary search: last event with time <= query
+        var lo = 0
+        var hi = events.lastIndex
+        var res = -1
+        while (lo <= hi) {
+            val mid = (lo + hi) ushr 1
+            if (events[mid].timeMs <= timeMs) { res = mid; lo = mid + 1 } else { hi = mid - 1 }
+        }
+
+        if (res == -1) {
+            // Before first event: define baseline as 0
+            val changed = (lastShipOnboardLookupIdx != -1 || lastShipOnboardLookupCount != 0)
+            lastShipOnboardLookupIdx = -1
+            lastShipOnboardLookupCount = 0
+            return ShipOnboardLookup(count = 0, changed = changed, beforeFirst = true, afterLast = false)
+        }
+
+        val count = events[res].count
+        val afterLast = (res == events.lastIndex && timeMs > events.last().timeMs)
+        val changed = (res != lastShipOnboardLookupIdx) || (count != lastShipOnboardLookupCount)
+
+        lastShipOnboardLookupIdx = res
+        lastShipOnboardLookupCount = count
+
+        return ShipOnboardLookup(count = count, changed = changed, beforeFirst = false, afterLast = afterLast)
+    }
 
 
+    fun padWaitingAt(timeMs: Int, pad: PadKey): PadWaitingLookup {
+        val events = padWaitingEventsByPad[pad].orEmpty()
+
+        if (events.isEmpty()) {
+            val prevIdx = lastPadWaitingLookupIdx[pad]
+            val prevCount = lastPadWaitingLookupCount[pad]
+            val changed = (prevIdx != -1 || prevCount != 0)
+
+            lastPadWaitingLookupIdx[pad] = -1
+            lastPadWaitingLookupCount[pad] = 0
+
+            return PadWaitingLookup(count = 0, changed = changed, beforeFirst = true, afterLast = false)
+        }
+
+        // Binary search: last event with time <= query
+        var lo = 0
+        var hi = events.lastIndex
+        var res = -1
+        while (lo <= hi) {
+            val mid = (lo + hi) ushr 1
+            if (events[mid].timeMs <= timeMs) { res = mid; lo = mid + 1 } else { hi = mid - 1 }
+        }
+
+        if (res == -1) {
+            val prevIdx = lastPadWaitingLookupIdx[pad]
+            val prevCount = lastPadWaitingLookupCount[pad]
+            val changed = (prevIdx != -1 || prevCount != 0)
+
+            lastPadWaitingLookupIdx[pad] = -1
+            lastPadWaitingLookupCount[pad] = 0
+
+            return PadWaitingLookup(count = 0, changed = changed, beforeFirst = true, afterLast = false)
+        }
+
+        val count = events[res].count
+        val afterLast = (res == events.lastIndex && timeMs > events.last().timeMs)
+
+        val prevIdx = lastPadWaitingLookupIdx[pad]
+        val prevCount = lastPadWaitingLookupCount[pad]
+        val changed = (res != prevIdx) || (count != prevCount)
+
+        lastPadWaitingLookupIdx[pad] = res
+        lastPadWaitingLookupCount[pad] = count
+
+        return PadWaitingLookup(count = count, changed = changed, beforeFirst = false, afterLast = afterLast)
+    }
 
 
     // Convenience helpers
     fun countdownRemainingMsAt(timeMs: Int): Int = countdownAt(timeMs).remainingMs
     fun isDestroyedAt(timeMs: Int): Boolean = countdownAt(timeMs).destroyed
-
+    fun padsWithWaitingEvents(): Set<PadKey> = padWaitingEventsByPad.keys
 
 
 
@@ -378,6 +501,7 @@ class MissionLog(
         }
 
         rebuildLastValueCaches()
+        clearSamplerCaches()
     }
 
     private fun rebuildLastValueCaches() {

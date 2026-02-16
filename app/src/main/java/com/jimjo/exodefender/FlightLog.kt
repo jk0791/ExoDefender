@@ -77,6 +77,8 @@ class FlightLog(
     var shipSnapToOnNextReplayUpdate = false
     var recordingActive = false
 
+    var replayPadsWithWaiting: List<PadKey> = emptyList()
+
     fun createActorLog(parent: Actor?, template: ActorTemplate?): ActorLog {
         val actorLog = ActorLog(this)
         actorLog.parent = parent
@@ -117,6 +119,7 @@ class FlightLog(
         for (log in actorLogs) {
             log.reset()
         }
+        replayPadsWithWaiting = missionLog.padsWithWaitingEvents().toList()
     }
 
     fun prepareForPlayback() {
