@@ -213,6 +213,12 @@ class FriendlyStructureActor(
     override fun replayUpdateMinimum(dt: Float, timeMs: Int) {
         lastLevelTimeMs = timeMs
 
+        if (!destructEnabled || world.destructibleStructure !== this) {
+            lastReplayTimeMs = timeMs
+            return
+        }
+
+
         // If this level/mission doesn't have a destruct timeline, keep current visuals.
         val ds = world.flightLog?.missionLog?.getDestructStart() ?: run {
             lastReplayTimeMs = timeMs
@@ -303,13 +309,21 @@ class FriendlyStructureActor(
     }
 
     private fun updateDestructionVfx(timeMs: Int) {
-        while (scheduledBursts.isNotEmpty() && timeMs >= scheduledBursts.first().timeMs) {
-            val b = scheduledBursts.removeFirst()
+        while (true) {
+            val first = scheduledBursts.firstOrNull() ?: break
 
-            // ---- explosions ----
+            // Defensive: if a null sneaks in, drop it and continue
+            if (first == null) {
+                scheduledBursts.removeFirst()
+                continue
+            }
+
+            if (timeMs < first.timeMs) break
+
+            val b = scheduledBursts.removeFirst() ?: continue  // defensive
+
             explosionPool.activateLarge(b.pos)
 
-            // ---- flashes ----
             val flash = this.explosionFlash
             if (flash != null) {
                 if (!didFoundationFlash) {

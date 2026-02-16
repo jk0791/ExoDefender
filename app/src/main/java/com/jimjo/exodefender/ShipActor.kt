@@ -175,6 +175,8 @@ class ShipActor(
 
     private var lastDbgT = -1
     private val lastDbgPos = Vec3()
+    private var lastDbgSpeed = 0f
+    private var dbgSamples = 0
 
     override fun getDestructionSound(audio: AudioPlayer): AudioPlayer.Soundfile = audio.explosion2
 
@@ -219,6 +221,8 @@ class ShipActor(
         lastReplayPadLatchKey = null
         lastReplayShipOnboard = Int.MIN_VALUE
         lastReplayPadWaiting = Int.MIN_VALUE
+
+        dbgSamples = 0
     }
 
     fun getHealth(): Float {
@@ -1213,10 +1217,10 @@ class ShipActor(
 
             setPosition(event.x, event.y, event.z, event.angleP, event.angleE, event.angleB)
 
-            // DEBUG: uncomment to "catch" discontinuous jumps in replays
-            debugJump(event.timeMs, event.x, event.y, event.z)
-
             val forceApply = flightLog.replaySeeking || flightLog.shipSnapToOnNextReplayUpdate || (event.timeMs - lastReplayTimeMs >= 1000)
+
+            // DEBUG: uncomment to "catch" discontinuous jumps in replays
+            dbgJumpIfNeeded(event.timeMs, event.x, event.y, event.z, forceApply = forceApply)
 
             computeBodyBasisNoRoll()
 
@@ -1290,14 +1294,6 @@ class ShipActor(
                 lastReplayPadLatchKey = keyNow
             }
             lastReplayTimeMs = event.timeMs
-
-
-            if (timeMs % 1000 < dtMs) {
-                val latchEvents = flightLog.missionLog.getPadLatchEvents().size
-                val latchedNow = flightLog.missionLog.padLatchedPadAt(timeMs).pad
-                println("t=$timeMs latchEvents=$latchEvents latchedNow=$latchedNow")
-            }
-
 
             // --- Mission sampling for replay (onboard + pad waiting) ---
 
@@ -1419,21 +1415,81 @@ class ShipActor(
         }
     }
 
-    private fun debugJump(timeMs: Int, x: Float, y: Float, z: Float) {
-        if (lastDbgT >= 0) {
-            val dt = (timeMs - lastDbgT).coerceAtLeast(1)
-            val dx = x - lastDbgPos.x
-            val dy = y - lastDbgPos.y
-            val dz = z - lastDbgPos.z
-            val dist = kotlin.math.sqrt(dx*dx + dy*dy + dz*dz)
-            val speed = dist / (dt / 1000f)
+    private fun dbgJumpIfNeeded(
+        timeMs: Int,
+        x: Float,
+        y: Float,
+        z: Float,
+        forceApply: Boolean
+    ) {
+        // First-ever sample: initialize
+        if (lastDbgT < 0) {
+            lastDbgT = timeMs
+            lastDbgPos.set(x, y, z)
+            lastDbgSpeed = 0f
+            dbgSamples = 0
+            return
+        }
 
-            if (speed > 80f) { // pick a threshold that shouldn't happen on takeoff
-                println("JUMP? t=$timeMs dt=$dt dist=$dist speed=$speed pos=($x,$y,$z) d=($dx,$dy,$dz)")
+        val dtMs = (timeMs - lastDbgT).coerceAtLeast(1)
+        val dtSec = dtMs / 1000f
+
+        val dx = x - lastDbgPos.x
+        val dy = y - lastDbgPos.y
+        val dz = z - lastDbgPos.z
+        val dist = kotlin.math.sqrt(dx*dx + dy*dy + dz*dz)
+
+        val speed = dist / dtSec
+
+        // If forceApply, reset continuity but DO NOT reset dbgSamples
+        if (forceApply) {
+            lastDbgT = timeMs
+            lastDbgPos.set(x, y, z)
+            lastDbgSpeed = speed
+            return
+        }
+
+        dbgSamples++
+
+        // Short warmup only at true replay start
+        val armed = dbgSamples >= 15
+
+        if (armed) {
+            val maxSpeed = 250f
+            val marginM = 2.0f
+
+            val dist2 = dx*dx + dy*dy + dz*dz
+            val expectedMaxDist = maxSpeed * dtSec + marginM
+            val expected2 = expectedMaxDist * expectedMaxDist
+
+            val teleport = dist2 > expected2
+            val timeGap = dtMs > 120
+
+            // Only compute speed/accel if we might log
+            if (teleport || timeGap /* || accelSpike */) {
+                val dist = kotlin.math.sqrt(dist2)
+                val speed = dist / dtSec
+
+                val deltaV = kotlin.math.abs(speed - lastDbgSpeed)
+                val accel = deltaV / dtSec
+                val accelSpike = (deltaV > 40f && accel > 6000f)
+
+                if (teleport || accelSpike) {
+                    println(
+                        "JUMP? t=$timeMs dt=$dtMs dist=$dist max=$expectedMaxDist " +
+                                "speed=$speed dv=$deltaV accel=$accel d=($dx,$dy,$dz)"
+                    )
+                }
+
+                if (timeGap) {
+                    println("TIME GAP t=$timeMs dt=$dtMs")
+                }
             }
         }
+
         lastDbgT = timeMs
         lastDbgPos.set(x, y, z)
+        lastDbgSpeed = speed
     }
 
     fun computeCameraTargetFromVelocity(
