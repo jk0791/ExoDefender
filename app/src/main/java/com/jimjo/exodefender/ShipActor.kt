@@ -329,12 +329,6 @@ class ShipActor(
 
         val fwdPower = remapPiecewise01(flightControls.throttle, flightControls.throttleStallThreshold, stallMinPower)
 
-        val pitchFactor = -min(0f, min(0f, pitchRad.toFloat()))
-        val minVelocity = pitchFactor * maxDiveVelocity
-
-        val targetVelocity = (fwdPower * maxForwardVelocity).coerceAtLeast(minVelocity)
-
-        velocityF = calculateForwardVelocity(velocityF, targetVelocity, dt, if (levelAtRest) 0.8f else 1f)
 
         // --- v0 STALL TURN AUTHORITY (simple, replay-safe) ---
 //        val threshold = flightControls.throttleStallThreshold
@@ -361,12 +355,9 @@ class ShipActor(
         yawVel = rotH.toDouble() * 1.2f
         pitchVel = rotV.toDouble() * 1.2f
 
-        velocityH = calculateTranslationalVelocity(velocityH, flightControls.translationHorz * 100f * authority, dt, if (levelAtRest) 0.1f else 1f)
-        velocityV = calculateTranslationalVelocity(velocityV, -flightControls.translationVert * 100f * authority, dt)
-
-        val dtSec = dt.toDouble()
-
         // 1) Update yaw & pitch from angular velocities
+        val dtSec = dt.toDouble()
+        val friction: Float
         if (!levelAtRest) {
             yawRad -= yawVel * dtSec
             pitchRad -= pitchVel * dtSec
@@ -376,12 +367,27 @@ class ShipActor(
             val rollTarget = -flightControls.rotationHorz.toDouble() * 1.4f
             val rollDampingEffective = rollDamping * authority.toDouble() // start with 2.0
             rollRad = calculateRoll(rollRad, rollTarget, dtSec, rollDampingEffective)
+
+            friction = 1f
         }
         else {
-            val friction = 0.95f
-            velocityF *= friction
-            velocityH *= friction
+
+            friction = 1f
+
+//            velocityF *= friction
+//            velocityH *= friction
         }
+
+        val pitchFactor = -min(0f, min(0f, pitchRad.toFloat()))
+        val minVelocity = pitchFactor * maxDiveVelocity
+
+        val targetVelocity = (fwdPower * maxForwardVelocity).coerceAtLeast(minVelocity)
+        velocityF = calculateForwardVelocity(velocityF, targetVelocity, dt) * friction
+
+        velocityH = calculateTranslationalVelocity(velocityH, flightControls.translationHorz * 100f * authority, dt) * friction
+        velocityV = calculateTranslationalVelocity(velocityV, -flightControls.translationVert * 100f * authority, dt)
+
+
 
 
 
