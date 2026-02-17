@@ -131,6 +131,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     private var levelCompletedCountdownMs = 0
     private var finalized = false
 
+    private var lastCameraMode: CameraMode? = null
+    private var lastHudShown: Boolean? = null
+
     fun initialize(context: Context) {
         handler = CustomHandler(Looper.getMainLooper(), parent)
     }
@@ -599,7 +602,10 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
         if (seekingFinished) {
             flightLog.shipSnapToOnNextReplayUpdate = true
-            for (actor in level.world.actors) {
+
+            val actors = level.world.actors
+            for (i in 0 until actors.size) {
+                val actor = actors[i]
                 if (actor.active) {
                     actor.resetSpin(flightTimeMs)
                     actor.resetRenderer()
@@ -751,7 +757,12 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                 if (camera.posedByTrack && flightLog.cameraTrack != null && flightLog.cameraTrack!!.events.isNotEmpty()) {
 
                     flightLog.cameraTrack!!.evalInto(flightTimeMs, cameraSample)
+
+                    // set HUD
+                    onEffectiveCameraMode(cameraSample.mode)
+
                     camera.updateReplayPosed(cameraSample)
+
                 } else {
                     camera.updateReplay(interval)
                 }
@@ -1001,6 +1012,19 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         // CAPTURE (last thing, before returning)
         if (captureEnabled) {
             captureFrame()
+        }
+    }
+
+    private fun onEffectiveCameraMode(mode: CameraMode) {
+        if (mode == lastCameraMode) return
+        lastCameraMode = mode
+
+        val showHud = (mode == CameraMode.CHASE)
+        if (showHud == lastHudShown) return
+        lastHudShown = showHud
+
+        handler.post {
+            parent.screenOverlay.showGameHUD(showHud)
         }
     }
 

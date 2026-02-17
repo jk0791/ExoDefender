@@ -39,6 +39,8 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     private val shipHealthDisplay: ShipHealthDisplay
     private val civiliansOnboardDisplay: CiviliansOnboardDisplay
 
+    private var gameHUDShowing = true
+
     val structureCountdownDisplay: TimerCountdownDisplay
     val cameraModeLayout: LinearLayout
     private val chaseModeButton: ImageView
@@ -144,7 +146,10 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
                 if (!isProgrammaticSeekbarChange) {
 
-                    gLView.renderer.replaySeekBarChanged(timeFromSeekbarProgress(progress), false)
+                    val renderer = gLView.renderer
+                    gLView.queueEvent {
+                        renderer.replaySeekBarChanged(timeFromSeekbarProgress(progress), false)
+                    }
                     replayController.showReplayControls()
                     updateScreenDisplay()
                 }
@@ -154,7 +159,10 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
                 if (!isProgrammaticSeekbarChange) {
 
-                    gLView.renderer.replaySeekBarChanged(timeFromSeekbarProgress(mapReplaySeekBar.progress), true)
+                    val renderer = gLView.renderer
+                    gLView.queueEvent {
+                        renderer.replaySeekBarChanged(timeFromSeekbarProgress(mapReplaySeekBar.progress), true)
+                    }
 
                     // return to pre-seek pause state
                     gLView.setPause(gLView.renderer.flightLog.pausedBeforeSeeking)
@@ -190,6 +198,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
                 trackModeButton.isSelected = false
                 fixedModeButton.isSelected = false
                 replayEditorButton.isSelected = false
+                showGameHUD(true)
                 cameraModeClicked(CameraMode.CHASE)
             }
             isSelected = false
@@ -200,6 +209,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
                 chaseModeButton.isSelected = false
                 fixedModeButton.isSelected = false
                 replayEditorButton.isSelected = false
+                showGameHUD(false)
                 cameraModeClicked(CameraMode.TRACK)
             }
             isSelected = false
@@ -210,6 +220,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
                 chaseModeButton.isSelected = false
                 trackModeButton.isSelected = false
                 replayEditorButton.isSelected = false
+                showGameHUD(false)
                 cameraModeClicked(CameraMode.FIXED)
             }
             isSelected = false
@@ -274,6 +285,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         zoomInButton.visibility = GONE
         zoomOutButton.visibility = GONE
         zoomLevelText.visibility = GONE
+        showGameHUD(true)
         setDisplayFrozen(false)
 
         reset(levelBuilderMode)
@@ -350,6 +362,16 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
+    fun showGameHUD(show: Boolean) {
+        val visibility = if (show) VISIBLE else INVISIBLE
+        gameHUDShowing = show
+
+        actorStatsDisplay.visibility = visibility
+        shipHealthDisplay.visibility = visibility
+        civiliansOnboardDisplay.visibility = visibility
+        structureCountdownDisplay.visibility = visibility
+    }
+
     fun updateScreenDisplay() {
         actorStatsDisplay.update(
             currentLevel.world.numOfActiveNonStructFriendlies,
@@ -376,7 +398,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     private fun updateStructureCountdown() {
         if (!levelBuilderMode) {
             val s = currentLevel.world.destructibleStructure
-            if (s != null && s.destructEnabled && !s.destroyed) {
+            if (s != null && s.destructEnabled && !s.destroyed && gameHUDShowing) {
                 val timeMs = gLView.renderer.flightTimeMs
 
                 // Cinematic: countdown hits 0 at "zero" and stays at 0 during the post-zero beat.

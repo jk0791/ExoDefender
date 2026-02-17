@@ -728,11 +728,15 @@ class World(val mapId: Int) {
         friendlyGrid.queryActorAabbsXY(sweepMin, sweepMax, out)
     }
 
+    //    private val nearEnemyScratch = ArrayList<Actor>(32)
     private val tmpMin = Vec3()
     private val tmpMax = Vec3()
-    private val nearEnemyScratch = ArrayList<Actor>(32)
+    private val nearEnemyScratchTL = ThreadLocal.withInitial { ArrayList<Actor>(128) }
 
     fun hasEnemyWithinRadius(position: Vec3, radius: Float): Boolean {
+        val nearEnemyScratch = nearEnemyScratchTL.get() ?: error("nearEnemyScratchTL returned null")
+
+
         tmpMin.set(position.x - radius, position.y - radius, position.z)
         tmpMax.set(position.x + radius, position.y + radius, position.z)
 
@@ -742,13 +746,14 @@ class World(val mapId: Int) {
         val r2 = radius * radius
         val sx = position.x
         val sy = position.y
-        for (e in nearEnemyScratch) {
+        for (i in 0 until nearEnemyScratch.size) {
+            val e = nearEnemyScratch[i]
             if (!e.active) continue
             val ex = e.instance.position.x
             val ey = e.instance.position.y
             val dx = ex - sx
             val dy = ey - sy
-            if (dx*dx + dy*dy <= r2) return true
+            if (dx * dx + dy * dy <= r2) return true
         }
         return false
     }
