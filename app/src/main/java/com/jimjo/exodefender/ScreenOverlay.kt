@@ -14,7 +14,7 @@ import android.os.Handler
 import android.os.Looper
 
 
-enum class MapReplayPlayButtonState {PLAY, PAUSE, RESET}
+enum class PausePlayButtonState {PLAY, PAUSE, RESET}
 
 class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     ConstraintLayout(context, attrs), JoystickDisplaylListener, OnRendererReadyListener, WriteFileRequester {
@@ -55,8 +55,8 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     val mapReplaySeekBarLayout: ConstraintLayout
     private val mapReplaySeekBar: SeekBar
     val markerOverlay: CameraTrackMarkerView
-    private val mapReplayPlayPauseButton: ImageView
-    private var mapReplayPlayButtonState = MapReplayPlayButtonState.PAUSE
+    private val pausePlayButton: ImageView
+    private var pausePlayButtonState = PausePlayButtonState.PAUSE
     private var isProgrammaticSeekbarChange = true
     private var isReplayEnded = false
 
@@ -175,11 +175,11 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         structureCountdownDisplay = findViewById(R.id.structureCountdownDisplay)
         cameraModeLayout = findViewById(R.id.cameraModeLayout)
 
-        mapReplayPlayPauseButton = findViewById(R.id.mapReplayPlayPauseButton)
-        mapReplayPlayPauseButton.setImageResource(R.drawable.map_pause_button)
-        mapReplayPlayButtonState = MapReplayPlayButtonState.PAUSE
-        mapReplayPlayPauseButton.setOnClickListener({
-            setReplayPause(mapReplayPlayButtonState == MapReplayPlayButtonState.PAUSE)
+        pausePlayButton = findViewById(R.id.mapReplayPlayPauseButton)
+        pausePlayButton.setImageResource(R.drawable.map_pause_button)
+        pausePlayButtonState = PausePlayButtonState.PAUSE
+        pausePlayButton.setOnClickListener({
+            setReplayPause(pausePlayButtonState == PausePlayButtonState.PAUSE)
         })
 
         addCameraButton = findViewById<ImageView>(R.id.addCameraEvent).apply { setOnClickListener { addCameraButtonClicked() }}
@@ -496,13 +496,14 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
     fun setReplayPause(pause: Boolean) {
         gLView.renderer.setReplayPause(pause)
+        setDisplayFrozen(pause)
         if (pause) {
-            mapReplayPlayButtonState = MapReplayPlayButtonState.PLAY
-            mapReplayPlayPauseButton.setImageResource(R.drawable.map_play_button)
+            pausePlayButtonState = PausePlayButtonState.PLAY
+            pausePlayButton.setImageResource(R.drawable.map_play_button)
         }
         else {
-            mapReplayPlayButtonState = MapReplayPlayButtonState.PAUSE
-            mapReplayPlayPauseButton.setImageResource(R.drawable.map_pause_button)
+            pausePlayButtonState = PausePlayButtonState.PAUSE
+            pausePlayButton.setImageResource(R.drawable.map_pause_button)
         }
     }
 
@@ -542,12 +543,13 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     }
 
 
-    // REPLAY EDITOR
-
     fun setDisplayFrozen(frozen: Boolean) {
         shipHealthDisplay.pauseFlashing(frozen)
+        structureCountdownDisplay.pauseIfFlashing(frozen)
         attitudeDisplay.setDisplayState(frozen)
     }
+
+    // REPLAY EDITOR
 
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
         when (ev.actionMasked) {

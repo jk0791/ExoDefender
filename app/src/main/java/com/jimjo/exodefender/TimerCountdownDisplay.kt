@@ -46,6 +46,7 @@ class TimerCountdownDisplay(context: Context, attrs: AttributeSet?=null) :
 
     private var fractionRemaining = 0f
     private val defaultAlpha = 0.75f
+    private val warningAlpha = 1f
 
     // dimensions calculated upon layout
     private var headingLabelHeight = 0f
@@ -108,6 +109,8 @@ class TimerCountdownDisplay(context: Context, attrs: AttributeSet?=null) :
             laidOutOnce = true
         }
     }
+
+    fun isFlashing() = flashingStartTimeMs != 0L
 
     fun setInitial(initialSeconds: Int) {
         this.initialSeconds = initialSeconds
@@ -173,9 +176,14 @@ class TimerCountdownDisplay(context: Context, attrs: AttributeSet?=null) :
         flashingPaused = false
     }
 
-    fun pauseFlashing(pause: Boolean) {
+    fun pauseIfFlashing(pause: Boolean) {
         flashingPaused = pause
-        alpha = defaultAlpha
+        if (isFlashing()) {
+            alpha = warningAlpha
+        }
+        else {
+            alpha = defaultAlpha
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -188,11 +196,11 @@ class TimerCountdownDisplay(context: Context, attrs: AttributeSet?=null) :
         canvas.drawText(labelText, timeLabelX, timeLabelY, paintTimeLabel)
         canvas.drawText("STRUCTURE", headingLabelX, headingLabelY, paintHeadingLabel)
 
-        if (flashingStartTimeMs != 0L && !flashingPaused) {
+        if (isFlashing() && !flashingPaused) {
             val elapsedFlashingMs = (System.currentTimeMillis() - flashingStartTimeMs).toInt()
 
             val phase = (elapsedFlashingMs % 400) / 400f  // 0..1
-            this.alpha = if (phase < 0.7f) 1f else 0f
+            this.alpha = if (phase < 0.7f) warningAlpha else 0f
 
             postInvalidateOnAnimation()
         }

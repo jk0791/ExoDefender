@@ -151,6 +151,10 @@ class ExplosionFlashSystem(
             speed = 100f)
     }
 
+    fun cancelAll() {
+        for (f in flashes) f.active = false
+    }
+
     private fun spawnInternal(
         x: Float, y: Float, z: Float,
         strength: Float,

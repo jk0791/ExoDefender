@@ -588,7 +588,6 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         endOfFrameChecksScheduled = false
 
     }
-
     fun replaySeekBarChanged(newFlightTimeMs: Int, seekingFinished: Boolean) {
         flightTimeMs = newFlightTimeMs
         flightTimeBeforeLastPauseMs = flightTimeMs
@@ -599,6 +598,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         ship.hitPoints = ship.maxHitPoints - flightLog.shipLog.hitCounter.countHitsBefore(newFlightTimeMs)
 
         updateActors()
+
+        // // stop explosion flashes
+        // explosionFlash.cancelAll()
 
         if (seekingFinished) {
             flightLog.shipSnapToOnNextReplayUpdate = true
@@ -611,6 +613,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                     actor.resetRenderer()
                 }
             }
+            screenShake.cancel()
         }
     }
 
@@ -622,7 +625,6 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                 // LIVE GAME
                 actor.update(interval, intervalMs, flightTimeMs)
                 continue
-
             }
 
             if (!flightLog.replayActive) continue
@@ -984,7 +986,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             // UPDATE WORLD
             updateWorld()
 
-            screenShake.update(interval)
+            if (!flightLog.replaySeeking) screenShake.update(interval)
 
 
 
@@ -1383,6 +1385,10 @@ class ScreenShake {
             timeLeft -= dt
             if (timeLeft < 0f) timeLeft = 0f
         }
+    }
+
+    fun cancel() {
+        timeLeft = 0f
     }
 
     fun getOffset(): Vec3 {
