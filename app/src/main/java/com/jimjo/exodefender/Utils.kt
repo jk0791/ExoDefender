@@ -44,7 +44,11 @@ fun fmtInt(x: Int): String = "%,d".format(x)
 fun fmt2(x: Float): String = "%.2f".format(x)
 fun fmtSigned(delta: Int): String = if (delta >= 0) "+${fmtInt(delta)}" else fmtInt(delta)
 
-
+fun formatMinutesSeconds(totalSeconds: Int): String {
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return minutes.toString() + ":" + if (seconds < 10) "0$seconds" else seconds.toString()
+}
 
 
 fun loadShader(type: Int, shaderCode: String): Int {

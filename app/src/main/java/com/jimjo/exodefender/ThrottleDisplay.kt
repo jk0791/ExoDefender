@@ -13,7 +13,7 @@ class ThrottleDisplay(context: Context, attrs: AttributeSet?=null) :
     private val strokePaint = Paint()
     private val fillPaint = Paint()
     private var factor = 0.5f
-    private val defaultAlpha = 0.25f
+    var defaultAlpha = 0.25f
     private val activeAlpha = 0.7f
 
     private val alphaCountdownStart = 10

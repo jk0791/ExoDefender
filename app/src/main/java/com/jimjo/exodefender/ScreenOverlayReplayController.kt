@@ -1,6 +1,7 @@
 package com.jimjo.exodefender
 
 import android.view.View.GONE
+import android.view.View.INVISIBLE
 import android.view.View.VISIBLE
 
 class ScreenOverlayReplayController(val screenOverlay: ScreenOverlay) {
@@ -76,7 +77,7 @@ class ScreenOverlayReplayController(val screenOverlay: ScreenOverlay) {
             .alpha(0f)
             .setDuration(fadeDurationMs)
             .withEndAction {
-                v.visibility = GONE // important: don’t intercept touches
+                v.visibility = INVISIBLE // important: don’t intercept touches
             }
             .start()
     }

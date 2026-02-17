@@ -34,13 +34,12 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     val settingsButton: ImageView
     private var homeButton: ImageView
 
-    private val txtStructureTimeRemaining: TextView
-
     private val levelBuilderToolbarButton: ImageView
     private val actorStatsDisplay: ActorStatsDisplay
     private val shipHealthDisplay: ShipHealthDisplay
     private val civiliansOnboardDisplay: CiviliansOnboardDisplay
 
+    val structureCountdownDisplay: TimerCountdownDisplay
     val cameraModeLayout: LinearLayout
     private val chaseModeButton: ImageView
     private val trackModeButton: ImageView
@@ -108,8 +107,6 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
             mainActivity.showPauseMission()
         }
 
-        txtStructureTimeRemaining = findViewById(R.id.txtStructureTimeRemaining)
-
         levelBuilderToolbarButton = findViewById(R.id.btnLevelBuilderToolbar)
         levelBuilderToolbarButton.visibility = GONE
         levelBuilderToolbarButton.setOnClickListener({
@@ -167,6 +164,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
             }
         })
 
+        structureCountdownDisplay = findViewById(R.id.structureCountdownDisplay)
         cameraModeLayout = findViewById(R.id.cameraModeLayout)
 
         mapReplayPlayPauseButton = findViewById(R.id.mapReplayPlayPauseButton)
@@ -293,7 +291,8 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
             mapReplaySeekBarLayout.visibility = GONE
             tranDisplay.visibility = VISIBLE
             attitudeDisplay.visibility = VISIBLE
-            cameraModeLayout.visibility = GONE
+            cameraModeLayout.visibility = INVISIBLE
+            throttle.defaultAlpha = 0.25f
         }
         else {
             this.downloadedReplay = downloadedReplay
@@ -305,6 +304,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
             mapReplaySeekBar.max = gLView.flightLog.flightTimeMs
             mapReplaySeekBar.progress = 0
             mapReplaySeekBarLayout.visibility = VISIBLE
+            throttle.defaultAlpha = 0f
             tranDisplay.visibility = INVISIBLE
             attitudeDisplay.visibility = INVISIBLE
             cameraModeLayout.visibility = VISIBLE
@@ -327,7 +327,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
                 mapReplaySeekBarLayout.alpha = 0f
                 mapReplaySeekBarLayout.visibility = GONE
                 cameraModeLayout.alpha = 0f
-                cameraModeLayout.visibility = GONE
+                cameraModeLayout.visibility = INVISIBLE
 
                 if (!hasShownReplayHintThisSession) {
                     hasShownReplayHintThisSession = true
@@ -392,10 +392,12 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
                 val secondsLeft = (msLeftToZero + 999) / 1000  // ceil
 
-                txtStructureTimeRemaining.visibility = VISIBLE
-                txtStructureTimeRemaining.text = "STRUCTURE: ${secondsLeft}s"
+                structureCountdownDisplay.visibility = VISIBLE
+                structureCountdownDisplay.update(secondsLeft)
+
             } else {
-                txtStructureTimeRemaining.visibility = GONE
+                structureCountdownDisplay.visibility = GONE
+
             }
         }
     }
@@ -405,12 +407,17 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
         setDisplayFrozen(false)
 
-        if (!levelBuilderMode && currentLevel.getFirstDestructibleFriendlyStructureTemplateId() != null) {
-            txtStructureTimeRemaining.visibility = VISIBLE
-            startCountdownTicker()
+        val destructibleStructure = currentLevel.world.destructibleStructure
+        if (destructibleStructure != null && !levelBuilderMode) {
+            structureCountdownDisplay.visibility = VISIBLE
+
+            destructibleStructure.initialDestructSeconds?.let {
+                structureCountdownDisplay.setInitial(it)
+                startCountdownTicker()
+            }
         }
         else {
-            txtStructureTimeRemaining.visibility = GONE
+            structureCountdownDisplay.visibility = GONE
         }
     }
 
