@@ -31,7 +31,6 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     val tranDisplay: JoystickDisplay
     val attitudeDisplay: JoystickDisplay
 
-    val settingsButton: ImageView
     private var homeButton: ImageView
 
     private val levelBuilderToolbarButton: ImageView
@@ -96,13 +95,6 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         throttle = findViewById(R.id.throttle)
         tranDisplay = findViewById(R.id.tranDisplay)
         attitudeDisplay = findViewById(R.id.attitudeDisplay)
-
-        settingsButton = findViewById(R.id.gameSettingsButton)
-        settingsButton.setOnClickListener({
-            mainActivity.showSettings()
-        })
-
-
 
         homeButton = findViewById(R.id.homeButton)
         homeButton.setOnClickListener {

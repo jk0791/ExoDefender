@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Message
 import android.util.AttributeSet
 import android.view.LayoutInflater
-import android.view.View
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -84,7 +83,7 @@ class MissionSummaryView @JvmOverloads constructor(
         txtHeading = findViewById(R.id.txtHeading)
         txtFailureReason = findViewById(R.id.txtFailureReason)
 
-        btnExitSmmary = findViewById(R.id.btnExitSummary)
+        btnExitSmmary = findViewById(R.id.btnExitLevel)
 
         btnWatchReplay = findViewById(R.id.btnWatchReplay)
         btnViewRankings = findViewById(R.id.btnViewRankings)

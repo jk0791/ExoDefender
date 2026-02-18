@@ -10,7 +10,7 @@ import kotlin.math.sqrt
 // tuning
 const val COLLISION_EPS = 0.01f
 private const val LEVEL_RATE = 2.0        // rad/sec response
-private const val LEVEL_EPS  = 0.01        // ~0.6° "good enough"
+private const val LEVEL_EPS  = 0.1        // ~0.6° "good enough"
 
 data class CollisionInfo(
     var collided: Boolean = false,
@@ -28,29 +28,31 @@ data class CollisionInfo(
 // logs out a block per frame
 // add lines to a block with add() pass in timeMs for that frame
 // at the end of the frame call printout()
-class DebugLogger {
+class DebugLogger(val frequency: Int = 1) {
     var log = ""
-    var currentTimeMs = 0
+    var counter = 1
 
     fun reset() {
         log = ""
+        counter = 1
     }
 
-    fun add(line: String, timeMs: Int) {
-        if (log == "") {
-            currentTimeMs = timeMs
-            println("------ $currentTimeMs -------")
+    fun add(line: String) {
+        if (counter == frequency) {
+            log += "$line\n"
         }
 
-        if (timeMs == currentTimeMs) {
-            log += "$timeMs; $line\n"
-        }
     }
 
     fun printout() {
-        println(log)
-
-        reset()
+        if (counter == frequency) {
+            println("-----------------")
+            println(log)
+            reset()
+        }
+        else {
+            counter++
+        }
     }
 
 }
@@ -129,8 +131,8 @@ class ShipActor(
 
     val maxForwardVelocity = 250f
     val maxTranslationalVelocity = 70f
-    val forwardDamping = 1f
-    val translationalDamping = 1f
+    val forwardDamping = 3f
+    val translationalDamping = 3f
     val rollDamping = 1.5f
 
     val stallMinPower = 0.2f // 0f // 0.2f
@@ -173,7 +175,7 @@ class ShipActor(
     var civiliansOnboard: Int = 0
     val carryingCapacity: Int = 2
 
-    val debugLogger  = DebugLogger()
+    val debugLogger  = DebugLogger(10)
 
     private var lastDbgT = -1
     private val lastDbgPos = Vec3()
@@ -248,12 +250,48 @@ class ShipActor(
         return out
     }
 
-    fun calculateForwardVelocity(currentVelocity: Float, targetVelocity: Float, interval: Float, friction: Float = 1f): Float {
+    override fun onHit(timeMs: Int, enemyHit: Boolean, hitPosition: Vec3) {
+
+        if (world.replayActive) return
+
+        if (hitPoints == 0)  return
+
+        hitPoints--
+
+        if (hitPoints == 0) {
+            active = false
+            parent.shipHit(true)
+            logEvent(timeMs, includeDirection = true, hit = 1, destroyed = 1)
+            explosion?.activateLarge(instance.position)
+        } else {
+            parent.shipHit(false)
+            renderer.flashLinesOnce(timeMs)
+            explosion?.activateSmall(instance.position)
+            logEvent(timeMs, includeDirection = true, hit = 1)
+        }
+    }
+
+    fun calculateForwardVelocity(currentVelocity: Float, targetVelocity: Float, interval: Float, stallFactor: Float): Float {
+
         val delta = targetVelocity - currentVelocity
+
+
         val momentumEffect =
-            if (targetVelocity > currentVelocity) 1f
-            else 0.5f
-        val limitedDelta = forwardDamping * momentumEffect * delta * 3 * interval * friction
+            if (targetVelocity > currentVelocity)
+                1f                              // fast acceleration
+            else {
+                val pitchDecelarationFactor = max(0f, pitchRad.toFloat()) * 0.1f
+
+                0.3f + pitchDecelarationFactor - 0.2f * stallFactor  // slow deccelaration, especially with stall
+            }
+
+//        debugLogger.add("pitchRad=$pitchRad")
+//        debugLogger.add("pitchDecelarationFactor=$pitchDecelarationFactor")
+//        debugLogger.add("momentumEffect=$momentumEffect")
+//        debugLogger.printout()
+
+        val limitedDelta = delta * forwardDamping * momentumEffect * interval
+
         if (delta.absoluteValue > 0.01) {
             return Math.min(currentVelocity + limitedDelta, maxForwardVelocity)
         } else {
@@ -261,9 +299,9 @@ class ShipActor(
         }
     }
 
-    fun calculateTranslationalVelocity(currentVelocity: Float, targetVelocity: Float, interval: Float, friction: Float = 1f): Float {
+    fun calculateTranslationalVelocity(currentVelocity: Float, targetVelocity: Float, interval: Float): Float {
         val delta = targetVelocity - currentVelocity
-        val limitedDelta = translationalDamping * delta * 3 * interval * friction
+        val limitedDelta = delta * translationalDamping * interval
         if (delta.absoluteValue > 0.01) {
             return Math.min(Math.max(currentVelocity + limitedDelta, -maxTranslationalVelocity), maxTranslationalVelocity)
         } else {
@@ -299,26 +337,7 @@ class ShipActor(
         cornersShipWorld[2].addLocal(pos)
     }
 
-    override fun onHit(timeMs: Int, enemyHit: Boolean, hitPosition: Vec3) {
 
-        if (world.replayActive) return
-
-        if (hitPoints == 0)  return
-
-        hitPoints--
-
-        if (hitPoints == 0) {
-            active = false
-            parent.shipHit(true)
-            logEvent(timeMs, includeDirection = true, hit = 1, destroyed = 1)
-            explosion?.activateLarge(instance.position)
-        } else {
-            parent.shipHit(false)
-            renderer.flashLinesOnce(timeMs)
-            explosion?.activateSmall(instance.position)
-            logEvent(timeMs, includeDirection = true, hit = 1)
-        }
-    }
 
     private fun dampTo(current: Double, target: Double, rate: Double, dt: Double): Double {
         val a = 1.0 - kotlin.math.exp(-rate * dt)
@@ -343,7 +362,7 @@ class ShipActor(
         val isStalling = stallFactor > 0f
 
         // How much control you retain at full stall.
-        val minAuthority = 0.2f
+        val minAuthority = 0.5f
 
         // Authority factor 1..minAuthority
         val authority = 1f - stallFactor * (1f - minAuthority)
@@ -372,24 +391,23 @@ class ShipActor(
         }
         else {
 
-            friction = 1f
+            // friction on idle power and on surface (1f no friction, 0.95f or higher is required if using it)
+            friction = 0.99f
 
-//            velocityF *= friction
-//            velocityH *= friction
         }
 
-        val pitchFactor = -min(0f, min(0f, pitchRad.toFloat()))
-        val minVelocity = pitchFactor * maxDiveVelocity
+        // calculate minimum fwd velocity
+        // - nose level or up min fwd velocity is zero
+        // - nose down min fwd velocity increases
+        val minVelocity = max(0f, -pitchRad.toFloat()) * maxDiveVelocity
+
 
         val targetVelocity = (fwdPower * maxForwardVelocity).coerceAtLeast(minVelocity)
-        velocityF = calculateForwardVelocity(velocityF, targetVelocity, dt) * friction
+        velocityF = calculateForwardVelocity(velocityF, targetVelocity, dt, stallFactor) * friction
 
-        velocityH = calculateTranslationalVelocity(velocityH, flightControls.translationHorz * 100f * authority, dt) * friction
-        velocityV = calculateTranslationalVelocity(velocityV, -flightControls.translationVert * 100f * authority, dt)
-
-
-
-
+        val sf = 1f - stallFactor
+        velocityH = calculateTranslationalVelocity(velocityH, flightControls.translationHorz * 100f * authority * sf, dt)
+        velocityV = calculateTranslationalVelocity(velocityV, -flightControls.translationVert * 100f * authority * sf, dt)
 
 
         computeDesiredPosition(dt, authority)
@@ -543,7 +561,7 @@ class ShipActor(
                         margin = 0.25f
                     )
 
-        val padConfirmed = withinLandingPad && abs(fwdPower) <= 0.01f
+        val padConfirmed = withinLandingPad && abs(fwdPower) <= 0.01f && velocityF < 1f
 
         // If we moved to a different support pad (or off a pad), clear the old one
         if (lastPadBlock != padBlock) {
@@ -592,12 +610,12 @@ class ShipActor(
 
         if (padConfirmed && restLatched) {
             yawRad = latchedYaw
-            pitchRad = 0.0
-            rollRad = 0.0
+//            pitchRad = 0.0
+//            rollRad = 0.0
 
             velocity.set(0f, 0f, 0f)
-            yawVel = 0.0
-            pitchVel = 0.0
+//            yawVel = 0.0
+//            pitchVel = 0.0
 
         }
 

@@ -36,7 +36,7 @@ class TrainingOutcomeView(context: Context, attrs: AttributeSet? = null) :
         trainingSummary = findViewById(R.id.trainingSummary)
         actorsDiagram = findViewById(R.id.actorsDiagram)
 
-        val prevButton = this.findViewById<Button>(R.id.btnPrev)
+        val prevButton = this.findViewById<Button>(R.id.btnRestartLevel)
         prevButton.setOnClickListener({
             mainActivity.closeTrainingOutcomeView()
             mainActivity.openLevelByIndex(Level.LevelType.TRAINING, 0)

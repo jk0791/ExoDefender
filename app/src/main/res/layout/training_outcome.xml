@@ -47,7 +47,7 @@
                             android:layout_width="0dp"
                             android:layout_height="0dp"
                             custom:layout_constraintTop_toBottomOf="@+id/trainingSummary"
-                            custom:layout_constraintBottom_toTopOf="@+id/btnPrev"
+                            custom:layout_constraintBottom_toTopOf="@+id/btnRestartLevel"
                             custom:layout_constraintStart_toStartOf="@+id/frameLayout"
                             custom:layout_constraintEnd_toEndOf="@+id/frameLayout">
 
@@ -121,7 +121,7 @@
                         </androidx.constraintlayout.widget.ConstraintLayout>
 
                 <Button
-                    android:id="@+id/btnPrev"
+                    android:id="@+id/btnRestartLevel"
                     style="@style/DefaultBorderlessButton"
                     android:layout_width="150dp"
                     android:layout_height="60dp"

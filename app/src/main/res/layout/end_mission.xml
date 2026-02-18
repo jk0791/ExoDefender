@@ -34,7 +34,7 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content">
                                         <ImageView
-                                            android:id="@+id/btnExitSummary"
+                                            android:id="@+id/btnExitLevel"
                                             style="@style/DefaultBorderlessButton"
                                             android:layout_gravity="left"
                                             android:layout_width="60dp"
@@ -180,7 +180,7 @@
                             android:layout_gravity="bottom">
 
                                 <Button
-                                    android:id="@+id/btnPrev"
+                                    android:id="@+id/btnRestartLevel"
                                     style="@style/DefaultBorderlessButton"
                                     android:layout_gravity="left"
                                     android:layout_width="wrap_content"

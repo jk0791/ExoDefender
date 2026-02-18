@@ -6,66 +6,86 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fontFamily="@font/agencyr"
-    android:textColor="#5ADC00"
-    android:clickable="true" >
+    android:textColor="#5ADC00" >
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+    <View
+        android:id="@+id/pauseLevelCard"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="true"/>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="#BB000000"
-                    android:orientation="vertical"
-                    app:layout_constrainedWidth="true"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintWidth_percent="0.4" >
+        <LinearLayout
+            android:id="@+id/linearLayout4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#BB000000"
+            android:orientation="vertical"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintWidth_percent="0.4"
+            android:clickable="true">
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:textSize="30dp"
-                            android:padding="20dp"
-                            android:textAlignment="center"
-                            style="@style/DefaultText"
-                            android:background="@drawable/border_lower"
-                            android:text = "Game Paused" />
+            <TextView
+                style="@style/DefaultText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/border_lower"
+                android:padding="20dp"
+                android:text="Game Paused"
+                android:textAlignment="center"
+                android:textSize="30dp" />
 
 
-                        <Button
-                            android:id="@+id/btnResume"
-                            style="@style/DefaultBorderlessButton"
-                            android:layout_gravity="center_horizontal"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textSize="30dp"
-                            android:padding="15dp"
-                            android:text="Resume" />
-                        <Button
-                            android:id="@+id/btnPrev"
-                            style="@style/DefaultBorderlessButton"
-                            android:layout_gravity="center_horizontal"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textSize="30dp"
-                            android:padding="15dp"
-                            android:text="Restart Level" />
-                        <Button
-                            android:id="@+id/btnExitSummary"
-                            style="@style/DefaultBorderlessButton"
-                            android:layout_gravity="center_horizontal"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="20dp"
-                            android:textSize="30dp"
-                            android:padding="15dp"
-                            android:text="Exit Level" />
+            <Button
+                android:id="@+id/btnExitLevel"
+                style="@style/DefaultBorderlessButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:padding="15dp"
+                android:text="Exit Level"
+                android:textSize="30dp" />
 
-                </LinearLayout>
-        </androidx.constraintlayout.widget.ConstraintLayout>
+            <Button
+                android:id="@+id/btnRestartLevel"
+                style="@style/DefaultBorderlessButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:padding="15dp"
+                android:text="Restart Level"
+                android:textSize="30dp" />
+
+            <Button
+                android:id="@+id/btnSettingsFromLevel"
+                style="@style/DefaultBorderlessButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:padding="15dp"
+                android:text="Settings"
+                android:textSize="30dp" />
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/btnClosePauseDialog"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:padding="5dp"
+            android:src="@drawable/close_button"
+            custom:layout_constraintEnd_toEndOf="@+id/linearLayout4"
+            custom:layout_constraintTop_toTopOf="@+id/linearLayout4" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+
 
 </FrameLayout>

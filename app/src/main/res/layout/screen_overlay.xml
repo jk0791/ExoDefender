@@ -26,21 +26,12 @@
 
 
     <ImageView
-        android:id="@+id/gameSettingsButton"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:src="@drawable/settings_icon"
-        android:layout_marginLeft="20dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <ImageView
         android:id="@+id/addCameraEvent"
         android:layout_width="50dp"
         android:layout_height="50dp"
-        android:layout_marginLeft="15dp"
+        android:layout_marginLeft="70dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/gameSettingsButton"
+        app:layout_constraintLeft_toLeftOf="parent"
         android:src="@drawable/add_camera_event" />
 
     <ImageView
@@ -76,9 +67,9 @@
         android:id="@+id/tranDisplay"
         android:layout_width="50dp"
         android:layout_height="50dp"
-        android:layout_marginLeft="20dp"
+        android:layout_marginLeft="70dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/gameSettingsButton" />
+        app:layout_constraintLeft_toLeftOf="parent" />
 
     <com.jimjo.exodefender.JoystickDisplay
         android:id="@+id/attitudeDisplay"

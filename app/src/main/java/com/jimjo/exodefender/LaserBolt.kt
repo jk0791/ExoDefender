@@ -215,7 +215,11 @@ class LaserBolt(val sourceType: SourceType, val length: Float, val velocityF: Fl
                 }
                 // check hitting friendly
                 for (friendlyActor in world.friendlyActors) {
-                    if (friendlyActor.active && friendlyActor.instance.worldAabb.contains(nextPosition)) {
+                    if (
+                        friendlyActor.active
+                        && friendlyActor !is FriendlyStructureActor  // let laser bolt pass through and hit blocks inside instead
+                        && friendlyActor.instance.worldAabb.contains(nextPosition))
+                    {
                         friendlyActor.onHit(flightTimeMs, false, nextPosition)
                         active = false
                         break
