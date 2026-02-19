@@ -447,6 +447,76 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
+    fun cameraModeClicked(mode: CameraMode) {
+        if (replayMode) {
+            gLView.renderer.camera.posedByTrack = false
+            gLView.renderer.camera.setCameraMode(mode)
+        }
+    }
+
+    fun setReplayPause(pause: Boolean) {
+        gLView.renderer.setReplayPause(pause)
+        setDisplayFrozen(pause)
+        if (pause) {
+            pausePlayButtonState = PausePlayButtonState.PLAY
+            pausePlayButton.setImageResource(R.drawable.map_play_button)
+        }
+        else {
+            pausePlayButtonState = PausePlayButtonState.PAUSE
+            pausePlayButton.setImageResource(R.drawable.map_pause_button)
+        }
+    }
+
+    fun setReplayEndState(ended: Boolean) {
+        gLView.setPause(ended)
+        isReplayEnded = ended
+        setDisplayFrozen(ended)
+        if (!ended) {
+            gLView.renderer.resetFinalizedState()
+            mainActivity.closeMissionSummary()
+        }
+    }
+
+    fun showScreenAnnotations(show: Boolean, levelIndex: Int? = null) {
+        screenAnnotationsActive = show
+        if (show) {
+            levelIndex?.let {
+                screenAnnotations.currentLevelIndex = it
+            }
+            if (screenAnnotations.currentLevelIndex != null) {
+                screenAnnotations.bringToFront()
+                screenAnnotations.visibility = VISIBLE
+                screenAnnotations.start()
+                actorStatsDisplay.visibility = INVISIBLE
+                shipHealthDisplay.visibility = INVISIBLE
+
+                return
+            }
+        }
+
+        screenAnnotations.visibility = GONE
+        actorStatsDisplay.visibility = VISIBLE
+        shipHealthDisplay.visibility = VISIBLE
+    }
+    fun setMandatoryTraining(show: Boolean) {
+        manadatoryTrainingActive = show
+        if (manadatoryTrainingActive) {
+            homeButton.visibility = GONE
+        }
+        else {
+            homeButton.visibility = VISIBLE
+        }
+    }
+
+
+    fun setDisplayFrozen(frozen: Boolean) {
+        shipHealthDisplay.pauseFlashing(frozen)
+        structureCountdownDisplay.pauseIfFlashing(frozen)
+        attitudeDisplay.setDisplayState(frozen)
+    }
+
+    // REPLAY EDITOR
+
     fun enableReplayStudio(enable: Boolean) {
         if (enable) {
             if (replayMode && savedFlightLogFilename != null) {
@@ -479,69 +549,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
-    fun cameraModeClicked(mode: CameraMode) {
-        if (replayMode) {
-            gLView.renderer.camera.posedByTrack = false
-            gLView.renderer.camera.setCameraMode(mode)
-        }
-    }
 
-    fun setReplayPause(pause: Boolean) {
-        gLView.renderer.setReplayPause(pause)
-        setDisplayFrozen(pause)
-        if (pause) {
-            pausePlayButtonState = PausePlayButtonState.PLAY
-            pausePlayButton.setImageResource(R.drawable.map_play_button)
-        }
-        else {
-            pausePlayButtonState = PausePlayButtonState.PAUSE
-            pausePlayButton.setImageResource(R.drawable.map_pause_button)
-        }
-    }
-
-    fun setReplayEndState(ended: Boolean) {
-        gLView.setPause(ended)
-        isReplayEnded = ended
-        setDisplayFrozen(ended)
-        if (!ended) {
-            gLView.renderer.resetFinalizedState()
-            mainActivity.closeMissionSummary()
-        }
-    }
-
-    fun showScreenAnnotations(show: Boolean) {
-        screenAnnotationsActive = show
-        if (show) {
-            screenAnnotations.bringToFront()
-            screenAnnotations.visibility = VISIBLE
-            screenAnnotations.start()
-            actorStatsDisplay.visibility = INVISIBLE
-            shipHealthDisplay.visibility = INVISIBLE
-        }
-        else {
-            screenAnnotations.visibility = GONE
-            actorStatsDisplay.visibility = VISIBLE
-            shipHealthDisplay.visibility = VISIBLE
-        }
-    }
-    fun showMandatoryTraining(show: Boolean) {
-        manadatoryTrainingActive = show
-        if (manadatoryTrainingActive) {
-            homeButton.visibility = GONE
-        }
-        else {
-            homeButton.visibility = VISIBLE
-        }
-    }
-
-
-    fun setDisplayFrozen(frozen: Boolean) {
-        shipHealthDisplay.pauseFlashing(frozen)
-        structureCountdownDisplay.pauseIfFlashing(frozen)
-        attitudeDisplay.setDisplayState(frozen)
-    }
-
-    // REPLAY EDITOR
 
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
         when (ev.actionMasked) {

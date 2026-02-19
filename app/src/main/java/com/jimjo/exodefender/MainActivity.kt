@@ -527,8 +527,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
             flightLog.playback()
             currentReplayFlightLog = flightLog
         } else {
-            screenOverlay.showScreenAnnotations(level.type == Level.LevelType.TRAINING && level.index == 0)
-            screenOverlay.showMandatoryTraining(level.type == Level.LevelType.TRAINING && !isMandatoryTrainingComplete())
+
+            // training settings
+            val showScreenAnnotations = level.type == Level.LevelType.TRAINING && (level.index == 0 || level.index == 2 )
+            screenOverlay.showScreenAnnotations(showScreenAnnotations, level.index)
+            screenOverlay.setMandatoryTraining(level.type == Level.LevelType.TRAINING && !isMandatoryTrainingComplete())
+
+            // create flight log
             flightLog = FlightLog()
             flightLog.levelId = level.id
             getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {

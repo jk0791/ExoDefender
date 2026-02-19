@@ -17,6 +17,7 @@ import kotlin.math.min
 class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
     ConstraintLayout(context, attrs) {
 
+    enum class TrainingType { BASIC_CONTROLS, LANDING }
     enum class StepDirection { PREV, NEXT }
     enum class ScreenLabelHorzAlignment { ALIGNED_LEFT_WITH_LABEL, ALIGNED_RIGHT_WITH_LABEL, LEFT_OF_LABEL, RIGHT_OF_LABEL }
     private val mainActivity = context as MainActivity
@@ -47,6 +48,8 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
     private val throttleAnimation: AnnotationAnimation
 
     // state
+    var currentLevelIndex: Int? = null
+    var trainingType = TrainingType.BASIC_CONTROLS
     private var stepIndex = 0
     private var running = false
     private var lastTimeMs = 0L
@@ -96,6 +99,13 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
     }
 
     fun start() {
+        if (currentLevelIndex == 0) startBasicControlsTutorial()
+        else if (currentLevelIndex == 2) startLandingTutorial()
+    }
+
+    fun startBasicControlsTutorial() {
+
+        trainingType = TrainingType.BASIC_CONTROLS
 
         tiltRollAnimation.loadBitmaps(context)
         tiltPitchAnimation.loadBitmaps(context)
@@ -113,6 +123,20 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
         elapsedMs = 0
 
         postInvalidate()
+    }
+
+    fun startLandingTutorial() {
+        // TODO
+
+        trainingType = TrainingType.LANDING
+
+        setNavButtons(false, false)
+        hideEverything()
+        moveLabelTo(imageFire, ScreenLabelHorzAlignment.ALIGNED_RIGHT_WITH_LABEL, true)
+        screenLabelText.text = "Reduce power to land"
+        screenLabelText.visibility = VISIBLE
+
+
     }
 
     fun setNavButtons(showPrev: Boolean, showNext: Boolean) {
@@ -239,23 +263,31 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
                 lastTimeMs = timeMs
                 elapsedMs = (timeMs - startMs).toInt()
 
-                // initial delay before intro AI VO
-                if (!introVoicePlayed && elapsedMs > 1000) {
-                    mainActivity.audioPlayer.playAIVoiceOver(mainActivity.audioPlayer.ai_intro)
-                    introVoicePlayed = true
+                if (trainingType == TrainingType.BASIC_CONTROLS) {
+
+                    // initial delay before intro AI VO
+                    if (!introVoicePlayed && elapsedMs > 1000) {
+                        mainActivity.audioPlayer.playAIVoiceOver(mainActivity.audioPlayer.ai_intro)
+                        introVoicePlayed = true
+                    }
+
+                    // initial delay before first step
+                    if (stepIndex == 0 && elapsedMs > 4200) changeStep(StepDirection.NEXT)
+
+                    // animations
+                    when (stepIndex) {
+                        1 -> tiltRollAnimation.playOsciallating()
+                        2 -> tiltPitchAnimation.playOsciallating()
+                        3 -> slideAnimation.playCycled()
+                        4 -> fireAnimation.playCycled()
+                        5 -> throttleAnimation.playCycled()
+                        else -> hideEverything()
+                    }
                 }
+                else if (trainingType == TrainingType.LANDING) {
 
-                // initial delay before first step
-                if (stepIndex == 0 && elapsedMs > 4200) changeStep(StepDirection.NEXT)
+                    // TODO
 
-                // animations
-                when (stepIndex) {
-                    1 -> tiltRollAnimation.playOsciallating()
-                    2 -> tiltPitchAnimation.playOsciallating()
-                    3 -> slideAnimation.playCycled()
-                    4 -> fireAnimation.playCycled()
-                    5 -> throttleAnimation.playCycled()
-                    else -> hideEverything()
                 }
             }
 
