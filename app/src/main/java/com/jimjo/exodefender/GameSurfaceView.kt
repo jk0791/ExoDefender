@@ -7,6 +7,7 @@ import android.os.Looper
 import android.os.Message
 import android.view.MotionEvent
 import androidx.core.view.MotionEventCompat
+import kotlin.math.min
 
 const val UPDATE_SCREEN = 0
 const val UPDATE_REPLAY_SEEKBAR = 1
@@ -131,6 +132,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
 
     fun reset() {
         flightControls.reset(levelBuilderMode, flightLog.replayActive)
+        screenOverlay.throttle.update(flightControls.throttle)
         startThrottle = flightControls.throttle
         screenOverlay.reset(levelBuilderMode)
 
@@ -362,15 +364,18 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             mDeltaTouchHorzRB = 0f
             mDeltaTouchVertRB = 0f
             mPointerRB = -1
-            if (levelBuilderMode || flightLog.replayActive) {
-                flightControls.throttle = 0.5f
-                screenOverlay.throttle.update(flightControls.throttle)
+
+            // spring throttle as required
+            when (flightControls.throttleSpringMode) {
+                FlightControls.ThrottleSpringMode.ALWAYS ->
+                    flightControls.throttle = flightControls.throttleCenter
+                FlightControls.ThrottleSpringMode.FROM_RIGHT ->
+                    flightControls.throttle = min(flightControls.throttle, flightControls.throttleCenter)
+                else -> {}
             }
-            else {
-                flightControls.throttle = flightControls.throttleStallThreshold
-//                flightControls.throttle = flightControls.throttle.coerceAtLeast(flightControls.throttleStallThreshold)
-                screenOverlay.throttle.update(flightControls.throttle)
-            }
+
+            // update throttle display on HUD
+            screenOverlay.throttle.update(flightControls.throttle)
         }
         else if (pointerId == mPointerRT) {
             mDownRT = false
@@ -391,7 +396,6 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
 interface FlightControlReceiver{
     fun firingStarted()
 }
-
 class FlightControls(
     var gyroMode: Boolean = true,
     var throttle: Float = 0f,
@@ -402,21 +406,26 @@ class FlightControls(
     var firing: Boolean = false,
     var setDeviceNeutral: Boolean = false,
 ) {
+
+    enum class ThrottleSpringMode {ALWAYS, FROM_RIGHT, NEVER}
+
     var minThrottle = 0f
-    var throttleStallThreshold = 0.5f // DEBUG: set to zero to stop ship flying
+    val throttleCenter = 0.5f
     var receiver: FlightControlReceiver? = null
+
+    var throttleSpringMode = ThrottleSpringMode.ALWAYS
 
     fun firingStarted() {
         if (receiver != null) receiver!!.firingStarted()
     }
 
     fun reset(levelBuilderMode: Boolean, replayMode: Boolean) {
+        throttle = throttleCenter
         if (levelBuilderMode || replayMode) {
-            throttle = 0.5f
+            throttleSpringMode = ThrottleSpringMode.ALWAYS
         }
         else {
-            // DEBUG: set to 0f to allow dart to be stationary (default should be 0.2f)
-            throttle = throttleStallThreshold
+            throttleSpringMode = ThrottleSpringMode.FROM_RIGHT
         }
         rotationHorz = 0f
         rotationVert = 0f

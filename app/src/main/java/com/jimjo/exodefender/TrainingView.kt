@@ -29,6 +29,11 @@ class TrainingView(context: Context, attrs: AttributeSet? = null) :
                 mainActivity.openLevelByIndex(Level.LevelType.TRAINING, 1, false)
             }
         }
+        findViewById<Button>(R.id.btnLandingPractice).apply {
+            setOnClickListener {
+                mainActivity.openLevelByIndex(Level.LevelType.TRAINING, 2, false)
+            }
+        }
     }
 
     fun load() {

@@ -13,81 +13,103 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <LinearLayout
+
+    <TextView
+        android:id="@+id/trainingHeading"
         android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:orientation="vertical"
+        android:layout_height="wrap_content"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintWidth_max="500dp"
-        app:layout_constraintHeight_max="500dp">
-        <TextView
+        android:textSize="45dp"
+        android:textAlignment="center"
+        style="@style/DefaultText"
+        android:background="@drawable/border_lower"
+        android:text = "TRAINING" />
+
+
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        app:layout_constraintTop_toBottomOf="@+id/trainingHeading"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintWidth_max="500dp">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-            android:textSize="45dp"
-            android:textAlignment="center"
-            style="@style/DefaultText"
-            android:background="@drawable/border_lower"
-            android:text = "TRAINING" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="40dp"
+                style="@style/DefaultText"
+                android:background="@drawable/border_lower"
+                android:text = "Flying Practice" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="40dp"
-            style="@style/DefaultText"
-            android:background="@drawable/border_lower"
-            android:text = "Flying Practice" />
+            <Button
+                android:id="@+id/btnBasicControls"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:textSize="40dp"
+                android:textAlignment="center"
+                style="@style/DefaultBorderlessButton"
+                android:text = "Basic Controls" />
 
-        <Button
-            android:id="@+id/btnBasicControls"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:textSize="40dp"
-            android:textAlignment="center"
-            style="@style/DefaultBorderlessButton"
-            android:text = "Basic Controls" />
+            <Button
+                android:id="@+id/btnTargetPractice"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:textSize="40dp"
+                android:textAlignment="center"
+                style="@style/DefaultBorderlessButton"
+                android:text = "Target Practice" />
 
-        <Button
-            android:id="@+id/btnTargetPractice"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:textSize="40dp"
-            android:textAlignment="center"
-            style="@style/DefaultBorderlessButton"
-            android:text = "Target Practice" />
+            <Button
+                android:id="@+id/btnLandingPractice"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:textSize="40dp"
+                android:textAlignment="center"
+                style="@style/DefaultBorderlessButton"
+                android:text = "Landing" />
 
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="40dp"
-            style="@style/DefaultText"
-            android:background="@drawable/border_lower"
-            android:text = "Manuals" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="40dp"
+                style="@style/DefaultText"
+                android:background="@drawable/border_lower"
+                android:text = "Manuals" />
 
-        <Button
-            android:id="@+id/btnManualsBasic"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:textSize="40dp"
-            android:textAlignment="center"
-            android:enabled="false"
-            style="@style/DefaultBorderlessButton"
-            android:text = "Basic" />
+            <Button
+                android:id="@+id/btnManualsBasic"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:textSize="40dp"
+                android:textAlignment="center"
+                android:enabled="false"
+                style="@style/DefaultBorderlessButton"
+                android:text = "Basic" />
 
-        <Button
-            android:id="@+id/btnManualsAdvanced"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:textSize="40dp"
-            android:textAlignment="center"
-            android:enabled="false"
-            style="@style/DefaultBorderlessButton"
-            android:text = "Advanced" />
+            <Button
+                android:id="@+id/btnManualsAdvanced"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:textSize="40dp"
+                android:textAlignment="center"
+                android:enabled="false"
+                style="@style/DefaultBorderlessButton"
+                android:text = "Advanced" />
 
-    </LinearLayout>
+        </LinearLayout>
+
+    </ScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

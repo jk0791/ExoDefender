@@ -349,7 +349,7 @@ class ShipActor(
 
     override fun update(dt: Float, dtMs: Int, timeMs: Int) {
 
-        val fwdPower = remapPiecewise01(flightControls.throttle, flightControls.throttleStallThreshold, stallMinPower)
+        val fwdPower = remapPiecewise01(flightControls.throttle, flightControls.throttleCenter, stallMinPower)
 
 
         // --- v0 STALL TURN AUTHORITY (simple, replay-safe) ---
