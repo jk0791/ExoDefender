@@ -64,17 +64,22 @@ class ShipActor(
     override val renderer: WireRenderer
 ): Actor() {
 
-    // Angular velocities (radians per second)
-    var yawVel = 0.0   // was rvelocityP
-    var pitchVel = 0.0 // was rvelocityE
 
-    // Pitch clamp (±45° as in your original: 0.785 rad)
-    private val maxPitch = 0.785
-
-    // Roll behavior tuning
+    private val maxPitch = 0.785          // how far we can pitch (approx 45°)
     private val maxBankRad = 1.4          // how far we can roll (approx 34°)
+    val maxForwardVelocity = 250f
+    val maxTranslationalVelocity = 70f
+    val forwardDamping = 3f
+    val translationalDamping = 3f
+    val rollDamping = 1.5f
+    val stallMinPower = 0.2f // 0f // 0.2f
+    val stallMaxSinkSpeed = 15f // units/sec downward at throttle==0
+    val neutralSpeed = stallMinPower * maxForwardVelocity
 
     val velocity = Vec3()
+    // Angular velocities (radians per second)
+    var yawVel = 0.0
+    var pitchVel = 0.0
 
 
     // Tune these to match your old visuals:
@@ -129,14 +134,6 @@ class ShipActor(
     private val weaponUpRolled    = Vec3()
     protected lateinit var doubleLaserBoltPool: DoubleLaserBoltPool
 
-    val maxForwardVelocity = 250f
-    val maxTranslationalVelocity = 70f
-    val forwardDamping = 3f
-    val translationalDamping = 3f
-    val rollDamping = 1.5f
-
-    val stallMinPower = 0.2f // 0f // 0.2f
-    val stallMaxSinkSpeed = 15f // units/sec downward at throttle==0
     val maxDiveVelocity: Float
 
     var shotsFired = 0
@@ -271,54 +268,6 @@ class ShipActor(
         }
     }
 
-    fun calculateForwardVelocity(currentVelocity: Float, targetVelocity: Float, interval: Float, stallFactor: Float): Float {
-
-        val delta = targetVelocity - currentVelocity
-
-
-        val momentumEffect =
-            if (targetVelocity > currentVelocity)
-                1f                              // fast acceleration
-            else {
-                val pitchDecelarationFactor = max(0f, pitchRad.toFloat()) * 0.1f
-
-                0.3f + pitchDecelarationFactor - 0.2f * stallFactor  // slow deccelaration, especially with stall
-            }
-
-//        debugLogger.add("pitchRad=$pitchRad")
-//        debugLogger.add("pitchDecelarationFactor=$pitchDecelarationFactor")
-//        debugLogger.add("momentumEffect=$momentumEffect")
-//        debugLogger.printout()
-
-        val limitedDelta = delta * forwardDamping * momentumEffect * interval
-
-        if (delta.absoluteValue > 0.01) {
-            return Math.min(currentVelocity + limitedDelta, maxForwardVelocity)
-        } else {
-            return targetVelocity
-        }
-    }
-
-    fun calculateTranslationalVelocity(currentVelocity: Float, targetVelocity: Float, interval: Float): Float {
-        val delta = targetVelocity - currentVelocity
-        val limitedDelta = delta * translationalDamping * interval
-        if (delta.absoluteValue > 0.01) {
-            return Math.min(Math.max(currentVelocity + limitedDelta, -maxTranslationalVelocity), maxTranslationalVelocity)
-        } else {
-            return targetVelocity
-        }
-    }
-
-    fun calculateRoll(currentAngleB: Double, targetAngleB: Double, dtSec: Double, rollDampingEffective: Double): Double {
-        val delta = targetAngleB - currentAngleB
-        val limitedDelta = rollDampingEffective * delta * 3 * dtSec
-        if (delta.absoluteValue > 0.01) {
-            return Math.min(Math.max(currentAngleB + limitedDelta, -maxBankRad), maxBankRad)
-        } else {
-            return targetAngleB
-        }
-    }
-
     fun updateShipBottomCornersAt(pos: Vec3) {
         // localCorners[i] are in ship local space (triangle bottom)
         // Use modelInstance.rotateLocal() for rotation, then add desired pos.
@@ -344,6 +293,60 @@ class ShipActor(
         return current + (target - current) * a
     }
 
+    fun calculateForwardVelocity(currentVelocity: Float, targetVelocity: Float, interval: Float): Float {
+
+        val delta = targetVelocity - currentVelocity
+
+        if (delta.absoluteValue < 0.01) return targetVelocity
+
+        val momentumEffect =
+            if (targetVelocity > currentVelocity)
+                3f                              // fast acceleration
+            else {
+
+                if (currentVelocity > neutralSpeed) {
+                    0.9f                        // medium decelaration
+                }
+                else {
+
+//                    Pitch         momentumEffect
+//                    -0.785	    0
+//                    -0.3925	    0.03081125
+//                    0             0.123245
+//                    0.3925	    0.27730125
+//                    0.785         0.49298
+
+                    (Math.pow(pitchRad + maxPitch, 2.0) / 5).toFloat()
+                }
+            }
+
+        val limitedDelta = delta * momentumEffect * interval
+
+        return Math.min(currentVelocity + limitedDelta, maxForwardVelocity)
+    }
+
+    fun calculateTranslationalVelocity(currentVelocity: Float, targetVelocity: Float, interval: Float): Float {
+        val delta = targetVelocity - currentVelocity
+        val limitedDelta = delta * translationalDamping * interval
+        if (delta.absoluteValue > 0.01) {
+            return Math.min(Math.max(currentVelocity + limitedDelta, -maxTranslationalVelocity), maxTranslationalVelocity)
+        } else {
+            return targetVelocity
+        }
+    }
+
+    fun calculateRoll(currentAngleB: Double, targetAngleB: Double, dtSec: Double, rollDampingEffective: Double): Double {
+        val delta = targetAngleB - currentAngleB
+        val limitedDelta = rollDampingEffective * delta * 3 * dtSec
+        if (delta.absoluteValue > 0.01) {
+            return Math.min(Math.max(currentAngleB + limitedDelta, -maxBankRad), maxBankRad)
+        } else {
+            return targetAngleB
+        }
+    }
+
+
+
     override fun update(dt: Float, dtMs: Int, timeMs: Int) {
 
         val fwdPower = remapPiecewise01(flightControls.throttle, flightControls.throttleStallThreshold, stallMinPower)
@@ -366,13 +369,14 @@ class ShipActor(
 
         // Authority factor 1..minAuthority
         val authority = 1f - stallFactor * (1f - minAuthority)
+        val translationAuthority = authority * (1f - stallFactor)
 
-        val rotH = flightControls.rotationHorz * authority
-        val rotV = flightControls.rotationVert * authority
+        val rotHVel = flightControls.rotationHorz * authority
+        val rotVVel = flightControls.rotationVert * authority
         // --- end v0 STALL TURN AUTHORITY ---
 
-        yawVel = rotH.toDouble() * 1.2f
-        pitchVel = rotV.toDouble() * 1.2f
+        yawVel = rotHVel.toDouble() * 1.2f
+        pitchVel = rotVVel.toDouble() * 1.2f
 
         // 1) Update yaw & pitch from angular velocities
         val dtSec = dt.toDouble()
@@ -396,18 +400,12 @@ class ShipActor(
 
         }
 
-        // calculate minimum fwd velocity
-        // - nose level or up min fwd velocity is zero
-        // - nose down min fwd velocity increases
-        val minVelocity = max(0f, -pitchRad.toFloat()) * maxDiveVelocity
 
+        val targetVelocity = fwdPower * maxForwardVelocity
 
-        val targetVelocity = (fwdPower * maxForwardVelocity).coerceAtLeast(minVelocity)
-        velocityF = calculateForwardVelocity(velocityF, targetVelocity, dt, stallFactor) * friction
-
-        val sf = 1f - stallFactor
-        velocityH = calculateTranslationalVelocity(velocityH, flightControls.translationHorz * 100f * authority * sf, dt)
-        velocityV = calculateTranslationalVelocity(velocityV, -flightControls.translationVert * 100f * authority * sf, dt)
+        velocityF = calculateForwardVelocity(velocityF, targetVelocity, dt) * friction
+        velocityH = calculateTranslationalVelocity(velocityH, flightControls.translationHorz * 100f * translationAuthority, dt)
+        velocityV = calculateTranslationalVelocity(velocityV, -flightControls.translationVert * 100f * translationAuthority, dt)
 
 
         computeDesiredPosition(dt, authority)
@@ -641,12 +639,7 @@ class ShipActor(
         }
 
 
-//        debugLogger.add("ship.position=${position}", timeMs)
-//        debugLogger.add("levelAtRest=${levelAtRest}", timeMs)
-//        debugLogger.add("pitchRad=${pitchRad}", timeMs)
-//        debugLogger.add("rollRad=${rollRad}", timeMs)
-//        debugLogger.add("pitchVel=${pitchVel}", timeMs)
-//        debugLogger.add("restLatched=$restLatched", timeMs)
+
 
         // keep ship in bounds
         world.battleSpaceBounds.slideOnBounds(position, velocity, halfLength, COLLISION_EPS)
