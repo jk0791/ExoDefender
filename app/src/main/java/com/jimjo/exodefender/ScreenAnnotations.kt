@@ -31,6 +31,9 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
     private val screenLabelPrevButton: ImageView
     private val screenLabelNextButton: ImageView
 
+    var instructionShowing = false
+    var betweenInstructions = true
+
 
     // tilt
     private val imageTilt: ImageView
@@ -95,26 +98,17 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
         imageThrottle = findViewById(R.id.imageThrottle)
         throttleAnimation = AnnotationAnimation("tut_throttle", 2, imageThrottle, framesPerFrame = 3)
 
-        hideEverything(true)
+        hideEverything()
     }
 
     fun start() {
-        if (currentLevelIndex == 0) startBasicControlsTutorial()
-        else if (currentLevelIndex == 2) startLandingTutorial()
-    }
+        if (currentLevelIndex == 0) loadBasicControlsTutorial()
+        else if (currentLevelIndex == 2) loadLandingTutorial()
 
-    fun startBasicControlsTutorial() {
-
-        trainingType = TrainingType.BASIC_CONTROLS
-
-        tiltRollAnimation.loadBitmaps(context)
-        tiltPitchAnimation.loadBitmaps(context)
-        slideAnimation.loadBitmaps(context)
-        fireAnimation.loadBitmaps(context)
-        throttleAnimation.loadBitmaps(context)
-
-        hideEverything(true)
+        hideEverything()
         stepIndex = 0
+        instructionShowing = false
+        betweenInstructions = true
         introVoicePlayed = false
 
         running = true
@@ -125,16 +119,26 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
         postInvalidate()
     }
 
-    fun startLandingTutorial() {
+    fun loadBasicControlsTutorial() {
+
+        trainingType = TrainingType.BASIC_CONTROLS
+
+        tiltRollAnimation.loadBitmaps(context)
+        tiltPitchAnimation.loadBitmaps(context)
+        slideAnimation.loadBitmaps(context)
+        fireAnimation.loadBitmaps(context)
+        throttleAnimation.loadBitmaps(context)
+
+
+    }
+
+    fun loadLandingTutorial() {
         // TODO
 
         trainingType = TrainingType.LANDING
 
-        setNavButtons(false, false)
-        hideEverything()
-        moveLabelTo(imageFire, ScreenLabelHorzAlignment.ALIGNED_RIGHT_WITH_LABEL, true)
-        screenLabelText.text = "Reduce power to land"
-        screenLabelText.visibility = VISIBLE
+
+
 
 
     }
@@ -255,6 +259,27 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
+    fun showInstruction() {
+        stepIndex++
+        when (stepIndex) {
+            1 -> {
+                setNavButtons(false, false)
+//                hideEverything()
+                moveLabelTo(imageTilt, ScreenLabelHorzAlignment.ALIGNED_RIGHT_WITH_LABEL, false)
+                screenLabelText.text = "Land on either the runway or the pad"
+                screenLabelText.visibility = VISIBLE
+            }
+            2 -> {
+                setNavButtons(false, false)
+//                hideEverything()
+                moveLabelTo(imageThrottle, ScreenLabelHorzAlignment.ALIGNED_RIGHT_WITH_LABEL, true)
+                screenLabelText.text = "Reduce power to land"
+                screenLabelText.visibility = VISIBLE
+            }
+        }
+    }
+
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (running) {
@@ -288,6 +313,30 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
 
                     // TODO
 
+                    var showInstructionThisFrame = false
+
+                    if (
+                        (elapsedMs > 1000 && elapsedMs < 4500)
+                        || (elapsedMs > 5000 && elapsedMs < 9000))
+                    {
+                        showInstructionThisFrame = true
+                    }
+
+
+                    if (showInstructionThisFrame) {
+                        if (!instructionShowing) {
+                            instructionShowing = true
+                            betweenInstructions = false
+                            showInstruction()
+                        }
+                    }
+                    else {
+                        if (!betweenInstructions) {
+                            betweenInstructions = true
+                            instructionShowing = false
+                            hideEverything()
+                        }
+                    }
                 }
             }
 
@@ -331,7 +380,7 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
         constraintSet.applyTo(constraintLayout)
     }
 
-    fun hideEverything(force: Boolean = false) {
+    fun hideEverything() {
 
         imageTilt.visibility = INVISIBLE
         imageSlide.visibility = INVISIBLE
