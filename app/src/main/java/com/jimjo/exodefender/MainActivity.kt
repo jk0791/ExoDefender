@@ -892,6 +892,14 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         }
     }
 
+    fun showLandingTrainingCompletion() {
+        println("landing training requirement complete")
+
+        // TODO show dialog
+        // flag mandatory landing training completed
+
+    }
+
     fun showLevelsView(levelType: Level.LevelType, gotoMissionLevelId: Int? = null) {
         levelsView.loadLevels(levelType, gotoMissionLevelId = gotoMissionLevelId)
         hideAllViews()

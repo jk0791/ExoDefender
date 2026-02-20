@@ -138,6 +138,9 @@ class ShipActor(
 
     var shotsFired = 0
 
+    private var thisLandingNotified = false
+    private var notLandedOnce = true
+
     override val continuous = true
     override val qInterval = 200
 
@@ -218,6 +221,8 @@ class ShipActor(
 
         rescueTransfer.reset()
         civiliansOnboard = 0
+        thisLandingNotified = false
+        notLandedOnce = true
 
         lastReplayPadLatchKey = null
         lastReplayShipOnboard = Int.MIN_VALUE
@@ -601,6 +606,7 @@ class ShipActor(
 
         if (restLatched && wantsTakeoff) {
             restLatched = false
+            thisLandingNotified = false
             restTimer = 0f
 
             flightLog.missionLog.logPadLatchOff(timeMs) // only logs if currently latched to a pad
@@ -608,37 +614,41 @@ class ShipActor(
 
         if (padConfirmed && restLatched) {
             yawRad = latchedYaw
-//            pitchRad = 0.0
-//            rollRad = 0.0
-
             velocity.set(0f, 0f, 0f)
-//            yawVel = 0.0
-//            pitchVel = 0.0
 
-        }
-
-        val deltaCiviliansOnboard = rescueTransfer.update(
-            padConfirmed = padConfirmed,
-            restLatched = restLatched,
-            lastPadBlock = lastPadBlock,
-            timeMs = timeMs
-        )
-
-        if (deltaCiviliansOnboard != 0) {
-            parent.civiliansOnboardChanged(civiliansOnboard, deltaCiviliansOnboard)
-            flightLog.missionLog.logShipOnboard(timeMs = timeMs, count = civiliansOnboard)
-        }
-
-        // Pad waiting: log whenever we have a current pad+cluster (MissionLog will dedupe)
-        if (padConfirmed && restLatched) {
-            val block = lastPadBlock
-            val cluster = block?.civilianCluster
-            if (block != null && cluster != null) {
-                flightLog.missionLog.logPadWaiting(timeMs, block.padKey(), cluster.count)
+            if (!thisLandingNotified) {
+                parent.landed(notLandedOnce)
+                thisLandingNotified = true
+                if (notLandedOnce) {
+                    notLandedOnce = false
+                }
             }
         }
 
+        if (flightLog.level?.objectiveType == Level.ObjectiveType.EVAC) {
 
+            val deltaCiviliansOnboard = rescueTransfer.update(
+                padConfirmed = padConfirmed,
+                restLatched = restLatched,
+                lastPadBlock = lastPadBlock,
+                timeMs = timeMs
+            )
+
+            if (deltaCiviliansOnboard != 0) {
+                parent.civiliansOnboardChanged(civiliansOnboard, deltaCiviliansOnboard)
+                flightLog.missionLog.logShipOnboard(timeMs = timeMs, count = civiliansOnboard)
+            }
+
+            // Pad waiting: log whenever we have a current pad+cluster (MissionLog will dedupe)
+            if (padConfirmed && restLatched) {
+                val block = lastPadBlock
+                val cluster = block?.civilianCluster
+                if (block != null && cluster != null) {
+                    flightLog.missionLog.logPadWaiting(timeMs, block.padKey(), cluster.count)
+                }
+            }
+
+        }
 
 
         // keep ship in bounds

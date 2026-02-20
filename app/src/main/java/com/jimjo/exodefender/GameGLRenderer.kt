@@ -22,6 +22,7 @@ interface ModelParent {
     fun shipHit(destroyed: Boolean)
     fun notifyActorDestroyed(actor: Actor)
 
+    fun landed(firstLanding: Boolean)
     fun civiliansOnboardChanged(
         newCount: Int,
         delta: Int
@@ -282,21 +283,6 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
     }
 
-//    override fun notifyActorDestroyed(playSound: Boolean, friendly: Boolean) {
-//        if (playSound) {
-//            parent.mainActivity.audioPlayer.playSound(parent.mainActivity.audioPlayer.explosion1)
-//        }
-//
-//        if (friendly) {
-//            audioPlayer.radio.onFriendlyKilled(flightTimeMs.toLong())
-//        }
-//        else {
-//            audioPlayer.radio.onEnemyKilled(flightTimeMs.toLong())
-//        }
-//
-//        if (!flightLog.replaySeeking) scheduleEndOfFrameChecks()
-//    }
-
     override fun notifyActorDestroyed(actor: Actor) {
         if (flightLog.replaySeeking) return
 
@@ -310,6 +296,14 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         }
 
         scheduleEndOfFrameChecks()
+    }
+
+    override fun landed(firstLanding: Boolean) {
+//        println("Landed!${if (firstLanding) " (first landing)" else ""}")
+        if (firstLanding) {
+            handler.sendEmptyMessage(FIRST_LANDING)
+        }
+
     }
 
     override fun civiliansOnboardChanged(

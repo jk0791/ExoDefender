@@ -14,9 +14,9 @@ const val UPDATE_REPLAY_SEEKBAR = 1
 const val LEVEL_COMPLETE_LIVE_MODE = 2
 const val LEVEL_COMPLETE_REPLAY_MODE = 3
 const val SET_SCREEN_KEEP_ON = 4
-
 const val LAST_FLIGHTLOG_SAVED = 5
 const val RESET_GAME = 6
+const val FIRST_LANDING = 7
 
 class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererReadyListener {
 
@@ -457,6 +457,11 @@ class CustomHandler(looper: Looper, val gLView: GameSurfaceView): Handler(looper
 //                gLView.screenOverlay.stopCountdownTicker()
                 if (!gLView.screenOverlay.replayEditorVisible) {
                     gLView.mainActivity.completeLevel(true)
+                }
+            }
+            FIRST_LANDING -> {
+                if (gLView.level.type == Level.LevelType.TRAINING && gLView.level.index == 2) {
+                    gLView.mainActivity.showLandingTrainingCompletion()
                 }
             }
             SET_SCREEN_KEEP_ON -> {

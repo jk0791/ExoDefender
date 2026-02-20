@@ -139,10 +139,10 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
         val levelJson = Json.decodeFromString(Level.LevelSerializable.serializer(), levelVersioned.json)
 
 
-        val gameMap = worldManager.worldLookupById[levelJson.mapId]
+        val world = worldManager.worldLookupById[levelJson.mapId]
 
-        if (gameMap != null) {
-            val level = Level(levelJson.id, levelJson.campaignCode, levelJson.type, levelJson.objectiveType, levelVersioned.version, levelJson.order, gameMap, levelJson.difficultyWeight)
+        if (world != null) {
+            val level = Level(levelJson.id, levelJson.campaignCode, levelJson.type, levelJson.objectiveType, levelVersioned.version, levelJson.order, world, levelJson.difficultyWeight)
             level.type = levelJson.type
             level.name = levelJson.name
             level.shipPosition.set(levelJson.shipPosition)
