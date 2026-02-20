@@ -133,14 +133,8 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
     }
 
     fun loadLandingTutorial() {
-        // TODO
-
         trainingType = TrainingType.LANDING
-
-
-
-
-
+        setNavButtons(false, false)
     }
 
     fun setNavButtons(showPrev: Boolean, showNext: Boolean) {
@@ -263,20 +257,20 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
         stepIndex++
         when (stepIndex) {
             1 -> {
-                setNavButtons(false, false)
-//                hideEverything()
                 moveLabelTo(imageTilt, ScreenLabelHorzAlignment.ALIGNED_RIGHT_WITH_LABEL, false)
                 screenLabelText.text = "Land on either the runway or the pad"
-                screenLabelText.visibility = VISIBLE
             }
             2 -> {
-                setNavButtons(false, false)
-//                hideEverything()
                 moveLabelTo(imageThrottle, ScreenLabelHorzAlignment.ALIGNED_RIGHT_WITH_LABEL, true)
                 screenLabelText.text = "Reduce power to land"
-                screenLabelText.visibility = VISIBLE
+            }
+            3 -> {
+                moveLabelTo(imageTilt, ScreenLabelHorzAlignment.ALIGNED_RIGHT_WITH_LABEL, false)
+                screenLabelText.text = "Markings turn green to indicate good landing"
             }
         }
+        screenLabelText.visibility = VISIBLE
+
     }
 
 
@@ -290,7 +284,7 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
 
                 if (trainingType == TrainingType.BASIC_CONTROLS) {
 
-                    // initial delay before intro AI VO
+                    // AI VO (after delay)
                     if (!introVoicePlayed && elapsedMs > 1000) {
                         mainActivity.audioPlayer.playAIVoiceOver(mainActivity.audioPlayer.ai_intro)
                         introVoicePlayed = true
@@ -311,17 +305,21 @@ class ScreenAnnotations(context: Context, attrs: AttributeSet? = null) :
                 }
                 else if (trainingType == TrainingType.LANDING) {
 
-                    // TODO
+                    // AI VO (after delay)
+                    if (!introVoicePlayed && elapsedMs > 1000) {
+                        mainActivity.audioPlayer.playAIVoiceOver(mainActivity.audioPlayer.ai_landing)
+                        introVoicePlayed = true
+                    }
 
                     var showInstructionThisFrame = false
 
                     if (
-                        (elapsedMs > 1000 && elapsedMs < 4500)
-                        || (elapsedMs > 5000 && elapsedMs < 9000))
+                        (elapsedMs > 1500 && elapsedMs < 5000)       // step 1
+                        || (elapsedMs > 6000 && elapsedMs < 10000)   // step 2
+                        || (elapsedMs > 16000 && elapsedMs < 20000)) // step 3
                     {
                         showInstructionThisFrame = true
                     }
-
 
                     if (showInstructionThisFrame) {
                         if (!instructionShowing) {

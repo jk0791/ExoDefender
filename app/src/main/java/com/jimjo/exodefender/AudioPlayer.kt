@@ -52,6 +52,8 @@ class AudioPlayer(val context: Context) {
     val ai_throttle = Soundfile(R.raw.ai_throttle, 1f)
     val ai_controls_trg_complete = Soundfile(R.raw.ai_controls_training_complete, 1f)
 
+    val ai_landing = Soundfile(R.raw.ai_landing, 1f)
+
     private data class ScheduledAction(val atMs: Long, val action: () -> Unit)
     private val actionSchedule = ArrayList<ScheduledAction>(64)
     private var actionCursor = 0
@@ -157,6 +159,7 @@ class AudioPlayer(val context: Context) {
         ai_weapons.loadIntoSoundPool(context, soundPool)
         ai_throttle.loadIntoSoundPool(context, soundPool)
         ai_controls_trg_complete.loadIntoSoundPool(context, soundPool)
+        ai_landing.loadIntoSoundPool(context, soundPool)
 
         // Load radio
         loadRadioList(radioCheckIn)
