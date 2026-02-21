@@ -18,61 +18,50 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-        <LinearLayout
+        <FrameLayout
             android:id="@+id/linearLayout4"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:background="#BB000000"
-            android:orientation="vertical"
             app:layout_constrainedWidth="true"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintWidth_percent="0.5"
+            app:layout_constraintHeight_percent="0.7"
             android:clickable="true">
 
             <TextView
                 style="@style/DefaultText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="50dp"
+                android:layout_gravity="center"
                 android:text="Landing Certification Completed"
+                android:paddingBottom="50dp"
                 android:textAlignment="center"
                 android:textSize="30dp" />
-
-
-            <LinearLayout
-                android:layout_width="match_parent"
+            <Button
+                android:id="@+id/btnKeepPracticing"
+                style="@style/DefaultBorderlessButton"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:layout_gravity="bottom|left"
+                android:padding="15dp"
+                android:text="Keep Practicing"
+                android:textSize="30dp" />
 
-                <Button
-                    android:id="@+id/btnKeepPracticing"
-                    style="@style/DefaultBorderlessButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:padding="15dp"
-                    android:text="Keep Practicing"
-                    android:textSize="30dp" />
+            <Button
+                android:id="@+id/btnNextMission"
+                style="@style/DefaultBorderlessButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|right"
+                android:padding="15dp"
+                android:text="Next Mission >"
+                android:textSize="30dp" />
 
-                <Space
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"/>
-
-                <Button
-                    android:id="@+id/btnContinue"
-                    style="@style/DefaultBorderlessButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:padding="15dp"
-                    android:text="Next Mission >"
-                    android:textSize="30dp" />
-
-            </LinearLayout>
-
-        </LinearLayout>
+        </FrameLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

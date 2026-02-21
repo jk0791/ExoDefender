@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.AttributeSet
 import android.view.View
 import android.widget.Button
-import android.widget.ImageView
 import android.widget.LinearLayout
 
 class TrainingLandingCompleteView(context: Context, attrs: AttributeSet? = null) :
@@ -17,25 +16,24 @@ class TrainingLandingCompleteView(context: Context, attrs: AttributeSet? = null)
         inflate(context, R.layout.training_landing_complete, this)
 
         findViewById<View>(R.id.card).setOnClickListener { keepPracticing() }
-        findViewById<ImageView>(R.id.btnContinue).setOnClickListener({ keepPracticing() })
 
         findViewById<Button>(R.id.btnKeepPracticing).setOnClickListener({
-            mainActivity.exitLevel()
+            keepPracticing()
         })
-        findViewById<Button>(R.id.btnRestartLevel).setOnClickListener({
-            mainActivity.resetGame()
-            mainActivity.closePauseMission()
-        })
-        findViewById<Button>(R.id.btnSettingsFromLevel).setOnClickListener({
-            mainActivity.closePauseMission()
-            mainActivity.showSettings()
+
+        findViewById<Button>(R.id.btnNextMission).setOnClickListener({
+            gotoNextMission()
         })
 
     }
 
     fun keepPracticing() {
-        // TODO render button to allow continuing to next mission
+        // TODO render button to allow going to next mission
         visibility = GONE
+    }
+
+    fun gotoNextMission() {
+
     }
 
 }
