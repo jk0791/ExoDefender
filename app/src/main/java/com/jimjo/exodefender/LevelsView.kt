@@ -181,7 +181,6 @@ class LevelsView(context: Context, attrs: AttributeSet? = null) :
 
     fun levelLabelClicked(level: Level?) {
         if (level != null) {
-//            mainActivity.openLevel(level, false, null, null, false, false)
             mainActivity.openLevelFromLevelsView(level)
         }
         else {

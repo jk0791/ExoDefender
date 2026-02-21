@@ -102,6 +102,8 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
             setOnClickListener {
                 mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
                     remove(mainActivity.MANDATORY_TRAINING_COMPLETED)
+//                mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
+//                    remove(mainActivity.LANDING_TRAINING_COMPLETED)
                 }
             }
         }

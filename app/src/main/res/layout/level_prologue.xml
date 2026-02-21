@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom="http://schemas.android.com/apk/res-auto"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fontFamily="@font/agencyr"
+    android:textColor="#5ADC00"
+    android:clickable="true" >
+
+    <!-- Dimmed background -->
+    <View android:id="@+id/dim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#88000000" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+            <FrameLayout
+                android:id="@+id/frameLayout"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:orientation="vertical"
+                android:background="@drawable/score_card_border"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHeight_percent="0.9"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintWidth_percent="0.6">
+
+            </FrameLayout>
+            <TextView
+                android:id="@+id/prologueSummary"
+                style="@style/DefaultText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                custom:layout_constraintTop_toBottomOf="@+id/btnHome"
+                custom:layout_constraintStart_toStartOf="@+id/frameLayout"
+                custom:layout_constraintEnd_toEndOf="@+id/frameLayout"
+                android:paddingHorizontal="40dp"
+                android:text="Short description of training completed. This can be two lines of text on small screens."
+
+                android:textSize="30dp" />
+
+
+            <Button
+                android:id="@+id/btnNext"
+                style="@style/DefaultBorderlessButton"
+                android:layout_width="wrap_content"
+                android:layout_height="60dp"
+                app:layout_constraintEnd_toEndOf="@+id/frameLayout"
+                app:layout_constraintBottom_toBottomOf="@+id/frameLayout"
+                android:text="Next &gt;"
+                android:textSize="30dp" />
+
+
+            <ImageView
+                android:id="@+id/btnHome"
+                style="@style/DefaultBorderlessButton"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:padding="10dp"
+                android:src="@drawable/home_button_off"
+                android:textSize="30dp"
+                app:layout_constraintStart_toStartOf="@+id/frameLayout"
+                app:layout_constraintTop_toTopOf="@+id/frameLayout" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</FrameLayout>

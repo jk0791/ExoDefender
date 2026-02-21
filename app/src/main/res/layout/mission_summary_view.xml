@@ -28,7 +28,7 @@
         app:layout_constraintBottom_toBottomOf="parent">
 
         <ImageView
-            android:id="@+id/btnExitLevel"
+            android:id="@+id/btnKeepPracticing"
             android:layout_width="60dp"
             android:layout_height="60dp"
             app:layout_constraintTop_toTopOf="parent"

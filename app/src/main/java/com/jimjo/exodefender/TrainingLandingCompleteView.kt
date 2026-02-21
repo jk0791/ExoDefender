@@ -7,17 +7,17 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 
-class PauseMissionView(context: Context, attrs: AttributeSet? = null) :
+class TrainingLandingCompleteView(context: Context, attrs: AttributeSet? = null) :
     LinearLayout(context, attrs) {
 
     val mainActivity = context as MainActivity
 
     init {
 
-        inflate(context, R.layout.pause_mission, this)
+        inflate(context, R.layout.training_landing_complete, this)
 
-        findViewById<View>(R.id.card).setOnClickListener { mainActivity.closePauseMission() }
-        findViewById<ImageView>(R.id.btnContinue).setOnClickListener({ mainActivity.closePauseMission() })
+        findViewById<View>(R.id.card).setOnClickListener { keepPracticing() }
+        findViewById<ImageView>(R.id.btnContinue).setOnClickListener({ keepPracticing() })
 
         findViewById<Button>(R.id.btnKeepPracticing).setOnClickListener({
             mainActivity.exitLevel()
@@ -32,4 +32,10 @@ class PauseMissionView(context: Context, attrs: AttributeSet? = null) :
         })
 
     }
+
+    fun keepPracticing() {
+        // TODO render button to allow continuing to next mission
+        visibility = GONE
+    }
+
 }

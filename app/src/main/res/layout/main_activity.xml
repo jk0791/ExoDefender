@@ -95,6 +95,11 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <com.jimjo.exodefender.LevelPrologueView
+        android:id="@+id/levelPrologueView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <com.jimjo.exodefender.MissionSummaryView
         android:id="@+id/missionSummaryView"
         android:layout_width="match_parent"
@@ -102,6 +107,11 @@
 
     <com.jimjo.exodefender.PauseMissionView
         android:id="@+id/pauseMissionView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <com.jimjo.exodefender.TrainingLandingCompleteView
+        android:id="@+id/trainingLandingCompleteView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 

@@ -80,6 +80,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
     val ADMIN_MODE = "admin_mode"
     val ADMIN_CURRENT_CAMPAIGN_CODE = "admin_current_campaign_code"
     val  STARTUP_NOTICE_ACCEPTED = "startup_notice_accepted"
+    val  LANDING_TRAINING_COMPLETED = "landing_training_completed"
 
 
 
@@ -102,7 +103,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
     lateinit var adminLogView: AdminLog
     lateinit var levelSummaryView: MissionSummaryView
     lateinit var trainingOutcomeView: TrainingOutcomeView
+    lateinit var levelPrologueView: LevelPrologueView
     lateinit var pauseMissionView: PauseMissionView
+    lateinit var trainingLandingCompleteView: TrainingLandingCompleteView
     lateinit var settingsView: SettingsView
     var newUserNotice: NewUserNotice? = null
     var installDialog: InstallDialogView? = null
@@ -235,6 +238,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         trainingView = findViewById(R.id.trainingView)
         trainingOutcomeView = findViewById(R.id.trainingOutcomeView)
         trainingOutcomeView.visibility = GONE
+        levelPrologueView = findViewById(R.id.levelPrologueView)
+        levelPrologueView.visibility = GONE
 
         startupNoticeView = findViewById(R.id.startupNoticeView)
         startupNoticeView.visibility = GONE
@@ -244,6 +249,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
 
         pauseMissionView = findViewById(R.id.pauseMissionView)
         pauseMissionView.visibility = GONE
+
+        trainingLandingCompleteView = findViewById(R.id.trainingLandingCompleteView)
+        trainingLandingCompleteView.visibility = GONE
 
         settingsView = findViewById(R.id.settingsView)
         settingsView.visibility = GONE
@@ -337,6 +345,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
 
     fun isMandatoryTrainingComplete() =
         getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).getBoolean(MANDATORY_TRAINING_COMPLETED, false)
+
+    fun isMLandingTrainingComplete() =
+        getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).getBoolean(LANDING_TRAINING_COMPLETED, false)
 
     fun isRadioSettingEnabled() =
         getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).getBoolean(RADIO_ENABLED, true)
@@ -462,24 +473,37 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
 
     fun openLevelByIndex(filter: Level.LevelType?, levelIndex: Int, levelBuilderMode: Boolean = false) {
 
-        fun getCurrentLevel(levelList: List<Level>) {
-            if (levelIndex < levelList.size) {
-                currentLevel = levelList[levelIndex]
-            } else {
-                println("ERROR: invalid index for $filter, $levelIndex")
-            }
+
+
+
+        fun getRequestedLevel(levelList: List<Level>): Level? {
+
+            if (levelIndex < levelList.size) return levelList[levelIndex]
+            return null
         }
 
-        if (filter != null) {
-            when (filter) {
-                Level.LevelType.MISSION -> getCurrentLevel(levelManager.missions)
-                Level.LevelType.MILKRUN -> getCurrentLevel(levelManager.milkruns)
-                Level.LevelType.TRAINING -> getCurrentLevel(levelManager.training)
-                Level.LevelType.DEVELOPMENT -> getCurrentLevel(levelManager.development)
+        val requestedLevel =
+            if (filter != null) {
+                when (filter) {
+                    Level.LevelType.MISSION -> getRequestedLevel(levelManager.missions)
+                    Level.LevelType.MILKRUN -> getRequestedLevel(levelManager.milkruns)
+                    Level.LevelType.TRAINING -> getRequestedLevel(levelManager.training)
+                    Level.LevelType.DEVELOPMENT -> getRequestedLevel(levelManager.development)
+                }
+            } else {
+                getRequestedLevel(levelManager.allLevels)
             }
-        } else {
-            getCurrentLevel(levelManager.allLevels)
+
+        if (requestedLevel == null) {
+            println("ERROR: invalid index for $filter, $levelIndex")
+            unloadGLView()
+            return
         }
+
+        // TODO divert to landing training if required
+        if (maybeShowPreLevelSequence(requestedLevel)) return
+
+        currentLevel = requestedLevel
 
         if (currentLevel != null) {
             if (levelEditorMode) {
@@ -492,6 +516,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
     }
 
     fun openLevelFromLevelsView(level: Level) {
+
+        // TODO divert to landing training if required
+        if (maybeShowPreLevelSequence(level)) return
 
         val bestScore = levelManager.levelsProgress.getBestScore(level.id)
         val bestLog = flightLogManager.readBestSuccessfulLog(level.id)
@@ -599,6 +626,24 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         levelSummaryView.visibility = VISIBLE
         levelSummaryView.isClickable = true
         levelSummaryView.bringToFront()
+    }
+
+    fun maybeShowPreLevelSequence(requestedLevel: Level): Boolean {
+
+        if (LevelPrologueView.LevelIds.isApplicable(requestedLevel.id)) {
+
+            // TODO uncomment to check if landing training completed
+//            if (requestedLevel.id == LevelPrologueView.LevelIds.LANDING_TRAINING && isMLandingTrainingComplete()) return false
+
+            levelPrologueView.apply {
+                load(requestedLevel)
+                levelPrologueView.bringToFront()
+                levelPrologueView.visibility = VISIBLE
+            }
+
+            return true
+        }
+        return false
     }
 
     fun replayLastFlight() {
@@ -896,7 +941,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         println("landing training requirement complete")
 
         // TODO show dialog
+
+        if (gLView != null) {
+            gLView!!.setPause(true)
+            levelActive = false
+            trainingLandingCompleteView.bringToFront()
+            trainingLandingCompleteView.visibility = VISIBLE
+        }
+
+
         // flag mandatory landing training completed
+        getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
+            putBoolean(LANDING_TRAINING_COMPLETED, true)
+        }
 
     }
 

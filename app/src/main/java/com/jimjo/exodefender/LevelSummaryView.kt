@@ -83,7 +83,7 @@ class MissionSummaryView @JvmOverloads constructor(
         txtHeading = findViewById(R.id.txtHeading)
         txtFailureReason = findViewById(R.id.txtFailureReason)
 
-        btnExitSmmary = findViewById(R.id.btnExitLevel)
+        btnExitSmmary = findViewById(R.id.btnKeepPracticing)
 
         btnWatchReplay = findViewById(R.id.btnWatchReplay)
         btnViewRankings = findViewById(R.id.btnViewRankings)
