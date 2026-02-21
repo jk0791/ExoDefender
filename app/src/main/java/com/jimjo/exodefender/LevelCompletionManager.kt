@@ -83,7 +83,7 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
 
                         // in-app review request
                         if (level.type == Level.LevelType.MISSION) {
-                            mainActivity.inAppReview.maybeAskForReview(level.index, true)
+                            mainActivity.inAppReview.maybeAskForReview(level.globalIndex, true)
                         }
                     }
 

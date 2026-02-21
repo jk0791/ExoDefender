@@ -114,15 +114,18 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
                 milkruns.sort()
                 for ((index, level) in milkruns.withIndex()) {
                     level.index = index
+                    level.globalIndex = index
                 }
 
                 training.sort()
                 for ((index, level) in training.withIndex()) {
                     level.index = index
+                    level.globalIndex = index
                 }
                 development.sort()
                 for ((index, level) in development.withIndex()) {
                     level.index = index
+                    level.globalIndex = index
                 }
                 println("levels and campaigns loaded from internal storage")
 
@@ -371,7 +374,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
 
     fun getNextLevelIndex(level: Level): Int? {
 
-        val nextIndex = level.index + 1
+        val nextIndex = level.globalIndex + 1
         val levelList = getLevelListByType(level.type)
         if (nextIndex <= levelList.lastIndex) {
             return nextIndex

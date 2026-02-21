@@ -24,7 +24,7 @@ class NewUserNotice(context: Context, attrs: AttributeSet? = null) :
 
         findViewById<Button>(R.id.btnNext).apply {
             setOnClickListener {
-                mainActivity.openLevelByIndex(Level.LevelType.MILKRUN, 0, false)
+                mainActivity.openLevelByGlobalIndex(Level.LevelType.MILKRUN, 0, false)
                 mainActivity.closeNewUserNotice()
             }
         }

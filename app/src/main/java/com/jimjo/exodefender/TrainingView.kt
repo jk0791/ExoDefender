@@ -21,17 +21,17 @@ class TrainingView(context: Context, attrs: AttributeSet? = null) :
         }
         findViewById<Button>(R.id.btnBasicControls).apply {
             setOnClickListener {
-                mainActivity.openLevelByIndex(Level.LevelType.TRAINING, 0, false)
+                mainActivity.openLevelByGlobalIndex(Level.LevelType.TRAINING, 0, false)
             }
         }
         findViewById<Button>(R.id.btnTargetPractice).apply {
             setOnClickListener {
-                mainActivity.openLevelByIndex(Level.LevelType.TRAINING, 1, false)
+                mainActivity.openLevelByGlobalIndex(Level.LevelType.TRAINING, 1, false)
             }
         }
         findViewById<Button>(R.id.btnLandingPractice).apply {
             setOnClickListener {
-                mainActivity.openLevelByIndex(Level.LevelType.TRAINING, 2, false)
+                mainActivity.openLevelByGlobalIndex(Level.LevelType.TRAINING, 2, false)
             }
         }
     }

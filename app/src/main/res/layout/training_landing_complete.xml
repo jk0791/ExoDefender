@@ -9,36 +9,34 @@
     android:textColor="#5ADC00" >
 
     <View
-        android:id="@+id/card"
+        android:id="@+id/backdrop"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:clickable="true"/>
+        android:layout_height="match_parent"/>
 
     <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
         <FrameLayout
-            android:id="@+id/linearLayout4"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            android:id="@+id/card"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:background="#BB000000"
             app:layout_constrainedWidth="true"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth_percent="0.5"
-            app:layout_constraintHeight_percent="0.7"
-            android:clickable="true">
+            app:layout_constraintTop_toTopOf="parent">
 
             <TextView
+                android:id="@+id/heading"
                 style="@style/DefaultText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:text="Landing Certification Completed"
-                android:paddingBottom="50dp"
+                android:paddingHorizontal="50dp"
+                android:paddingVertical="100dp"
                 android:textAlignment="center"
                 android:textSize="30dp" />
             <Button

@@ -14,10 +14,12 @@ class LevelPrologueView(context: Context, attrs: AttributeSet? = null) :
     object LevelIds {
         const val DEFEND_PREAMBLE = 267
         const val LANDING_TRAINING = 278
+        const val EVAC_PREAMBLE = 278
 
         private val APPLICABLE = setOf(
             DEFEND_PREAMBLE,
-            LANDING_TRAINING
+            LANDING_TRAINING,
+            EVAC_PREAMBLE,
         )
 
         fun isApplicable(id: Int) = id in APPLICABLE
@@ -30,13 +32,13 @@ class LevelPrologueView(context: Context, attrs: AttributeSet? = null) :
 
     lateinit var requestedLevel: Level
 
-    val DEFEND_PREAMBLE_LEVEL_ID = 267
-    val LANDING_TRAINING_LEVEL_ID = 278
-
-    val applicableLevelIds = mutableListOf(
-        DEFEND_PREAMBLE_LEVEL_ID,
-        LANDING_TRAINING_LEVEL_ID,
-    )
+//    val DEFEND_PREAMBLE_LEVEL_ID = 267
+//    val LANDING_TRAINING_LEVEL_ID = 278
+//
+//    val applicableLevelIds = mutableListOf(
+//        DEFEND_PREAMBLE_LEVEL_ID,
+//        LANDING_TRAINING_LEVEL_ID,
+//    )
 
     init {
 
@@ -54,35 +56,65 @@ class LevelPrologueView(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
-    fun load(requestedLevel: Level) {
+    fun load(requestedLevel: Level): Boolean {
 
         this.requestedLevel = requestedLevel
 
+        if (requestedLevel.id == LevelIds.LANDING_TRAINING && !mainActivity.isLandingTrainingComplete()) {
+            prologueSummary.text =
+                "Next missions may involve landing the EXO-57 Striker.\n\nYou are required to complete a short landing training exercise."
+            nextButton.text = "Landing Training >"
+            return true
+        }
+
         when (requestedLevel.id) {
-            DEFEND_PREAMBLE_LEVEL_ID -> {
+            LevelIds.DEFEND_PREAMBLE -> {
+                if (mainActivity.isDefendPreambleShown()) return false
+
                 prologueSummary.text =
                     "Excellent work on your close air support missions commander.\n\nThe next mission requires you to defend a structure before it is destroyed by the enemy."
                 nextButton.text = "Continue >"
+                mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
+                    putBoolean(mainActivity.DEFEND_PREAMBLE_SHOWN, true)
+                }
             }
-            LANDING_TRAINING_LEVEL_ID -> {
+            LevelIds.EVAC_PREAMBLE -> {
+                if (mainActivity.isEvacPreambleShown()) return false
+
                 prologueSummary.text =
-                    "Some of the next missions will involve landing the EXO-57 Striker.\n\nYou are required to complete a short landing training exercise."
-                nextButton.text = "Landing Training >"
+                    "Next mission, the structure cannot be saved. Land and evacuate civilians to a safe distance away from the battle."
+                nextButton.text = "Continue >"
+                mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
+                    putBoolean(mainActivity.EVAC_PREAMBLE_SHOWN, true)
+                }
             }
         }
+        return true
+    }
+
+    fun loadLandingTraining(requestedLevel: Level): Boolean {
+
+        if (mainActivity.isMandatoryTrainingComplete()) return false
+
+        prologueSummary.text =
+            "Next missions may involve landing the EXO-57 Striker.\n\nYou are required to complete a short landing training exercise."
+        nextButton.text = "Landing Training >"
+
+        this.requestedLevel = requestedLevel
+        return true
     }
 
     fun nextButtonClicked() {
-        when (requestedLevel.id) {
-            LevelIds.DEFEND_PREAMBLE -> {
-                visibility = GONE
-                mainActivity.openLevelById(requestedLevel.id, false)
-            }
-            LevelIds.LANDING_TRAINING -> {
-                visibility = GONE
-                mainActivity.openLevelByIndex(Level.LevelType.TRAINING, 2)
-            }
+
+        if (requestedLevel.id == LevelIds.LANDING_TRAINING && !mainActivity.isLandingTrainingComplete()) {
+            mainActivity.trainingLandingCompleteView.requestedLevel = requestedLevel
+            visibility = GONE
+            mainActivity.openLevelByGlobalIndex(Level.LevelType.TRAINING, 2)
+            return
         }
+
+        visibility = GONE
+        mainActivity.openLevelById(requestedLevel.id, false)
     }
 
 

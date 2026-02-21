@@ -32,7 +32,7 @@ class StoryView(context: Context, attrs: AttributeSet? = null) :
         btnTraining.setOnClickListener {
             this.visibility = GONE
             mainActivity.audioPlayer.startMusic(1)
-            mainActivity.openLevelByIndex(Level.LevelType.TRAINING, 0, false)
+            mainActivity.openLevelByGlobalIndex(Level.LevelType.TRAINING, 0, false)
         }
 
     }

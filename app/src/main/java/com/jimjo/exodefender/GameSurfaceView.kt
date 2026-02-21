@@ -461,7 +461,7 @@ class CustomHandler(looper: Looper, val gLView: GameSurfaceView): Handler(looper
             }
             FIRST_LANDING -> {
                 if (gLView.level.type == Level.LevelType.TRAINING && gLView.level.index == 2) {
-                    gLView.mainActivity.showLandingTrainingCompletion()
+                    gLView.mainActivity.landingTrainingCompleted()
                 }
             }
             SET_SCREEN_KEEP_ON -> {

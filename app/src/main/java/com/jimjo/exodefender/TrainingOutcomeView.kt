@@ -39,7 +39,7 @@ class TrainingOutcomeView(context: Context, attrs: AttributeSet? = null) :
         val prevButton = this.findViewById<Button>(R.id.btnRestartLevel)
         prevButton.setOnClickListener({
             mainActivity.closeTrainingOutcomeView()
-            mainActivity.openLevelByIndex(Level.LevelType.TRAINING, 0)
+            mainActivity.openLevelByGlobalIndex(Level.LevelType.TRAINING, 0)
         })
 
         nextButton = this.findViewById<Button>(R.id.btnNext).apply{
@@ -51,7 +51,7 @@ class TrainingOutcomeView(context: Context, attrs: AttributeSet? = null) :
         when (trainingLevelIndex) {
             0 -> {
                 mainActivity.closeTrainingOutcomeView()
-                mainActivity.openLevelByIndex(Level.LevelType.TRAINING, 1)
+                mainActivity.openLevelByGlobalIndex(Level.LevelType.TRAINING, 1)
             }
             1 -> {
                 mainActivity.closeTrainingOutcomeView()

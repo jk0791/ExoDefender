@@ -167,7 +167,7 @@ class MissionSummaryView @JvmOverloads constructor(
         if (currentModel.isLastMilkrun) {
             if (mainActivity.levelManager.missions.isNotEmpty()) {
                 visibility = GONE
-                mainActivity.openLevelByIndex(Level.LevelType.MISSION, 0)
+                mainActivity.openLevelByGlobalIndex(Level.LevelType.MISSION, 0)
             }
             else {
                 mainActivity.exitLevel()
@@ -178,7 +178,7 @@ class MissionSummaryView @JvmOverloads constructor(
         val nextIndex = mainActivity.levelManager.getNextLevelIndex(currentLevel)
         if (nextIndex != null) {
             visibility = GONE
-            mainActivity.openLevelByIndex(currentLevel.type, nextIndex)
+            mainActivity.openLevelByGlobalIndex(currentLevel.type, nextIndex)
         } else {
             mainActivity.exitLevel()
         }
