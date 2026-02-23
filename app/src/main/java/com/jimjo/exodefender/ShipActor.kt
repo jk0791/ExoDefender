@@ -321,7 +321,7 @@ class ShipActor(
 //                    0.3925	    0.27730125
 //                    0.785         0.49298
 
-                    (Math.pow(pitchRad + maxPitch, 2.0) / 5).toFloat()
+                    (Math.pow(pitchRad + maxPitch, 2.0) / 5).toFloat() + 0.5f
                 }
             }
 
@@ -403,14 +403,12 @@ class ShipActor(
         else {
 
             // friction on idle power and on surface (1f no friction, 0.95f or higher is required if using it)
-            friction = 0.99f
+            friction = 1f // 0.99f
 
         }
 
 
-        val targetVelocity = fwdPower * maxForwardVelocity
-
-        velocityF = calculateForwardVelocity(velocityF, targetVelocity, dt) * friction
+        velocityF = calculateForwardVelocity(velocityF, fwdPower * maxForwardVelocity, dt) * friction
         velocityH = calculateTranslationalVelocity(velocityH, flightControls.translationHorz * 100f * translationAuthority, dt)
         velocityV = calculateTranslationalVelocity(velocityV, -flightControls.translationVert * 100f * translationAuthority, dt)
 
