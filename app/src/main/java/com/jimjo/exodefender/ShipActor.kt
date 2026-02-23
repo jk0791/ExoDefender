@@ -924,7 +924,7 @@ class ShipActor(
                 if (!a.active) continue
 
                 // identify enemies close to ship for "storm" attack
-                if (a is EnemyActor) a.closeToShip = true
+                if (a is EnemyActor && abs(a.position.z - position.z) < 15f) a.closeToShip = true
 
                 if (a === frameSupportActor) {
                     // position.z is ship center; if it's at/above the top plane (with a small tolerance), skip
