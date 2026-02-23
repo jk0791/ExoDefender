@@ -131,8 +131,13 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
     }
 
     fun reset() {
-        flightControls.reset(levelBuilderMode, flightLog.replayActive)
-        screenOverlay.throttle.update(flightControls.throttle)
+        flightControls.reset(
+            if (levelBuilderMode || flightLog.replayActive)
+                FlightControls.ThrottleMode.CAMERA_CONTROL
+            else
+                FlightControls.ThrottleMode.GAME
+        )
+        screenOverlay.throttle.update()
         startThrottle = flightControls.throttle
         screenOverlay.reset(levelBuilderMode)
 
@@ -333,7 +338,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
 
         if (mDownRB) {
             flightControls.throttle = Math.max(Math.min(startThrottle + mDeltaTouchHorzRB / maxThrottleControlDeflection, 1f), flightControls.minThrottle)
-            screenOverlay.throttle.update(flightControls.throttle)
+            screenOverlay.throttle.update()
         }
         if (mDownLB) {
             screenOverlay.tranDisplay.update(flightControls.translationHorz, flightControls.translationVert)
@@ -365,17 +370,9 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             mDeltaTouchVertRB = 0f
             mPointerRB = -1
 
-            // spring throttle as required
-            when (flightControls.throttleSpringMode) {
-                FlightControls.ThrottleSpringMode.ALWAYS ->
-                    flightControls.throttle = flightControls.throttleCenter
-                FlightControls.ThrottleSpringMode.FROM_RIGHT ->
-                    flightControls.throttle = min(flightControls.throttle, flightControls.throttleCenter)
-                else -> {}
-            }
-
-            // update throttle display on HUD
-            screenOverlay.throttle.update(flightControls.throttle)
+            // sptring throttle and update throttle display on HUD
+            flightControls.springThrottleBack()
+            screenOverlay.throttle.update()
         }
         else if (pointerId == mPointerRT) {
             mDownRT = false
@@ -407,32 +404,44 @@ class FlightControls(
     var setDeviceNeutral: Boolean = false,
 ) {
 
-    enum class ThrottleSpringMode {ALWAYS, FROM_RIGHT, NEVER}
+    enum class ThrottleMode {CAMERA_CONTROL, GAME}
 
     var minThrottle = 0f
     val throttleCenter = 0.5f
     var receiver: FlightControlReceiver? = null
 
-    var throttleSpringMode = ThrottleSpringMode.ALWAYS
+    var throttleMode = ThrottleMode.CAMERA_CONTROL
 
     fun firingStarted() {
         if (receiver != null) receiver!!.firingStarted()
     }
 
-    fun reset(levelBuilderMode: Boolean, replayMode: Boolean) {
+    fun reset(throttleMode: ThrottleMode) {
+        this.throttleMode = throttleMode
         throttle = throttleCenter
-        if (levelBuilderMode || replayMode) {
-            throttleSpringMode = ThrottleSpringMode.ALWAYS
-        }
-        else {
-            throttleSpringMode = ThrottleSpringMode.FROM_RIGHT
-        }
         rotationHorz = 0f
         rotationVert = 0f
         translationHorz = 0f
         translationVert = 0f
         firing = false
         setDeviceNeutral = false
+    }
+
+    // springs throttle as required
+    fun springThrottleBack() {
+
+        when (throttleMode) {
+
+            ThrottleMode.CAMERA_CONTROL ->
+                throttle = throttleCenter
+
+            ThrottleMode.GAME -> {
+                throttle =
+                    min(throttle, throttleCenter)
+                if (throttle < throttleCenter && throttle > 0.38f) throttle = throttleCenter
+                else if (throttle < 0.05f) throttle = 0f
+            }
+        }
     }
 
     override fun toString(): String {

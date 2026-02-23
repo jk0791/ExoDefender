@@ -271,6 +271,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
         tranDisplay.initialize(this, 0.4f, 0.6f, true, false)
         attitudeDisplay.initialize(this, 0.4f, 1f, false, true)
+        throttle.flightControls = gLView.flightControls
         addCameraButton.visibility = GONE
         replayEditorVisible = false
         markerOverlay.visibility = GONE

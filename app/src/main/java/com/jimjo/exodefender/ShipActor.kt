@@ -371,10 +371,12 @@ class ShipActor(
 
         // How much control you retain at full stall.
         val minAuthority = 0.5f
+        val minTranslationalAuthority = 0f
 
         // Authority factor 1..minAuthority
         val authority = 1f - stallFactor * (1f - minAuthority)
-        val translationAuthority = authority * (1f - stallFactor)
+//        val translationAuthority = authority * (1f - stallFactor)
+        val translationAuthority = 1f - stallFactor * (1f - minTranslationalAuthority)
 
         val rotHVel = flightControls.rotationHorz * authority
         val rotVVel = flightControls.rotationVert * authority
@@ -693,7 +695,8 @@ class ShipActor(
             }
             doubleLaserBoltPool.sinceLastFired += dtMs
 
-            val stallFirePenaltyMs = if (isStalling) 150 else 0
+//            val stallFirePenaltyMs = if (isStalling) 150 else 0
+            val stallFirePenaltyMs = 0
             if (doubleLaserBoltPool.sinceLastFired > doubleLaserBoltPool.maxIntervalMs + stallFirePenaltyMs) {
                 doubleLaserBoltPool.sinceLastFired = 0
             }

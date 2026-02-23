@@ -171,7 +171,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
         endOfFrameChecksScheduled = false
         handler.sendEmptyMessage(RESET_GAME)
-        parent.screenOverlay.throttle.update(flightControls.throttle)
+//        parent.screenOverlay.throttle.update(flightControls.throttle)
 
         if (flightLog.replayActive) {
             flightLog.reset()
