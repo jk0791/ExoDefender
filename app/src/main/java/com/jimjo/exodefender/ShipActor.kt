@@ -321,7 +321,7 @@ class ShipActor(
 //                    0.3925	    0.27730125
 //                    0.785         0.49298
 
-                    (Math.pow(pitchRad + maxPitch, 2.0) / 5).toFloat() + 0.5f
+                    (Math.pow(pitchRad + maxPitch, 2.0) / 5).toFloat() + 0.2f
                 }
             }
 
@@ -403,7 +403,7 @@ class ShipActor(
         else {
 
             // friction on idle power and on surface (1f no friction, 0.95f or higher is required if using it)
-            friction = 1f // 0.99f
+            friction = 0.992f // 0.99f
 
         }
 
