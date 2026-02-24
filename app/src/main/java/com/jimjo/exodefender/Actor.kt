@@ -617,39 +617,46 @@ abstract class EnemyActor(
 
                 } else {
                     // target a non-ship friendly
-                    val target: FriendlyActor? =
-                        if (nearestFriendly == null) {
-                            // no friendlies (for this enemy): structure if possible
-                            structureTargeted = (structure != null)
+                    if (nearestFriendly == null) {
+                        // no friendlies (for this enemy): structure if possible
+                        structureTargeted = (structure != null)
+                        friendlyTargeted = false
+                    } else {
+
+                        // friendlies exist: 50/50 structure vs friendly (only if structure exists)
+                        if ((structure != null) && Random.nextBoolean()) {
+                            structureTargeted = true
                             friendlyTargeted = false
-                            structure
-                        } else {
-
-                            // friendlies exist: 50/50 structure vs friendly (only if structure exists)
-                            val chooseStructure = (structure != null) && Random.nextBoolean()
-
-                            if (chooseStructure) {
-                                structureTargeted = true
-                                friendlyTargeted = false
-
-                                targetPosition.set(structure.boundsAabb.center())
-                                targetPosition.x += Random.nextFloat() * 8f - 4f
-                                targetPosition.y += Random.nextFloat() * 8f - 8f
-                                targetPosition.z += Random.nextFloat() * 6f - 3f
-
-                                structure
-                            } else {
-                                structureTargeted = false
-                                friendlyTargeted = true
-
-                                targetPosition.set(nearestFriendly.position)
-                                targetPosition.x += Random.nextFloat() * 4f - 2f
-                                targetPosition.y += Random.nextFloat() * 4f - 2f
-                                targetPosition.z += Random.nextFloat() * 2f - 1f
-
-                                nearestFriendly
+                        }
+                        else {
+                            friendlyTargeted = true
+                            structureTargeted = false
+                        }
+                    }
+                    if (structureTargeted) {
+//                        structure?.let { s ->
+//                            targetPosition.set(s.boundsAabb.center())
+//                            targetPosition.x += Random.nextFloat() * 8f - 4f
+//                            targetPosition.y += Random.nextFloat() * 8f - 4f
+//                            targetPosition.z += Random.nextFloat() * 6f - 3f
+//                        }
+                        structure?.let { s ->
+                            if (s.blocks.isNotEmpty()) {
+                                val b = s.blocks.random()
+                                targetPosition.set(b.instance.worldAabb.center())
                             }
                         }
+                    }
+                    else if (friendlyTargeted) {
+
+                        nearestFriendly?.let { nf ->
+                            targetPosition.set(nf.position)
+                            targetPosition.x += Random.nextFloat() * 4f - 2f
+                            targetPosition.y += Random.nextFloat() * 4f - 2f
+                            targetPosition.z += Random.nextFloat() * 2f - 1f
+                        }
+                    }
+
                 }
 
                 if (shipTargeted || friendlyTargeted || structureTargeted) {
