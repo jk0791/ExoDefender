@@ -634,12 +634,6 @@ abstract class EnemyActor(
                         }
                     }
                     if (structureTargeted) {
-//                        structure?.let { s ->
-//                            targetPosition.set(s.boundsAabb.center())
-//                            targetPosition.x += Random.nextFloat() * 8f - 4f
-//                            targetPosition.y += Random.nextFloat() * 8f - 4f
-//                            targetPosition.z += Random.nextFloat() * 6f - 3f
-//                        }
                         structure?.let { s ->
                             if (s.blocks.isNotEmpty()) {
                                 val b = s.blocks.random()

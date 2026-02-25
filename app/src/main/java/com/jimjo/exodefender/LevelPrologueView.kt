@@ -12,7 +12,7 @@ class LevelPrologueView(context: Context, attrs: AttributeSet? = null) :
     LinearLayout(context, attrs) {
 
     object LevelIds {
-        const val DEFEND_PREAMBLE = 267
+        const val DEFEND_PREAMBLE = 298
         const val LANDING_TRAINING = 278
         const val EVAC_PREAMBLE = 278
 
@@ -82,7 +82,7 @@ class LevelPrologueView(context: Context, attrs: AttributeSet? = null) :
                 if (mainActivity.isEvacPreambleShown()) return false
 
                 prologueSummary.text =
-                    "Next mission, the structure cannot be saved. Land and evacuate civilians to a safe distance away from the battle."
+                    "For the next mission, the structure is too damaged and cannot be saved.\n\nLand and evacuate civilians to a safe distance away from the battle before the structure destructs."
                 nextButton.text = "Continue >"
                 mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
                     putBoolean(mainActivity.EVAC_PREAMBLE_SHOWN, true)

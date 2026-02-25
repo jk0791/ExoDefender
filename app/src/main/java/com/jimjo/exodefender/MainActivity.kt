@@ -298,6 +298,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         adminView.applySystemBarInsets(true, false, true, true)
         levelEditorView.applySystemBarInsets(true, false, true, true)
         adminLogView.applySystemBarInsets(true, false, true, false)
+        levelEditorMetadataView.applySystemBarInsets(true, false, true, true)
 
 
         onBackPressedDispatcher.addCallback(onBackPressedCallback)

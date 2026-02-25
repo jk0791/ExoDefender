@@ -100,9 +100,14 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
 
         findViewById<Button>(R.id.btnClearMandTrngCompFlag).apply {
             setOnClickListener {
-//                mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
-//                    remove(mainActivity.MANDATORY_TRAINING_COMPLETED)
-//                }
+                mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
+                    remove(mainActivity.MANDATORY_TRAINING_COMPLETED)
+                }
+            }
+        }
+
+        findViewById<Button>(R.id.btnClearPremblesCompFlag).apply {
+            setOnClickListener {
                 mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
                     remove(mainActivity.DEFEND_PREAMBLE_SHOWN)
                 }
