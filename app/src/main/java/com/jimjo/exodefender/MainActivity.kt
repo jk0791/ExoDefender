@@ -474,7 +474,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         if (requestedLevel == null) return
 
         // divert to pre-level messages or training if required
-        if (maybeShowPreLevelSequence(requestedLevel)) return
+        if (maybeShowPreLevelSequence(requestedLevel, levelBuilderMode)) return
 
         openLevel(requestedLevel, false, null, null, levelBuilderMode, false)
     }
@@ -506,7 +506,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         }
 
         // divert to pre-level messages or training if required
-        if (maybeShowPreLevelSequence(requestedLevel)) return
+        if (maybeShowPreLevelSequence(requestedLevel, levelBuilderMode)) return
 
         if (levelEditorMode) levelManager.loadLevelsFromInternalStorage()
 
@@ -518,7 +518,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
     fun openLevelFromLevelsView(level: Level) {
 
         // divert to pre-level messages or training if required
-        if (maybeShowPreLevelSequence(level)) return
+        if (maybeShowPreLevelSequence(level, false)) return
 
         val bestScore = levelManager.levelsProgress.getBestScore(level.id)
         val bestLog = flightLogManager.readBestSuccessfulLog(level.id)
@@ -629,9 +629,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         levelSummaryView.bringToFront()
     }
 
-    fun maybeShowPreLevelSequence(requestedLevel: Level): Boolean {
+    fun maybeShowPreLevelSequence(requestedLevel: Level, levelBuilderMode: Boolean): Boolean {
 
-        if (!LevelPrologueView.LevelIds.isApplicable(requestedLevel.id)) return false
+        if (!LevelPrologueView.LevelIds.isApplicable(requestedLevel.id)
+            || levelBuilderMode)
+            return false
 
 //            // TODO uncomment to check if landing training completed
 //            if (requestedLevel.id == LevelPrologueView.LevelIds.LANDING_TRAINING) {

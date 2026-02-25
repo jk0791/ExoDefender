@@ -760,8 +760,8 @@ class LevelEditEngine(val level: Level, val world: World) {
         var bestT = maxDist
 
         val defaultPickRadius = 35f
-        val structurePickRadius = 120f
-        val shipPickRadius = 60f   // tune
+        val structurePickRadius = 50f
+        val shipPickRadius = 35f   // tune
 
         // 1) Pick among world actors
         for (a in world.actors) {

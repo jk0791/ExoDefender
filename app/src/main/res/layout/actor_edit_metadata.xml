@@ -294,7 +294,7 @@
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/structureTimeMs"
+                android:id="@+id/structureTimeRow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
@@ -808,6 +808,8 @@
                     android:id="@+id/chkLandingPad"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:textColor="@color/white"
+                    android:buttonTint="@color/white"
                     android:text="Landing pad" />
 
                 <!-- waiting area -->

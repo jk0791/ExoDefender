@@ -57,7 +57,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
     private val btnStructureYawPlus10: Button
 
 
-    val structureTimeSeconds: View
+    val structureTimeRow: View
     val editStructureTimeSeconds: EditText
 
     val structureAddBlockRow: View
@@ -186,7 +186,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         btnStructureYawPlus1 = findViewById(R.id.btnStructureYawPlus1)
         btnStructureYawPlus10 = findViewById(R.id.btnStructureYawPlus10)
 
-        structureTimeSeconds = findViewById(R.id.structureTimeMs)
+        structureTimeRow = findViewById(R.id.structureTimeRow)
         editStructureTimeSeconds = findViewById(R.id.editStructureTimeSeconds)
 
         // Z nudges
@@ -466,6 +466,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             structureBaseZRow.visibility = VISIBLE
             structureYawRow.visibility = VISIBLE
             structureAddBlockRow.visibility = VISIBLE
+            structureTimeRow.visibility = VISIBLE
 
             // baseZ semantics: position.z is baseZ
             editStructureBaseZ.setText(actor.position.z.toString(), TextView.BufferType.EDITABLE)
@@ -590,6 +591,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         structureBaseZRow.visibility = GONE
         structureYawRow.visibility = GONE
         structureAddBlockRow.visibility = GONE
+        structureTimeRow.visibility = GONE
 
         blockHeaderRow.visibility = GONE
         blockPositionRow.visibility = GONE
