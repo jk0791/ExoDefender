@@ -590,7 +590,11 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
             .sortedWith(compareBy<Level> { it.order }.thenBy { it.id })
             .toList()
 
-        val allMissionsInGameOrder = presentedValidMissionsInGameOrder + unassignedMissions
+//        val allMissionsInGameOrder = presentedValidMissionsInGameOrder + unassignedMissions
+        val allValidMissionsInCampaignOrder = campaigns.flatMap { it.levels }
+
+        val allMissionsInGameOrder =
+            allValidMissionsInCampaignOrder + unassignedMissions
 
         return CampaignBuildResult(
             campaigns = campaigns,
