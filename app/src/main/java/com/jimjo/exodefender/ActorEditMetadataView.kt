@@ -628,11 +628,13 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
 
         if (actor is FriendlyStructureActor) {
             applyStructureEditsFromUi()
+            toast("Structure changes applied")
             return
         }
 
         if (actor is BuildingBlockActor) {
             applyBlockEditsFromUi()
+            toast("Block changes applied")
             return
         }
 
@@ -720,7 +722,6 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             }
         }
         updatePositionText()
-        toast("Structure changes applied")
     }
     private fun applyBlockEditsFromUi() {
         if (actor !is BuildingBlockActor) return
@@ -777,7 +778,6 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
                 parent.writeToFile() // now atomic/safe
             }
         }
-        toast("Block changes applied")
     }
 
     private fun toast(msg: String) {
