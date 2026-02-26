@@ -133,6 +133,11 @@ class LevelEditorView(context: Context, attrs: AttributeSet? = null) :
                 }
             })
             descriptionTextView.text = level.name
+
+            if (level.globalIndex == -1) {
+                descriptionTextView.setTextColor(Color.Red.toArgb())
+            }
+
         }
         else {
             descriptionTextView.text = "Name"

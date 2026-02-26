@@ -34,6 +34,8 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
     private val syncLock = Any()
     @Volatile private var syncInFlight = false
 
+    @Volatile var structureClipboard: FriendlyStructureTemplate? = null
+
     init {
         levelsDir = File(levelsDirPath)
         if (!levelsDir.exists()) {
@@ -573,32 +575,32 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
 
         val campaignByCodeBuilt: Map<String, Campaign> = campaigns.associateBy { it.code }
 
-        // Presented missions in true game order (campaign order, then first 10)
-        val presentedValidMissionsInGameOrder = campaigns.flatMap { c ->
+        // All valid missions in true campaign/game order
+        val allCampaignMissions = campaigns.flatMap { it.levels }
+
+        // Presented missions (limited per campaign)
+        val presentedMissions = campaigns.flatMap { c ->
             c.levels.take(MISSIONS_PER_CAMPAIGN)
         }
 
-        // Assign globalIndex across presented missions
-        presentedValidMissionsInGameOrder.forEachIndexed { idx, level ->
+        // Assign globalIndex only for presented missions
+        presentedMissions.forEachIndexed { idx, level ->
             level.globalIndex = idx
         }
 
-        // Unassigned missions appended for admin use (these will keep globalIndex = -1)
+        // Unassigned missions appended for admin use
         val unassignedMissions = allMissions
             .asSequence()
             .filter { !isValidCampaignCode(it.campaignCode) }
             .sortedWith(compareBy<Level> { it.order }.thenBy { it.id })
             .toList()
 
-//        val allMissionsInGameOrder = presentedValidMissionsInGameOrder + unassignedMissions
-        val allValidMissionsInCampaignOrder = campaigns.flatMap { it.levels }
-
         val allMissionsInGameOrder =
-            allValidMissionsInCampaignOrder + unassignedMissions
+            allCampaignMissions + unassignedMissions
 
         return CampaignBuildResult(
             campaigns = campaigns,
-            validMissionsInGameOrder = presentedValidMissionsInGameOrder,
+            validMissionsInGameOrder = presentedMissions,
             allMissionsInGameOrder = allMissionsInGameOrder,
             campaignByCode = campaignByCodeBuilt
         )

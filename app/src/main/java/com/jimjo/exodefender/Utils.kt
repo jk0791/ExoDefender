@@ -86,6 +86,8 @@ class Vec3(
     fun setZero(): Vec3 { x = 0f; y = 0f; z = 0f; return this }
     fun isFiniteVal() = x.isFiniteVal() && y.isFiniteVal() && z.isFiniteVal()
 
+    fun deepCopy() = copy()
+
     // ---- arithmetic (alloc-free options first) ----
     fun addLocal(o: Vec3): Vec3 { x += o.x; y += o.y; z += o.z; return this }
     fun subLocal(o: Vec3): Vec3 { x -= o.x; y -= o.y; z -= o.z; return this }

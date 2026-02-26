@@ -148,6 +148,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
     private val btnWAPosZPlus10: Button
 
 
+    val btnCopyStructure: Button
     val btnDuplicateBlock: Button
 
 
@@ -295,6 +296,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         btnWAPosZPlus10 = findViewById(R.id.btnWAPosZPlus10)
 
 
+        btnCopyStructure = findViewById(R.id.btnCopyStructure)
         btnDuplicateBlock = findViewById(R.id.btnDuplicateBlock)
 
         // Position nudges
@@ -389,6 +391,25 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             }
         }
 
+        btnCopyStructure.setOnClickListener {
+            val src = actor as? FriendlyStructureActor ?: return@setOnClickListener
+            val templateId = src.templateId
+
+            parent.gLView.queueEvent {
+                // GL thread: safe to touch level + templateRepo
+                val srcTemplate = parent.level.findFriendlyStructureTemplate(templateId) ?: return@queueEvent
+                val copy = srcTemplate.deepCopy()
+
+                // Still GL thread, but clipboard is just a plain var, so it's fine to set here
+                parent.mainActivity.levelManager.structureClipboard = copy
+
+                parent.mainActivity.runOnUiThread {
+                    Toast.makeText(context, "Structure copied", Toast.LENGTH_SHORT).show()
+                    parent.refreshActorTypeSpinner()
+                }
+            }
+        }
+
 
         // APPLY CLOSE BUTTONS
         findViewById<Button>(R.id.applyEditActor).apply {
@@ -412,6 +433,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         this.parent = parent
         this.actor = actor
         hideAllNonCommonRows()
+        btnCopyStructure.visibility = GONE
         btnDuplicateBlock.visibility = GONE
         ignoreUiCallbacks = true
         updatePositionText()
@@ -462,6 +484,8 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         else if (actor is FriendlyStructureActor) {
             this.parent.visibility = INVISIBLE
             displayActorType.text = "FriendlyStructureActor"
+
+            btnCopyStructure.visibility = VISIBLE
 
             structureBaseZRow.visibility = VISIBLE
             structureYawRow.visibility = VISIBLE
@@ -696,6 +720,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             }
         }
         updatePositionText()
+        toast("Structure changes applied")
     }
     private fun applyBlockEditsFromUi() {
         if (actor !is BuildingBlockActor) return
@@ -752,6 +777,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
                 parent.writeToFile() // now atomic/safe
             }
         }
+        toast("Block changes applied")
     }
 
     private fun toast(msg: String) {

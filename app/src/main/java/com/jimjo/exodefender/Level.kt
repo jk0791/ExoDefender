@@ -349,3 +349,32 @@ class FlyingEnemyTemplate(@Transient override val threat: Float = 1.7f, override
 @SerialName("AdvFlyingEnemy")
 class AdvFlyingEnemyTemplate(@Transient override val threat: Float = 2.8f, override val position: Vec3, override val yaw: Double = 0.0, val aabbHalfX: Float = 70f, val aabbHalfY: Float = 70f, val aabbHalfZ: Float = 35f): EnemyTemplate()
 
+fun CivilianSpec.deepCopy(): CivilianSpec =
+    CivilianSpec(
+        initialCount = initialCount,
+        waitingAreaLocal = waitingAreaLocal.deepCopy()
+    )
+
+fun BuildingBlockTemplate.deepCopy(): BuildingBlockTemplate =
+    BuildingBlockTemplate(
+        localBasePos = localBasePos.deepCopy(),
+        localYaw = localYaw,
+        shape = shape,
+        dimensions = dimensions.deepCopy(),
+        style = style,
+        landingPadTop = landingPadTop,
+        civilianSpec = civilianSpec?.deepCopy()
+    )
+
+fun FriendlyStructureTemplate.deepCopy(
+    newId: Int? = null,
+    newPosition: Vec3? = null
+): FriendlyStructureTemplate =
+    FriendlyStructureTemplate(
+        id = newId ?: id,
+        position = (newPosition ?: position).deepCopy(),
+        yaw = yaw,
+        blocks = blocks.map { it.deepCopy() },
+        hitpoints = hitpoints,
+        destructSeconds = destructSeconds
+    )

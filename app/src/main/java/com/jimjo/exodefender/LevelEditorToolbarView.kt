@@ -20,7 +20,7 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
     var opened = false
     val relocateActorButton: Button
 
-    val actorTypes = listOf(
+    private val baseActorTypes = listOf(
         ActorType.GROUND_FRIENDLY.name,
         ActorType.EASY_GROUND_ENEMY.name,
         ActorType.GROUND_ENEMY.name,
@@ -29,6 +29,10 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
         ActorType.ADV_FLYING_ENEMY.name,
         ActorType.FRIENDLY_STRUCTURE.name,
     )
+
+    private companion object {
+        const val PASTE_STRUCTURE_ITEM = "PASTE_STRUCTURE"
+    }
 
     var actorTypeSpinner: Spinner
 
@@ -74,21 +78,28 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
         this.level = level
         this.camera = camera
 
-        val typesArrayAdapter = ArrayAdapter(context,  R.layout.actortypes_spinner_item, actorTypes)
-        actorTypeSpinner.adapter = typesArrayAdapter
-
-//        updateDifficultyLabel()
+        refreshActorTypeSpinner()
+        opened = true
 
         opened = true
     }
 
-//    fun updateDifficultyLabel() {
-//        difficultyLabel.text = "D: ${df2.format(level.getDifficultyWeight())}"
-//    }
+    fun refreshActorTypeSpinner() {
+        val types = buildList {
+            addAll(baseActorTypes)
+            if (mainActivity.levelManager.structureClipboard != null) {
+                add(PASTE_STRUCTURE_ITEM)
+            }
+        }
 
+        val adapter = ArrayAdapter(context, R.layout.actortypes_spinner_item, types)
+        actorTypeSpinner.adapter = adapter
+    }
     fun addActor() {
 
-        val selectedActorTypeString = actorTypes[actorTypeSpinner.selectedItemPosition]
+        val selectedActorTypeString = actorTypeSpinner.selectedItem as String
+        val isPaste = selectedActorTypeString == PASTE_STRUCTURE_ITEM
+
         var selectedActorType: ActorType? = null
         var actorOnGround = false
         when (selectedActorTypeString) {
@@ -121,6 +132,10 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
                 selectedActorType = ActorType.FRIENDLY_STRUCTURE
                 actorOnGround = true
             }
+            PASTE_STRUCTURE_ITEM -> {
+                selectedActorType = ActorType.FRIENDLY_STRUCTURE
+                actorOnGround = true
+            }
         }
         if (selectedActorType == null) return
 
@@ -131,27 +146,31 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
             return
         }
 
+        val clipboardTemplate = if (isPaste) mainActivity.levelManager.structureClipboard else null
+        if (isPaste && clipboardTemplate == null) {
+            Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+            refreshActorTypeSpinner() // removes paste option if it was stale
+            return
+        }
+
         if (actorOnGround) {
             gLView.queueEvent {
-                if (selectedActorType == ActorType.FRIENDLY_STRUCTURE) {
+                if (isPaste) {
+                    // Paste (GL thread). Deep copy again so clipboard stays immutable.
+                    level.editEngine.pasteFriendlyStructureFromTemplate(clipboardTemplate!!.deepCopy(), spawnPoint)
+                } else if (selectedActorType == ActorType.FRIENDLY_STRUCTURE) {
                     level.editEngine.addFriendlyStructure(spawnPoint)
                 }
                 else {
                     level.editEngine.addActorOnGround(selectedActorType, spawnPoint)
                 }
                 writeToFile()
-//                mainActivity.runOnUiThread {
-//                    updateDifficultyLabel()
-//                }
             }
         }
         else {
             gLView.queueEvent {
                 level.editEngine.addFlyingEnemy(selectedActorType, spawnPoint)
                 writeToFile()
-//                mainActivity.runOnUiThread {
-//                    updateDifficultyLabel()
-//                }
             }
         }
     }

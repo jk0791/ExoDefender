@@ -129,6 +129,31 @@ class LevelEditEngine(val level: Level, val world: World) {
         selectedStructure = runtime
     }
 
+    fun pasteFriendlyStructureFromTemplate(src: FriendlyStructureTemplate, spawnPoint: Vec3) {
+        // For FriendlyStructure, position.z is BASE Z (bottom of the structure).
+        val groundZ = world.terrainElevationAt(spawnPoint.x, spawnPoint.y) ?: run {
+            println("[editor] pasteFriendlyStructure: no terrain at (${spawnPoint.x}, ${spawnPoint.y})")
+            return
+        }
+
+        val newId = nextStructureTemplateId()
+
+        val structureBasePos = spawnPoint.copy().apply { z = groundZ }
+
+        val pasted = src.deepCopy(newId = newId, newPosition = structureBasePos)
+
+        val runtime = world.spawnFriendlyStructure(pasted) ?: run {
+            println("[editor] pasteFriendlyStructure: spawnFriendlyStructure returned null for id=$newId")
+            return
+        }
+
+        level.actorTemplates.add(pasted)
+
+        clearEditorSelection()
+        runtime.select()
+        selectedStructure = runtime
+    }
+
     private fun snap1m(v: Float): Float = round(v) // 1m grid
     fun addBlockToFriendlyStructure(structureId: Int, shape: BlockShape) {
 
