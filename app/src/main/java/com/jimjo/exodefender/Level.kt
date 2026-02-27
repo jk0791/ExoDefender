@@ -56,12 +56,22 @@ class Level(
     )
 
     @Serializable
+    data class LzParams(
+        val hotR: Float = 200f,        // Radius (meters) around landing pad where suppression pressure builds
+        val focusBias: Float = 0.7f,  // How much enemies prefer targeting the ship when LZ heat is high
+        val maxBoost: Float = 3f,      // Maximum multiplier increase to enemy fire rate at full LZ heat
+    ) {
+        val hotR2: Float = hotR * hotR
+        val invHotR2: Float = 1f / (hotR * hotR)
+    }
+    @Serializable
     @JsonIgnoreUnknownKeys
     data class LevelSerializable(
         val id: Int,
         var campaignCode: String? = null,
         val type: LevelType,
         var objectiveType: ObjectiveType = ObjectiveType.UNKNOWN,
+        val lzParams: LzParams? = null,
         val name: String,
         val order: Int,
         val mapId: Int,
@@ -162,8 +172,7 @@ class Level(
 
     var index = -1 // zero-based position within campaign
     var globalIndex: Int = -1   // zero-based position in *presented* mission sequence
-
-    // TODO logic to unlock and lock levels
+    val lzParams = LzParams()
     var unlocked = true
 
 
@@ -200,6 +209,7 @@ class Level(
             campaignCode,
             type,
             objectiveType,
+            lzParams,
             name,
             order,
             world.mapId,

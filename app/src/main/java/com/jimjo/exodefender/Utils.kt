@@ -117,6 +117,14 @@ class Vec3(
     fun distance(o: Vec3): Float = sqrt(distance2(o))
     fun distance2(o: Vec3): Float = (x - o.x)*(x - o.x) + (y - o.y)*(y - o.y) + (z - o.z)*(z - o.z)
 
+    fun distance2XY(o: Vec3): Float {
+        val dx = x - o.x
+        val dy = y - o.y
+        return dx*dx + dy*dy
+    }
+
+    fun distanceXY(o: Vec3): Float = sqrt(distance2XY(o))
+
     fun normalize(result: Vec3) {
         val l2 = length2()
         if (l2 > 0f) {
@@ -286,6 +294,12 @@ fun remapPiecewise01(x: Float, a1: Float, b1: Float): Float {
         x <= a1 -> (x / a1) * b1
         else    -> b1 + ((x - a1) / (1f - a1)) * (1f - b1)
     }
+}
+
+fun clamp01(x: Float): Float = when {
+    x <= 0f -> 0f
+    x >= 1f -> 1f
+    else -> x
 }
 
 class Rolling(private val size: Int) {

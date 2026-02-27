@@ -21,7 +21,6 @@ class World(val mapId: Int) {
 
 //    val filename = "map_" + mapId.toString().padStart(3, '0') + ".dat"
 
-    var parentLevel: Level? = null
     var flightLog: FlightLog? = null
     val replayActive: Boolean
         get() = flightLog?.replayActive == true
@@ -33,6 +32,16 @@ class World(val mapId: Int) {
 
     val mapBounds = RectF(0f, 0f, MAP_GRID_SIZE * MAP_GRID_SPACING, MAP_GRID_SIZE * MAP_GRID_SPACING)
     val safeBounds = RectF(0f, 0f, (MAP_GRID_SIZE - 1) * MAP_GRID_SPACING, (MAP_GRID_SIZE - 1) * MAP_GRID_SPACING)
+
+    var lzparams = Level.LzParams()
+
+    private data class EvacPadHotZone(
+        val center: Vec3
+    )
+    private val evacPadHotZones = mutableListOf<EvacPadHotZone>()
+    // The currently-active hot zone (nearest pad to ship)
+    var evacHotZoneCenter: Vec3? = null
+        private set
 
     val battleSpaceBounds = BattlespaceBounds(
         maxX = mapBounds.width(),
@@ -76,6 +85,7 @@ class World(val mapId: Int) {
         // create actors
 
         activeLevel = level
+        lzparams = level.lzParams
 
         shipStartPosition.set(level.shipPosition)
         shipStartDirection = level.shipDirection
@@ -143,6 +153,44 @@ class World(val mapId: Int) {
                     numOfActiveNonStructFriendlies++
                 }
             }
+        }
+    }
+
+    fun updateEvacHotZoneCenterNearestToShip(shipPos: Vec3) {
+        if (evacPadHotZones.isEmpty()) {
+            evacHotZoneCenter = null
+            return
+        }
+
+        // Optional hysteresis to prevent rapid flipping between two close pads.
+        val hysteresisMeters = 20f
+        val hysteresis2 = hysteresisMeters * hysteresisMeters
+
+        // Current distance (if already set)
+        val current = evacHotZoneCenter
+        var currentD2 = Float.POSITIVE_INFINITY
+        if (current != null) {
+            currentD2 = shipPos.distance2XY(current)
+        }
+
+        var bestCenter: Vec3? = null
+        var bestD2 = Float.POSITIVE_INFINITY
+
+        for (pz in evacPadHotZones) {
+            val d2 = shipPos.distance2XY(pz.center)
+            if (d2 < bestD2) {
+                bestD2 = d2
+                bestCenter = pz.center
+            }
+        }
+
+        // Only switch if meaningfully closer than current
+        evacHotZoneCenter = if (bestCenter == null) {
+            null
+        } else if (bestD2 + hysteresis2 < currentD2) {
+            bestCenter
+        } else {
+            current ?: bestCenter
         }
     }
 
@@ -418,7 +466,13 @@ class World(val mapId: Int) {
         structure.resetPosition()
         actors.add(structure)
         friendlyActors.add(structure)
-//        updateFriendlyInGrid(structure)
+
+        // set first destructible structure as THE only destructible structure
+        if (destructibleStructure == null && t.destructSeconds != null) {
+            destructibleStructure = structure
+            evacPadHotZones.clear()
+            evacHotZoneCenter = null
+        }
 
         // --- 2) Blocks (collision + visuals; forward hits to structure) ---
         for ((blockIndex, b) in t.blocks.withIndex()) {
@@ -462,6 +516,8 @@ class World(val mapId: Int) {
                         halfHeight = halfExtents.z,
                         color = floatArrayOf(0.95f, 0.95f, 0.95f, 1f),
                     )
+                    if (structure == destructibleStructure) evacPadHotZones.add(EvacPadHotZone(instance.worldAabb.center().copy()))
+
                 } else if (b.shape == BlockShape.BOX && b.landingPadTop) {
                     landingPadOverlay = LandingPadOverlay(
                         enabled = true,
@@ -480,6 +536,7 @@ class World(val mapId: Int) {
                         // Optional tuning (recommended so inset never eats the whole pad)
                         inset = minOf(1.5f, 0.18f * minOf(halfExtents.x, halfExtents.y))
                     )
+                    if (structure == destructibleStructure) evacPadHotZones.add(EvacPadHotZone(instance.worldAabb.center().copy()))
                 } else {
                     landingPadOverlay = null
                 }
@@ -539,6 +596,20 @@ class World(val mapId: Int) {
             structure.blocks.add(blockActor)
         }
         return structure
+    }
+
+    fun rebuildEvacPadHotZonesFromDestructibleStructure() {
+        evacPadHotZones.clear()
+        evacHotZoneCenter = null
+
+        val s = destructibleStructure ?: return
+
+        for (b in s.blocks) {
+            // adjust accessors if needed
+            if (b.landingPadTop) {
+                evacPadHotZones.add(EvacPadHotZone(b.instance.worldAabb.center().copy()))
+            }
+        }
     }
 
     fun removeCivilianVisualsForStructure(structureTemplateId: Int): Int {

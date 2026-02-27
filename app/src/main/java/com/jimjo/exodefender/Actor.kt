@@ -513,16 +513,41 @@ abstract class EnemyActor(
     val cachedAimVelocity = Vec3()
 
 
-//    init {
-//        playSoundWhenDestroyed = true
-//    }
-
     override fun reset() {
         super.reset()
         shipInRange = false
     }
 
+    fun computeLzHeat01ForEnemy(enemyPos: Vec3, shipPos: Vec3): Float {
+        val padPos = world.evacHotZoneCenter ?: return 0f
+
+        val invHotR2 = world.lzparams.invHotR2
+
+        val commitment = clamp01(1f - shipPos.distance2XY(padPos) * invHotR2)
+        val influence  = clamp01(1f - enemyPos.distance2XY(padPos) * invHotR2)
+
+        return commitment * influence
+    }
+
     override fun update(dt: Float, dtMs: Int, timeMs: Int) {
+
+        // First: decide if firing weapon this update
+        // Second: find a target
+        //  Decide if ship is the target in three bands:
+        //   Nearest -> Ship targeted
+        //   Intermediate -> Ship maybe targeted (especially in hot LZs)
+        //   Furtherest -> Ship not targeted
+        //  If the ship is not targeted, try to target the nearest friendly or a destructible structure
+        //   If both exist 50/50
+
+        var lzHeat01Cached: Float? = null
+        fun lzHeat01(): Float {
+            val v = lzHeat01Cached
+            if (v != null) return v
+            val computed = computeLzHeat01ForEnemy(position, ship.position)
+            lzHeat01Cached = computed
+            return computed
+        }
 
         if (firingEnabled) {
             val p: Float
@@ -531,7 +556,9 @@ abstract class EnemyActor(
                 closeToShip = false // reset
             }
             else {
-                p = 1f - exp(-aggressionFactor * dt)
+                val lzMult = 1f + lzHeat01() * world.lzparams.maxBoost
+
+                p = 1f - exp(-(aggressionFactor * lzMult) * dt)
             }
             if (Random.nextFloat() < p) {
 
@@ -569,18 +596,19 @@ abstract class EnemyActor(
 
                             // roll the dice to decide who to target
 
-                            val weighting: Float // 0.5f - 1.0f
+                            val baseWeighting: Float // 0.5f - 1.0f
                             if (sqDistanceToShip > sqTargetingDistanceIntermediate) {
-                                weighting = 0.5f
+                                baseWeighting = 0.5f
                             } else {
-                                weighting =
+                                baseWeighting =
                                     ((sqTargetingDistanceIntermediate - sqDistanceToShip) / sqTargetingRange + 1) / 2f
                             }
-                            if (Random.nextFloat() < weighting) {
-                                shipTargeted = true
-                            } else {
-                                shipTargeted = false
-                            }
+
+                            val biasedWeighting =
+                                (baseWeighting + lzHeat01() * world.lzparams.focusBias).coerceIn(0f, 1f)
+
+                            shipTargeted = Random.nextFloat() < biasedWeighting
+
                         }
 //                println("weighting=${df2.format(weighting)} distanceToShip=${Math.sqrt(sqDistanceToShip.toDouble()).toInt()}")
                     }

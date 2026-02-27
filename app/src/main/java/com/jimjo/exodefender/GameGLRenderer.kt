@@ -456,11 +456,6 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             actor = level.world.spawnFriendlyStructure(actorTemplate)
             laserBoltPool = friendlyLaserBoltPool
 
-            // set first destructible structure as THE only destructible structure
-            if (level.world.destructibleStructure == null && actorTemplate.destructSeconds != null) {
-                level.world.destructibleStructure = actor
-            }
-
             if (actor != null) {
                 actor.initialize(this, level.world, null, ship, laserBoltPool, explosion, explosionFlash)
                 for (blockActor in actor.blocks) {

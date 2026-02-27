@@ -65,6 +65,7 @@ class ShipActor(
 ): Actor() {
 
 
+    override val maxHitPoints = 7
     private val maxPitch = 0.785          // how far we can pitch (approx 45°)
     private val maxBankRad = 1.4          // how far we can roll (approx 34°)
     val maxForwardVelocity = 250f
@@ -82,11 +83,10 @@ class ShipActor(
     var pitchVel = 0.0
 
 
-    // Tune these to match your old visuals:
+    // Muzzle positions
     var muzzleSideOffset    = 2.5f
     var muzzleForwardOffset = 0f
     var muzzleUpOffset      = 0f
-    override val maxHitPoints = 7
 
 
     // STATE
@@ -647,6 +647,9 @@ class ShipActor(
                     flightLog.missionLog.logPadWaiting(timeMs, block.padKey(), cluster.count)
                 }
             }
+
+            // update
+            world.updateEvacHotZoneCenterNearestToShip(position)
 
         }
 
