@@ -28,8 +28,26 @@ class BuildingBlockActor(
     var relocateLocalBasePos = Vec3()
     var relocateLocalYaw: Double = 0.0
 
+    val debugBoundsCenter = Vec3()
+
     fun padKey(): PadKey =
         PadKey(structureId = structure.templateId, blockIndex = blockIndex)
+
+    fun debugDrawCircularPath(vpMatrix: FloatArray, color: FloatArray, fixed: Boolean) {
+
+        if (fixed) debugBoundsCenter.set(initialPosition) else debugBoundsCenter.set(position)
+
+        renderer.drawCylinderWireSwapYZHorizontal(
+            vpMatrix = vpMatrix,
+            centerWorldX = debugBoundsCenter.x,
+            centerWorldY = debugBoundsCenter.y,
+            centerWorldZ = debugBoundsCenter.z,
+            radius = world.lzparams.hotR,
+            vertRadius = 50f,
+            segments = 48,
+            color = color
+        )
+    }
 
     override fun onHit(timeMs: Int, enemyHit: Boolean, hitPosition: Vec3) {
 //        if (!world.replayActive) {
@@ -42,6 +60,13 @@ class BuildingBlockActor(
 
             structure.applyDamageFromEnemy(timeMs, hitPosition)
 //        }
+    }
+
+    override fun draw(vpMatrix: FloatArray, timeMs: Int) {
+        super.draw(vpMatrix, timeMs)
+        if (drawEditorBounds && landingPadTop && structure.initialDestructSeconds != null) {
+            debugDrawCircularPath(vpMatrix, floatArrayOf(1f, 0f, 0f, 1f), false)
+        }
     }
 
     override fun toTemplate() = null

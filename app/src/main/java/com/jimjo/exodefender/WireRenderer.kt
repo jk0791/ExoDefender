@@ -475,6 +475,108 @@ class WireRenderer(
         if (aPosLoc >= 0) GLES20.glDisableVertexAttribArray(aPosLoc)
     }
 
+
+    fun drawCylinderWireSwapYZHorizontal(
+        vpMatrix: FloatArray,
+        centerWorldX: Float,
+        centerWorldY: Float,
+        centerWorldZ: Float,
+        radius: Float,
+        vertRadius: Float,          // half-height in *world Z* (up)
+        segments: Int,
+        verticalLines: Int = 20,    // number of vertical uprights around circumference
+        color: FloatArray
+    ) {
+        val segs = segments.coerceAtLeast(6)
+        val vLines = verticalLines.coerceIn(4, segs)
+
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0)
+
+        // In swapped render space:
+        // renderX = worldX
+        // renderY = worldZ   (up)
+        // renderZ = worldY
+        val cx = centerWorldX
+        val cy = centerWorldZ   // swapped: worldZ -> renderY (up)
+        val cz = centerWorldY   // swapped: worldY -> renderZ
+
+        val twoPi = Math.PI * 2.0
+
+        // Lines:
+        // - bottom ring: segs segments -> 2 verts each -> segs*2
+        // - top ring:    segs segments -> 2 verts each -> segs*2
+        // - verticals:   vLines lines  -> 2 verts each -> vLines*2
+        val totalVerts = (segs * 2 + segs * 2 + vLines * 2)
+        val verts = FloatArray(totalVerts * 3)
+
+        var i = 0
+
+        val yBottom = cy - vertRadius
+        val yTop = cy + vertRadius
+
+        fun putLine(x0: Float, y0: Float, z0: Float, x1: Float, y1: Float, z1: Float) {
+            verts[i++] = x0; verts[i++] = y0; verts[i++] = z0
+            verts[i++] = x1; verts[i++] = y1; verts[i++] = z1
+        }
+
+        // Bottom ring
+        for (s in 0 until segs) {
+            val a0 = twoPi * (s.toDouble() / segs.toDouble())
+            val a1 = twoPi * ((s + 1).toDouble() / segs.toDouble())
+
+            val x0 = cx + radius * kotlin.math.cos(a0).toFloat()
+            val z0 = cz + radius * kotlin.math.sin(a0).toFloat()
+            val x1 = cx + radius * kotlin.math.cos(a1).toFloat()
+            val z1 = cz + radius * kotlin.math.sin(a1).toFloat()
+
+            putLine(x0, yBottom, z0, x1, yBottom, z1)
+        }
+
+        // Top ring
+        for (s in 0 until segs) {
+            val a0 = twoPi * (s.toDouble() / segs.toDouble())
+            val a1 = twoPi * ((s + 1).toDouble() / segs.toDouble())
+
+            val x0 = cx + radius * kotlin.math.cos(a0).toFloat()
+            val z0 = cz + radius * kotlin.math.sin(a0).toFloat()
+            val x1 = cx + radius * kotlin.math.cos(a1).toFloat()
+            val z1 = cz + radius * kotlin.math.sin(a1).toFloat()
+
+            putLine(x0, yTop, z0, x1, yTop, z1)
+        }
+
+        // Vertical lines (evenly spaced around circumference)
+        for (k in 0 until vLines) {
+            // Map k -> segment index (so verticals distribute nicely even if vLines != segs)
+            val s = (k * segs) / vLines
+            val a = twoPi * (s.toDouble() / segs.toDouble())
+
+            val x = cx + radius * kotlin.math.cos(a).toFloat()
+            val z = cz + radius * kotlin.math.sin(a).toFloat()
+
+            putLine(x, yBottom, z, x, yTop, z)
+        }
+
+        val vertexBuffer = java.nio.ByteBuffer.allocateDirect(verts.size * 4)
+            .order(java.nio.ByteOrder.nativeOrder())
+            .asFloatBuffer()
+            .apply { put(verts); position(0) }
+
+        GLES20.glUseProgram(program)
+
+        if (uColorLoc >= 0) GLES20.glUniform4fv(uColorLoc, 1, color, 0)
+        if (uMvpLoc >= 0) GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, vpMatrix, 0)
+
+        if (aPosLoc >= 0) {
+            GLES20.glEnableVertexAttribArray(aPosLoc)
+            GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 3 * 4, vertexBuffer)
+        }
+
+        GLES20.glDrawArrays(GLES20.GL_LINES, 0, verts.size / 3)
+
+        if (aPosLoc >= 0) GLES20.glDisableVertexAttribArray(aPosLoc)
+    }
     fun drawAabbWire(vpMatrix: FloatArray, aabb: Aabb, color: FloatArray) {
         // IMPORTANT: unbind any VBO so the FloatBuffer is used (client-side attrib array)
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
