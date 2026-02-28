@@ -3,6 +3,8 @@ package com.jimjo.exodefender
 import kotlin.math.round
 import kotlin.random.Random
 
+enum class NudgeField { POS_X, POS_Y, POS_Z, YAW, DIM_W, DIM_D, DIM_H }
+
 class LevelEditEngine(val level: Level, val world: World) {
 
     var parentRenderer: GameGLRenderer? = null
@@ -17,6 +19,7 @@ class LevelEditEngine(val level: Level, val world: World) {
     var selectedStructure: FriendlyStructureActor? = null
     var vectorCameraToRelocatingActor = Vec3()
 
+    var multiStructureId: Int? = null
     val multiSelectedBlocks = mutableSetOf<PadKey>()
 
     val tmpDir = Vec3()
@@ -46,7 +49,7 @@ class LevelEditEngine(val level: Level, val world: World) {
                     newActor.setPositionAndUpdate(deconflictedPosition)
                 }
                 level.writeGameMapStateToLevel()
-                clearEditorSelection()
+                clearSelectionVisuals()
                 newActor.select()
                 return true
             }
@@ -70,7 +73,7 @@ class LevelEditEngine(val level: Level, val world: World) {
         if (newActor != null) {
 //            newActor.setPositionAndUpdate(Vec3(target.x, target.y, target.z))
             level.writeGameMapStateToLevel()
-            clearEditorSelection()
+            clearSelectionVisuals()
             newActor.select()
         }
     }
@@ -355,7 +358,7 @@ class LevelEditEngine(val level: Level, val world: World) {
         val rebuilt = world.spawnFriendlyStructure(snapshot) ?: return
 
         // 4) selection
-        clearEditorSelection()
+        clearSelectionVisuals()
 
         if (reselectBlockIndex != null) {
             rebuilt.blocks.getOrNull(reselectBlockIndex)?.select()
@@ -406,6 +409,47 @@ class LevelEditEngine(val level: Level, val world: World) {
         }
     }
 
+    fun applyNudgeToMultiSelectedBlocks(fieldKind: NudgeField, delta: Float) {
+        val structureId = multiStructureId ?: return
+        if (multiSelectedBlocks.isEmpty()) return
+
+        val st = level.findFriendlyStructureTemplate(structureId) ?: return
+
+        val newBlocks = st.blocks.toMutableList()
+
+        for (k in multiSelectedBlocks) {
+            val i = k.blockIndex
+            if (i !in newBlocks.indices) continue
+
+            val old = newBlocks[i]
+
+            val updated = when (fieldKind) {
+                NudgeField.POS_X -> old.copy(localBasePos = old.localBasePos.copy(x = old.localBasePos.x + delta))
+                NudgeField.POS_Y -> old.copy(localBasePos = old.localBasePos.copy(y = old.localBasePos.y + delta))
+                NudgeField.POS_Z -> old.copy(localBasePos = old.localBasePos.copy(z = old.localBasePos.z + delta))
+
+                NudgeField.YAW -> {
+                    // UI is degrees; your template stores radians
+                    val dr = Math.toRadians(delta.toDouble())
+                    old.copy(localYaw = old.localYaw + dr)
+                }
+
+                NudgeField.DIM_W -> old.copy(dimensions = old.dimensions.copy(x = (old.dimensions.x + delta).coerceAtLeast(1f)))
+                NudgeField.DIM_D -> old.copy(dimensions = old.dimensions.copy(y = (old.dimensions.y + delta).coerceAtLeast(1f)))
+                NudgeField.DIM_H -> old.copy(dimensions = old.dimensions.copy(z = (old.dimensions.z + delta).coerceAtLeast(1f)))
+            }
+
+            newBlocks[i] = updated
+        }
+
+        val newSt = st.copy(blocks = newBlocks)
+
+        rebuildFriendlyStructure(structureId, newSt, false)
+
+        // restore highlight selection since actors were rebuilt
+        refreshMultiSelectionHighlights()
+    }
+
     fun removeSelectedBuildingBlocks(): Boolean {
         val selectedBlocks = world.actors.filterIsInstance<BuildingBlockActor>()
             .filter { it.selected }
@@ -419,8 +463,6 @@ class LevelEditEngine(val level: Level, val world: World) {
             val st = level.findFriendlyStructureTemplate(structureId) ?: continue
 
             // IMPORTANT: blockIndex is fragile if multiple removals happen.
-            // Safer: remove by runtime reference mapping to index at time of removal.
-            // For now, compute indices and remove descending.
             val indicesToRemove = blocks.mapNotNull { b ->
                 val idx = b.blockIndex
                 if (idx in st.blocks.indices) idx else null
@@ -428,14 +470,27 @@ class LevelEditEngine(val level: Level, val world: World) {
 
             if (indicesToRemove.isEmpty()) continue
 
+            // We are about to mutate this structure's block list -> invalidate multi-select for it.
+            if (multiStructureId == structureId) {
+                multiSelectedBlocks.clear()
+                multiStructureId = null
+            }
+            // Also kill the cycle/structure selection so nothing "sticks"
+            cycleBlock = null
+            cycleStage = 0
+            selectedStructure?.unselect()
+            selectedStructure = null
+
             val newBlocks = st.blocks.toMutableList().apply {
                 for (idx in indicesToRemove) removeAt(idx)
             }
 
             val newStructure = st.copy(blocks = newBlocks)
-
             rebuildFriendlyStructure(structureId, newStructure, false)
         }
+
+        // ensure visuals are consistent (esp. if we have leftover block selects elsewhere)
+        clearEditorSelection()
 
         return true
     }
@@ -628,6 +683,243 @@ class LevelEditEngine(val level: Level, val world: World) {
     }
 
 
+    private fun toggleMultiBlock(hitBlock: BuildingBlockActor) {
+
+        // If we're starting a multi-selection, seed it with the current single-selected block (if any)
+        if (multiSelectedBlocks.isEmpty()) {
+            val preSelected = world.actors
+                .filterIsInstance<BuildingBlockActor>()
+                .firstOrNull { it.selected }
+
+            if (preSelected != null) {
+                // Enforce single-structure rule
+                val sid = preSelected.structure.templateId
+                multiStructureId = sid
+                multiSelectedBlocks.add(preSelected.padKey())
+            }
+        }
+
+        val sidHit = hitBlock.structure.templateId
+
+        // Enforce single-structure rule
+        if (multiSelectedBlocks.isEmpty()) {
+            multiStructureId = sidHit
+        } else if (multiStructureId != sidHit) {
+            // Replace selection with this structure (or ignore; replacement feels better)
+            multiSelectedBlocks.clear()
+            multiStructureId = sidHit
+        }
+
+        val key = hitBlock.padKey()
+
+        if (!multiSelectedBlocks.add(key)) {
+            multiSelectedBlocks.remove(key)
+        }
+
+        // Make visuals match the set (prevents "phantom selected" blocks)
+        refreshMultiSelectionHighlights()
+
+        // Clear structure selection / cycle state if you want
+        selectedStructure?.unselect()
+        selectedStructure = null
+        cycleBlock = null
+        cycleStage = 0
+
+        if (multiSelectedBlocks.isEmpty()) multiStructureId = null
+    }
+
+    fun refreshMultiSelectionHighlights() {
+
+        if (multiSelectedBlocks.isEmpty()) return
+
+        for (a in world.actors) {
+            if (a is BuildingBlockActor) {
+                if (multiSelectedBlocks.contains(a.padKey())) {
+                    a.select()
+                } else {
+                    a.unselect()
+                }
+            }
+        }
+    }
+
+
+
+    fun selectActorUnderReticle() {
+        if (world.renderer == null) return
+
+        val camera = world.renderer!!.camera
+        val ship = world.renderer!!.ship
+
+        if (relocatingActor != null) {
+            finishRelocatingActor(true)
+        }
+
+        val origin = camera.position
+        camera.forwardWorld(tmpDir)
+        tmpDir.normalizeInPlace()
+
+        val maxDist = 5000f
+        var best: Actor? = null
+        var bestT = maxDist
+
+        val defaultPickRadius = 35f
+        val structurePickRadius = 50f
+        val shipPickRadius = 35f   // tune
+
+        // 1) Pick among world actors
+        for (a in world.actors) {
+            if (!a.active) continue
+
+            val tHit: Float? = when (a) {
+                is BuildingBlockActor ->
+                    rayAabbHitT(origin, tmpDir, a.instance.position, a.halfExtents)
+
+                is FriendlyStructureActor ->
+                    raySphereHitT(origin, tmpDir, a.position, structurePickRadius)
+
+                else ->
+                    raySphereHitT(origin, tmpDir, a.position, defaultPickRadius)
+            }
+
+            if (tHit != null && tHit >= 0f && tHit < bestT) {
+                bestT = tHit
+                best = a
+            }
+        }
+
+        // 2) Also test ship (even if it's not in world.actors)
+        if (ship.active) {
+            val tShip = raySphereHitT(origin, tmpDir, ship.position, shipPickRadius)
+            if (tShip != null && tShip >= 0f && tShip < bestT) {
+                bestT = tShip
+                best = ship
+            }
+        }
+
+        // 3) Apply selection
+        if (best != null) {
+            val wasSelected = best.selected
+            clearSelectionVisuals()
+            if (wasSelected) best.unselect() else best.select()
+        } else {
+            clearSelectionVisuals()
+        }
+    }
+
+
+    fun selectUnderReticleWithStructureCycle(shiftHeld: Boolean) {
+
+        val hitBlock = pickBlockUnderReticle()
+
+        // -------------------------------------------------
+        // SHIFT HELD → additive block selection
+        // -------------------------------------------------
+        if (shiftHeld) {
+            if (hitBlock != null) {
+                toggleMultiBlock(hitBlock)
+            }
+            return
+        }
+
+        // -------------------------------------------------
+        // NO SHIFT → normal single selection
+        // -------------------------------------------------
+
+        // NON-SHIFT = single selection => cancel multi selection
+        clearMultiSelection()
+
+        if (hitBlock != null) {
+            cycleSelectStructureBlockNone(hitBlock)
+            return
+        }
+
+        // Nothing block-related hit → normal selection
+        cycleBlock = null
+        cycleStage = 0
+        selectedStructure = null
+
+        selectActorUnderReticle()
+    }
+
+    private fun clearMultiSelection() {
+        multiSelectedBlocks.clear()
+        multiStructureId = null
+        // optionally unselect all blocks visually, or call refresh after
+//        clearEditorSelection()
+    }
+    fun clearSelectionVisuals() {
+        world.unselectAllActors()
+        selectedStructure = null
+    }
+
+    fun clearEditorSelection() {
+        world.unselectAllActors()
+        selectedStructure = null
+        multiSelectedBlocks.clear()
+        multiStructureId = null
+        cycleBlock = null
+        cycleStage = 0
+    }
+
+    private fun pickBlockUnderReticle(): BuildingBlockActor? {
+        if (world.renderer == null) return null
+
+        val camera = world.renderer!!.camera
+        val origin = camera.position
+        camera.forwardWorld(tmpDir)
+        tmpDir.normalizeInPlace()
+
+        val maxDist = 5000f
+        var best: BuildingBlockActor? = null
+        var bestT = maxDist
+
+        for (a in world.actors) {
+            if (!a.active) continue
+            if (a is BuildingBlockActor) {
+                val t = rayAabbHitT(origin, tmpDir, a.instance.position, a.halfExtents)
+                if (t != null && t >= 0f && t < bestT) {
+                    bestT = t
+                    best = a
+                }
+            }
+        }
+        return best
+    }
+
+
+    fun cycleSelectStructureBlockNone(hitBlock: BuildingBlockActor) {
+        val sameFocus = (cycleBlock === hitBlock)
+
+        if (!sameFocus) {
+            cycleBlock = hitBlock
+            cycleStage = 1 // STRUCTURE
+        } else {
+            cycleStage = (cycleStage + 1) % 3 // 1->2->0
+        }
+
+        clearSelectionVisuals()
+
+        when (cycleStage) {
+            1 -> {
+                // STRUCTURE selected (AABB shown via drawEditorBounds)
+                hitBlock.structure.select()
+                selectedStructure = hitBlock.structure
+            }
+
+            2 -> {
+                // BLOCK selected
+                hitBlock.select()
+                selectedStructure = hitBlock.structure
+            }
+
+            else -> {
+                // NONE
+                cycleBlock = null
+                selectedStructure = null
+            }
+        }
+    }
 
     //Computes a spawn point for a new actor.
     fun computeSpawnPointForNewActor(
@@ -718,202 +1010,6 @@ class LevelEditEngine(val level: Level, val world: World) {
         if (!slab(origin.y, dir.y, center.y, half.y)) return null
         if (!slab(origin.z, dir.z, center.z, half.z)) return null
         return tmin
-    }
-
-    fun selectUnderReticleWithStructureCycle(shiftHeld: Boolean) {
-
-        val hitBlock = pickBlockUnderReticle()
-
-        // -------------------------------------------------
-        // SHIFT HELD → additive block selection
-        // -------------------------------------------------
-        if (shiftHeld) {
-            if (hitBlock != null) {
-                toggleMultiBlock(hitBlock)
-            }
-            return
-        }
-
-        // -------------------------------------------------
-        // NO SHIFT → normal single selection
-        // -------------------------------------------------
-
-        // Clear any multi-selection first
-        multiSelectedBlocks.clear()
-
-        if (hitBlock != null) {
-            cycleSelectStructureBlockNone(hitBlock)
-            return
-        }
-
-        // Nothing block-related hit → normal selection
-        cycleBlock = null
-        cycleStage = 0
-        selectedStructure = null
-
-        selectActorUnderReticle()
-    }
-
-    private fun toggleMultiBlock(block: BuildingBlockActor) {
-
-        // If a structure was selected from the cycle, clear it.
-        selectedStructure?.let {
-            it.unselect()
-            selectedStructure = null
-        }
-
-        // Disable cycle behaviour while multi-selecting
-        cycleBlock = null
-        cycleStage = 0
-
-        val key = block.padKey()
-
-        if (multiSelectedBlocks.contains(key)) {
-            multiSelectedBlocks.remove(key)
-            block.unselect()
-        } else {
-            multiSelectedBlocks.add(key)
-            block.select()
-        }
-    }
-
-    fun selectActorUnderReticle() {
-        if (world.renderer == null) return
-
-        val camera = world.renderer!!.camera
-        val ship = world.renderer!!.ship
-
-        if (relocatingActor != null) {
-            finishRelocatingActor(true)
-        }
-
-        val origin = camera.position
-        camera.forwardWorld(tmpDir)
-        tmpDir.normalizeInPlace()
-
-        val maxDist = 5000f
-        var best: Actor? = null
-        var bestT = maxDist
-
-        val defaultPickRadius = 35f
-        val structurePickRadius = 50f
-        val shipPickRadius = 35f   // tune
-
-        // 1) Pick among world actors
-        for (a in world.actors) {
-            if (!a.active) continue
-
-            val tHit: Float? = when (a) {
-                is BuildingBlockActor ->
-                    rayAabbHitT(origin, tmpDir, a.instance.position, a.halfExtents)
-
-                is FriendlyStructureActor ->
-                    raySphereHitT(origin, tmpDir, a.position, structurePickRadius)
-
-                else ->
-                    raySphereHitT(origin, tmpDir, a.position, defaultPickRadius)
-            }
-
-            if (tHit != null && tHit >= 0f && tHit < bestT) {
-                bestT = tHit
-                best = a
-            }
-        }
-
-        // 2) Also test ship (even if it's not in world.actors)
-        if (ship.active) {
-            val tShip = raySphereHitT(origin, tmpDir, ship.position, shipPickRadius)
-            if (tShip != null && tShip >= 0f && tShip < bestT) {
-                bestT = tShip
-                best = ship
-            }
-        }
-
-        // 3) Apply selection
-        if (best != null) {
-            val wasSelected = best.selected
-            clearEditorSelection()
-            if (wasSelected) best.unselect() else best.select()
-        } else {
-            clearEditorSelection()
-        }
-    }
-
-    fun clearEditorSelection() {
-        world.unselectAllActors()
-//        selectedBlock = null
-        selectedStructure = null
-    }
-
-    private fun pickBlockUnderReticle(): BuildingBlockActor? {
-        if (world.renderer == null) return null
-
-        val camera = world.renderer!!.camera
-        val origin = camera.position
-        camera.forwardWorld(tmpDir)
-        tmpDir.normalizeInPlace()
-
-        val maxDist = 5000f
-        var best: BuildingBlockActor? = null
-        var bestT = maxDist
-
-        for (a in world.actors) {
-            if (!a.active) continue
-            if (a is BuildingBlockActor) {
-                val t = rayAabbHitT(origin, tmpDir, a.instance.position, a.halfExtents)
-                if (t != null && t >= 0f && t < bestT) {
-                    bestT = t
-                    best = a
-                }
-            }
-        }
-        return best
-    }
-
-
-    fun cycleSelectStructureBlockNone(hitBlock: BuildingBlockActor) {
-        val sameFocus = (cycleBlock === hitBlock)
-
-        if (!sameFocus) {
-            cycleBlock = hitBlock
-            cycleStage = 1 // STRUCTURE
-        } else {
-            cycleStage = (cycleStage + 1) % 3 // 1->2->0
-        }
-
-        clearEditorSelection()
-
-        when (cycleStage) {
-            1 -> {
-                // STRUCTURE selected (AABB shown via drawEditorBounds)
-                hitBlock.structure.select()
-                selectedStructure = hitBlock.structure
-            }
-
-            2 -> {
-                // BLOCK selected
-                hitBlock.select()
-                selectedStructure = hitBlock.structure
-            }
-
-            else -> {
-                // NONE
-                cycleBlock = null
-                selectedStructure = null
-            }
-        }
-    }
-
-
-    private fun rotateYaw(v: Vec3, yaw: Double, out: Vec3): Vec3 {
-        val c = kotlin.math.cos(yaw).toFloat()
-        val s = kotlin.math.sin(yaw).toFloat()
-        out.set(
-            c * v.x - s * v.y,
-            s * v.x + c * v.y,
-            v.z
-        )
-        return out
     }
 
     fun placeFlyingAlongRay(

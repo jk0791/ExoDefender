@@ -300,43 +300,42 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         btnDuplicateBlock = findViewById(R.id.btnDuplicateBlock)
 
         // Position nudges
-        btnBlockXMinus10.setOnClickListener { nudge(editBlockX, -10f); applyBlockEditsFromUi() }
-        btnBlockXMinus1.setOnClickListener { nudge(editBlockX, -1f); applyBlockEditsFromUi() }
-        btnBlockXPlus1.setOnClickListener { nudge(editBlockX, +1f); applyBlockEditsFromUi() }
-        btnBlockXPlus10.setOnClickListener { nudge(editBlockX, +10f); applyBlockEditsFromUi() }
+        btnBlockXMinus10.setOnClickListener { nudgeAndApply(NudgeField.POS_X, -10f) }
+        btnBlockXMinus1.setOnClickListener { nudgeAndApply(NudgeField.POS_X, -1f) }
+        btnBlockXPlus1.setOnClickListener { nudgeAndApply(NudgeField.POS_X, +1f) }
+        btnBlockXPlus10.setOnClickListener { nudgeAndApply(NudgeField.POS_X, +10f) }
 
-        btnBlockYMinus10.setOnClickListener { nudge(editBlockY, -10f); applyBlockEditsFromUi() }
-        btnBlockYMinus1.setOnClickListener { nudge(editBlockY, -1f); applyBlockEditsFromUi() }
-        btnBlockYPlus1.setOnClickListener { nudge(editBlockY, +1f); applyBlockEditsFromUi() }
-        btnBlockYPlus10.setOnClickListener { nudge(editBlockY, +10f); applyBlockEditsFromUi() }
+        btnBlockYMinus10.setOnClickListener { nudgeAndApply(NudgeField.POS_Y, -10f) }
+        btnBlockYMinus1.setOnClickListener { nudgeAndApply(NudgeField.POS_Y, -1f) }
+        btnBlockYPlus1.setOnClickListener { nudgeAndApply(NudgeField.POS_Y, +1f) }
+        btnBlockYPlus10.setOnClickListener { nudgeAndApply(NudgeField.POS_Y, +10f) }
 
-        btnBlockZMinus10.setOnClickListener { nudge(editBlockZ, -10f); applyBlockEditsFromUi() }
-        btnBlockZMinus1.setOnClickListener { nudge(editBlockZ, -1f); applyBlockEditsFromUi() }
-        btnBlockZPlus1.setOnClickListener { nudge(editBlockZ, +1f); applyBlockEditsFromUi() }
-        btnBlockZPlus10.setOnClickListener { nudge(editBlockZ, +10f); applyBlockEditsFromUi() }
+        btnBlockZMinus10.setOnClickListener { nudgeAndApply(NudgeField.POS_Z, -10f) }
+        btnBlockZMinus1.setOnClickListener { nudgeAndApply(NudgeField.POS_Z, -1f) }
+        btnBlockZPlus1.setOnClickListener { nudgeAndApply(NudgeField.POS_Z, +1f) }
+        btnBlockZPlus10.setOnClickListener { nudgeAndApply(NudgeField.POS_Z, +10f) }
 
         // Yaw nudges (degrees)
-        btnBlockYawMinus10.setOnClickListener { nudge(editBlockYaw, -10f); applyBlockEditsFromUi() }
-        btnBlockYawMinus1.setOnClickListener { nudge(editBlockYaw, -1f); applyBlockEditsFromUi() }
-        btnBlockYawPlus1.setOnClickListener { nudge(editBlockYaw, +1f); applyBlockEditsFromUi() }
-        btnBlockYawPlus10.setOnClickListener { nudge(editBlockYaw, +10f); applyBlockEditsFromUi() }
+        btnBlockYawMinus10.setOnClickListener { nudgeAndApply(NudgeField.YAW, -10f) }
+        btnBlockYawMinus1.setOnClickListener { nudgeAndApply(NudgeField.YAW, -1f) }
+        btnBlockYawPlus1.setOnClickListener { nudgeAndApply(NudgeField.YAW, +1f) }
+        btnBlockYawPlus10.setOnClickListener { nudgeAndApply(NudgeField.YAW, +10f) }
 
         // Dimension nudges
-        btnDimWMinus10.setOnClickListener { nudge(editDimW, -10f); applyBlockEditsFromUi() }
-        btnDimWMinus1.setOnClickListener { nudge(editDimW, -1f); applyBlockEditsFromUi() }
-        btnDimWPlus1.setOnClickListener { nudge(editDimW, +1f); applyBlockEditsFromUi() }
-        btnDimWPlus10.setOnClickListener { nudge(editDimW, +10f); applyBlockEditsFromUi() }
+        btnDimWMinus10.setOnClickListener { nudgeAndApply(NudgeField.DIM_W, -10f) }
+        btnDimWMinus1.setOnClickListener { nudgeAndApply(NudgeField.DIM_W, -1f) }
+        btnDimWPlus1.setOnClickListener { nudgeAndApply(NudgeField.DIM_W, +1f) }
+        btnDimWPlus10.setOnClickListener { nudgeAndApply(NudgeField.DIM_W, +10f) }
 
-        btnDimDMinus10.setOnClickListener { nudge(editDimD, -10f); applyBlockEditsFromUi() }
-        btnDimDMinus1.setOnClickListener { nudge(editDimD, -1f); applyBlockEditsFromUi() }
-        btnDimDPlus1.setOnClickListener { nudge(editDimD, +1f); applyBlockEditsFromUi() }
-        btnDimDPlus10.setOnClickListener { nudge(editDimD, +10f); applyBlockEditsFromUi() }
+        btnDimDMinus10.setOnClickListener { nudgeAndApply(NudgeField.DIM_D, -10f) }
+        btnDimDMinus1.setOnClickListener { nudgeAndApply(NudgeField.DIM_D, -1f) }
+        btnDimDPlus1.setOnClickListener { nudgeAndApply(NudgeField.DIM_D, +1f) }
+        btnDimDPlus10.setOnClickListener { nudgeAndApply(NudgeField.DIM_D, +10f) }
 
-        btnDimHMinus10.setOnClickListener { nudge(editDimH, -10f); applyBlockEditsFromUi() }
-        btnDimHMinus1.setOnClickListener { nudge(editDimH, -1f); applyBlockEditsFromUi() }
-        btnDimHPlus1.setOnClickListener { nudge(editDimH, +1f); applyBlockEditsFromUi() }
-        btnDimHPlus10.setOnClickListener { nudge(editDimH, +10f); applyBlockEditsFromUi() }
-
+        btnDimHMinus10.setOnClickListener { nudgeAndApply(NudgeField.DIM_H, -10f) }
+        btnDimHMinus1.setOnClickListener { nudgeAndApply(NudgeField.DIM_H, -1f) }
+        btnDimHPlus1.setOnClickListener { nudgeAndApply(NudgeField.DIM_H, +1f) }
+        btnDimHPlus10.setOnClickListener { nudgeAndApply(NudgeField.DIM_H, +10f) }
 
         chkLandingPad.setOnCheckedChangeListener { _, checked ->
             if (ignoreUiCallbacks) return@setOnCheckedChangeListener
@@ -440,7 +439,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
 
 
         if (actor is EasyFlyingEnemyActor) {
-            this.parent.visibility = INVISIBLE
+//            this.parent.visibility = INVISIBLE
             displayActorType.text = "EasyFlyingEnemyActor"
 
             flyingRadiusRow.visibility = VISIBLE
@@ -449,11 +448,11 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             editFlyingRadius.setText(actor.flyingRadius.toString(), TextView.BufferType.EDITABLE)
             btnActorAnticlockwise.isChecked = actor.antiClockWise
 
-            this.visibility = VISIBLE
-            this.bringToFront()
+//            this.visibility = VISIBLE
+//            this.bringToFront()
         }
         else if (actor is FlyingEnemyActor) {
-            this.parent.visibility = INVISIBLE
+//            this.parent.visibility = INVISIBLE
             displayActorType.text = "FlyingEnemyActor"
 
             flyingRadiusRow.visibility = VISIBLE
@@ -462,11 +461,11 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             editFlyingRadius.setText(actor.flyingRadius.toString(), TextView.BufferType.EDITABLE)
             btnActorAnticlockwise.isChecked = actor.antiClockWise
 
-            this.visibility = VISIBLE
-            this.bringToFront()
+//            this.visibility = VISIBLE
+//            this.bringToFront()
         }
         else if (actor is AdvFlyingEnemyActor) {
-            this.parent.visibility = INVISIBLE
+//            this.parent.visibility = INVISIBLE
             displayActorType.text = "AdvFlyingEnemyActor"
 
             boundsRadiusXRow.visibility = VISIBLE
@@ -477,12 +476,12 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             editRadiusY.setText(actor.aabbHalfY.toString(), TextView.BufferType.EDITABLE)
             editRadiusZ.setText(actor.aabbHalfZ.toString(), TextView.BufferType.EDITABLE)
 
-            this.visibility = VISIBLE
-            this.bringToFront()
+//            this.visibility = VISIBLE
+//            this.bringToFront()
 
         }
         else if (actor is FriendlyStructureActor) {
-            this.parent.visibility = INVISIBLE
+//            this.parent.visibility = INVISIBLE
             displayActorType.text = "FriendlyStructureActor"
 
             btnCopyStructure.visibility = VISIBLE
@@ -521,11 +520,11 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
                 }
             }
 
-            this.visibility = VISIBLE
-            this.bringToFront()
+//            this.visibility = VISIBLE
+//            this.bringToFront()
         }
         else if (actor is BuildingBlockActor) {
-            this.parent.visibility = INVISIBLE
+//            this.parent.visibility = INVISIBLE
             displayActorType.text = "BuildingBlockActor"
 
             btnDuplicateBlock.visibility = VISIBLE
@@ -592,8 +591,8 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
                 }
             }
 
-            this.visibility = VISIBLE
-            this.bringToFront()
+//            this.visibility = VISIBLE
+//            this.bringToFront()
         }
         ignoreUiCallbacks = false
     }
@@ -780,6 +779,34 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
+    private fun nudgeAndApply(fieldKind: NudgeField, delta: Float) {
+        // 1) update UI field
+        val field = when (fieldKind) {
+            NudgeField.POS_X -> editBlockX
+            NudgeField.POS_Y -> editBlockY
+            NudgeField.POS_Z -> editBlockZ
+            NudgeField.YAW   -> editBlockYaw
+            NudgeField.DIM_W -> editDimW
+            NudgeField.DIM_D -> editDimD
+            NudgeField.DIM_H -> editDimH
+        }
+        nudge(field, delta)
+
+        // 2) apply change
+        val engine = parent.level.editEngine
+        if (engine.multiSelectedBlocks.isNotEmpty()) {
+            parent.gLView.queueEvent {
+                engine.applyNudgeToMultiSelectedBlocks(
+                    fieldKind = fieldKind,
+                    delta = delta
+                )
+            }
+            parent.mainActivity.runOnUiThread { parent.writeToFile() }
+        } else {
+            applyBlockEditsFromUi()
+        }
+    }
+
     private fun toast(msg: String) {
         Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
     }
@@ -789,6 +816,8 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         val nv = v + delta
         field.setText(nv.toString())
     }
+
+
 
     private fun nudgeInt(field: EditText, delta: Int) {
         val v = field.text.toString().toIntOrNull() ?: 0

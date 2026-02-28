@@ -82,7 +82,13 @@ class Vec3(
     // ---- creators / setters ----
     fun set(x: Float, y: Float, z: Float): Vec3 { this.x = x; this.y = y; this.z = z; return this }
     fun set(src: Vec3): Vec3 = set(src.x, src.y, src.z)
-    fun copy(): Vec3 = Vec3(x, y, z)
+    fun copy(
+        x: Float = this.x,
+        y: Float = this.y,
+        z: Float = this.z
+    ): Vec3 {
+        return Vec3(x, y, z)
+    }
     fun setZero(): Vec3 { x = 0f; y = 0f; z = 0f; return this }
     fun isFiniteVal() = x.isFiniteVal() && y.isFiniteVal() && z.isFiniteVal()
 

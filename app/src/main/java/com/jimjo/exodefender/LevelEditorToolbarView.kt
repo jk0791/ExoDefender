@@ -178,12 +178,19 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
     fun selectActor() {
         val shift = gLView.flightControls.isShiftHeld
         level.editEngine.selectUnderReticleWithStructureCycle(shiftHeld = shift)
+
+        val selectedActor = level.editEngine.getFirstSelectedActor()
+        if (selectedActor != null) {
+            mainActivity.actorEditMetadataView.load(this, selectedActor)
+        }
     }
 
     fun editActor() {
         val selectedActor = level.editEngine.getFirstSelectedActor()
         if (selectedActor != null) {
             mainActivity.actorEditMetadataView.load(this, selectedActor)
+            mainActivity.actorEditMetadataView.visibility = VISIBLE
+            mainActivity.actorEditMetadataView.bringToFront()
         }
     }
 
