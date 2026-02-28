@@ -12,10 +12,12 @@ class LevelEditEngine(val level: Level, val world: World) {
     var relocatingStructure: FriendlyStructureActor? = null
     var structureRelocateStartBase = Vec3()      // base pos at start of relocate
     var cycleBlock: BuildingBlockActor? = null
-    var cycleStage: Int = 0 // 0=none, 1=block, 2=structure
-    var selectedBlock: BuildingBlockActor? = null
+    var cycleStage: Int = 0 // 0=none, 1=structure, 2=block
+//    var selectedBlock: BuildingBlockActor? = null
     var selectedStructure: FriendlyStructureActor? = null
     var vectorCameraToRelocatingActor = Vec3()
+
+    val multiSelectedBlocks = mutableSetOf<PadKey>()
 
     val tmpDir = Vec3()
     val tmpHit = Vec3()
@@ -598,36 +600,6 @@ class LevelEditEngine(val level: Level, val world: World) {
         if (s.drawEditorBounds) s.updateBoundsAabb()
     }
 
-//    fun applyStructureRelocateRotateInPlace(s: FriendlyStructureActor, newBasePos: Vec3, newYawRad: Double, lockZ: Boolean = false) {
-//
-//        // Lock Z for now (your plan)
-//        if (lockZ) newBasePos.z = s.position.z
-//
-//        // Move + yaw
-//        s.setPositionAndUpdate(newBasePos, yawRad = newYawRad)
-//
-//        // Recompute each block from snapped locals
-//        for (b in s.blocks) {
-//            if (!b.active) continue
-//
-//            rotateYaw(b.relocateLocalBasePos, -newYawRad, tmpRot)
-//
-//
-//            val wx = newBasePos.x + tmpRot.x
-//            val wy = newBasePos.y + tmpRot.y
-//            val wz = newBasePos.z + tmpRot.z + b.halfExtents.z
-//
-//            val blockYaw = newYawRad + b.relocateLocalYaw
-//
-//            b.setPositionAndUpdate(wx, wy, wz, yawRad = blockYaw)
-//        }
-//
-//        if (s.drawEditorBounds) s.updateEditorBoundsAabb()
-//    }
-
-
-
-
     fun finishRelocatingActor(writeGameState: Boolean) {
 
         // Commit structure relocate if needed
@@ -748,22 +720,61 @@ class LevelEditEngine(val level: Level, val world: World) {
         return tmin
     }
 
-    fun selectUnderReticleWithStructureCycle() {
-        // If a block is under reticle, use cycle behavior
+    fun selectUnderReticleWithStructureCycle(shiftHeld: Boolean) {
+
         val hitBlock = pickBlockUnderReticle()
+
+        // -------------------------------------------------
+        // SHIFT HELD → additive block selection
+        // -------------------------------------------------
+        if (shiftHeld) {
+            if (hitBlock != null) {
+                toggleMultiBlock(hitBlock)
+            }
+            return
+        }
+
+        // -------------------------------------------------
+        // NO SHIFT → normal single selection
+        // -------------------------------------------------
+
+        // Clear any multi-selection first
+        multiSelectedBlocks.clear()
+
         if (hitBlock != null) {
             cycleSelectStructureBlockNone(hitBlock)
             return
         }
 
-        // Otherwise use normal reticle selection for everything else
-        // Also reset cycle state so it doesn't "stick"
+        // Nothing block-related hit → normal selection
         cycleBlock = null
         cycleStage = 0
-        selectedBlock = null
         selectedStructure = null
 
-        selectActorUnderReticle()   // your existing one
+        selectActorUnderReticle()
+    }
+
+    private fun toggleMultiBlock(block: BuildingBlockActor) {
+
+        // If a structure was selected from the cycle, clear it.
+        selectedStructure?.let {
+            it.unselect()
+            selectedStructure = null
+        }
+
+        // Disable cycle behaviour while multi-selecting
+        cycleBlock = null
+        cycleStage = 0
+
+        val key = block.padKey()
+
+        if (multiSelectedBlocks.contains(key)) {
+            multiSelectedBlocks.remove(key)
+            block.unselect()
+        } else {
+            multiSelectedBlocks.add(key)
+            block.select()
+        }
     }
 
     fun selectActorUnderReticle() {
@@ -830,7 +841,7 @@ class LevelEditEngine(val level: Level, val world: World) {
 
     fun clearEditorSelection() {
         world.unselectAllActors()
-        selectedBlock = null
+//        selectedBlock = null
         selectedStructure = null
     }
 

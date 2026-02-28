@@ -230,6 +230,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
                 mPointerRB = event.getPointerId(event.actionIndex)
             }
         }
+        flightControls.isShiftHeld = mDownLB
 //        println("ACTION_DOWN mDownRB=$mDownRB mDownRT=$mDownRT")
     }
 
@@ -387,6 +388,8 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
 
         mDeltaTouchHorzRT = 0f
         mDeltaTouchVertRT = 0f
+
+        flightControls.isShiftHeld = mDownLB
     }
 }
 
@@ -410,6 +413,8 @@ class FlightControls(
     val throttleCenter = 0.5f
     var receiver: FlightControlReceiver? = null
 
+    var isShiftHeld = false
+
     var throttleMode = ThrottleMode.CAMERA_CONTROL
 
     fun firingStarted() {
@@ -425,6 +430,7 @@ class FlightControls(
         translationVert = 0f
         firing = false
         setDeviceNeutral = false
+        isShiftHeld = false
     }
 
     // springs throttle as required

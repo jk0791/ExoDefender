@@ -6,7 +6,6 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.Spinner
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 
@@ -177,7 +176,8 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
 
 
     fun selectActor() {
-        level.editEngine.selectUnderReticleWithStructureCycle()
+        val shift = gLView.flightControls.isShiftHeld
+        level.editEngine.selectUnderReticleWithStructureCycle(shiftHeld = shift)
     }
 
     fun editActor() {
