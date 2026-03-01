@@ -608,6 +608,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
     fun updateActors() {
 
+        level.world.flushWorldEdits()
+
         for (actor in level.world.actors) {
             if (actor.active && !flightLog.replayActive && !parent.levelBuilderMode) {
 

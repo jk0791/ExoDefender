@@ -74,6 +74,18 @@ class World(val mapId: Int) {
     val activeEnemiesScratch = ArrayList<EnemyActor>()
     var destructibleStructure: FriendlyStructureActor? = null
 
+    private val pendingEdits = ArrayDeque<() -> Unit>()
+
+    fun enqueueWorldEdit(edit: () -> Unit) {
+        pendingEdits.addLast(edit)
+    }
+
+    fun flushWorldEdits() {
+        while (pendingEdits.isNotEmpty()) {
+            pendingEdits.removeFirst().invoke()
+        }
+    }
+
     var numOfStartNonStructFriendlies = 0
     var numOfActiveNonStructFriendlies = 0
     val visuals = mutableListOf<VisualObject>()

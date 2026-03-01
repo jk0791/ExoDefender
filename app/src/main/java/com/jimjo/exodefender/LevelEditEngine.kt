@@ -159,7 +159,7 @@ class LevelEditEngine(val level: Level, val world: World) {
         selectedStructure = runtime
     }
 
-    private fun snap1m(v: Float): Float = round(v) // 1m grid
+
     fun addBlockToFriendlyStructure(structureId: Int, shape: BlockShape) {
 
         val st = level.findFriendlyStructureTemplate(structureId) ?: run {
@@ -217,80 +217,191 @@ class LevelEditEngine(val level: Level, val world: World) {
 
         val newBlocks = st.blocks + newBlock
         val newSt = st.copy(blocks = newBlocks)
-
-        // Rebuild from authoritative snapshot
-        rebuildFriendlyStructure(structureId, newSt, false)
-
-        // Select the new block (last index), not the structure
         val newIndex = newBlocks.size - 1
-        clearEditorSelection()
-        selectedStructure = null
 
-        world.findFriendlyStructureActor(structureId)
-            ?.blocks
-            ?.getOrNull(newIndex)
-            ?.select()
+        rebuildFriendlyStructure(structureId, newSt, false, postRebuild = { rebuilt ->
+            clearSelectionVisuals()
+            selectedStructure = null
+            rebuilt.blocks.getOrNull(newIndex)?.select()
+        })
+
+//        // Rebuild from authoritative snapshot
+//        rebuildFriendlyStructure(structureId, newSt, false)
+//
+//        // Select the new block (last index), not the structure
+//        val newIndex = newBlocks.size - 1
+//        clearEditorSelection()
+//        selectedStructure = null
+//
+//        world.findFriendlyStructureActor(structureId)
+//            ?.blocks
+//            ?.getOrNull(newIndex)
+//            ?.select()
     }
 
-    fun duplicateBlockInFriendlyStructure(structureId: Int, sourceIndex: Int): BuildingBlockActor? {
-        val st = level.findFriendlyStructureTemplate(structureId) ?: return null
-        if (sourceIndex !in st.blocks.indices) return null
+    fun duplicateSelectedClusterInFriendlyStructure(
+        structureId: Int,
+        fallbackSourceIndex: Int,
+        onDone: (BuildingBlockActor?) -> Unit
+    ) {
 
-        val src = st.blocks[sourceIndex]
+        val st = level.findFriendlyStructureTemplate(structureId) ?: return
 
-        // Find runtime for bounds-based placement (prefer active)
-        val runtime = world.findFriendlyStructureActor(structureId)
+        // Indices to duplicate (multi if active for this structure, else single)
+        val indices: List<Int> =
+            if (multiStructureId == structureId && multiSelectedBlocks.isNotEmpty()) {
+                multiSelectedBlocks.map { it.blockIndex }.distinct().sorted()
+            } else {
+                listOf(fallbackSourceIndex)
+            }
 
-        // Decide spawn point in WORLD space (same rules as addBlock)
-        val spawnWorld = Vec3()
-        if (runtime != null) {
-            runtime.updateBoundsAabb()
+        val sel = indices.filter { it in st.blocks.indices }
+        if (sel.isEmpty()) return
 
-            val min = runtime.boundsAabb.min
-            val max = runtime.boundsAabb.max
+        // ---- Anchor (stable) ----
+        val anchorIndex = sel.first()
+        val anchorPos = st.blocks[anchorIndex].localBasePos
 
-            spawnWorld.x = max.x + 5f
-            spawnWorld.y = (min.y + max.y) * 0.5f
+        // ---- Compute abutting delta in LOCAL space (Option 2) ----
+        val aabb = selectedGroupLocalAabb(st, sel)
+        val centerLocal = aabb.center()
+        val camWorld = world.renderer?.camera?.position ?: return
+        val camLocal = cameraPosLocal(st.position, st.yaw, camWorld)
 
-            val groundZ = world.terrainElevationAt(spawnWorld.x, spawnWorld.y)
-            spawnWorld.z = groundZ ?: st.position.z
-        } else {
-            spawnWorld.set(st.position.x + 5f, st.position.y, st.position.z)
+        val dir = chooseOffsetDir(centerLocal, camLocal)
+        var deltaLocal = computeAbutOffset(aabb, dir, gap = 0f)
+        deltaLocal = snapOffsetNonOverlapping(deltaLocal)
+
+        // New anchor destination (LOCAL)
+        val newAnchor = Vec3(
+            anchorPos.x + deltaLocal.x,
+            anchorPos.y + deltaLocal.y,
+            anchorPos.z + deltaLocal.z
+        ).apply {
+            x = snap1m(x)
+            y = snap1m(y)
+            z = snap1m(z)
         }
 
-        // Convert WORLD -> LOCAL
-        val localBase = Vec3(
-            spawnWorld.x - st.position.x,
-            spawnWorld.y - st.position.y,
-            spawnWorld.z - st.position.z
-        )
+        // ---- Offsets from anchor in LOCAL space ----
+        data class DupItem(val srcIndex: Int, val offset: Vec3)
+        val items = sel.map { idx ->
+            val p = st.blocks[idx].localBasePos
+            DupItem(
+                srcIndex = idx,
+                offset = Vec3(p.x - anchorPos.x, p.y - anchorPos.y, p.z - anchorPos.z)
+            )
+        }
 
-        // snap to 1m grid
-        localBase.x = snap1m(localBase.x)
-        localBase.y = snap1m(localBase.y)
-        localBase.z = snap1m(localBase.z)
+        // ---- Create duplicates appended ----
+        val newBlocks = st.blocks.toMutableList()
+        val newIndices = mutableListOf<Int>()
 
-        val dup = src.copy(localBasePos = localBase)
+        for (it in items) {
+            val src = st.blocks[it.srcIndex]
 
-        val newBlocks = st.blocks + dup
+            val newPos = Vec3(
+                newAnchor.x + it.offset.x,
+                newAnchor.y + it.offset.y,
+                newAnchor.z + it.offset.z
+            ).apply {
+                x = snap1m(x)
+                y = snap1m(y)
+                z = snap1m(z)
+            }
+
+            val dup = src.copy(localBasePos = newPos)
+            newBlocks.add(dup)
+            newIndices.add(newBlocks.lastIndex)
+        }
+
         val newSt = st.copy(blocks = newBlocks)
-
         rebuildFriendlyStructure(structureId, newSt, false)
 
-        // Select duplicated block (last)
-        val newIndex = newBlocks.size - 1
-        clearEditorSelection()
+        // ---- Selection: new cluster becomes current multi-selection ----
+        clearSelectionVisuals()
         selectedStructure = null
-        world.findFriendlyStructureActor(structureId)
-            ?.blocks
-            ?.getOrNull(newIndex)
-            ?.select()
 
-        return world.findFriendlyStructureActor(structureId)
-            ?.blocks
-            ?.getOrNull(newIndex)
+        multiSelectedBlocks.clear()
+        multiStructureId = structureId
+        for (idx in newIndices) multiSelectedBlocks.add(PadKey(structureId, idx))
+
+        refreshMultiSelectionHighlights()
+
+        // Return last duplicated block for metadata view focus
+        val lastNewIndex = newIndices.last()
+        rebuildFriendlyStructure(structureId, newSt, false, postRebuild = { rebuilt ->
+            clearSelectionVisuals()
+            selectedStructure = null
+
+            multiSelectedBlocks.clear()
+            multiStructureId = structureId
+            for (idx in newIndices) multiSelectedBlocks.add(PadKey(structureId, idx))
+            refreshMultiSelectionHighlights()
+
+            onDone(rebuilt.blocks.getOrNull(lastNewIndex))
+        })
     }
 
+    fun pasteBlocksIntoFriendlyStructure(
+        destStructureId: Int,
+        clipboardBlocks: List<BuildingBlockTemplate>,
+        onDone: (BuildingBlockActor?) -> Unit
+    ) {
+
+        if (clipboardBlocks.isEmpty()) return
+
+        val st = level.findFriendlyStructureTemplate(destStructureId) ?: return
+        val camWorld = world.renderer?.camera?.position ?: return
+
+        // Camera position expressed in STRUCTURE-LOCAL coords (uses structure yaw)
+        val camLocal = cameraPosLocal(st.position, st.yaw, camWorld)
+
+        // Spawn point in LOCAL space (XY near camera; Z is forced to base plane)
+        val spawnX = snap1m(camLocal.x)
+        val spawnY = snap1m(camLocal.y)
+
+        // Center the pasted cluster around spawnX/spawnY
+        val srcCenter = blocksCentroid(clipboardBlocks)
+
+        // Force pasted cluster lowest point to sit on structure localZ = 0
+        val srcMinZ = blocksMinLocalZ(clipboardBlocks)
+
+        val delta = Vec3(
+            spawnX - srcCenter.x,
+            spawnY - srcCenter.y,
+            -srcMinZ
+        )
+
+        val newBlocks = st.blocks.toMutableList()
+        val newIndices = mutableListOf<Int>()
+
+        for (b in clipboardBlocks) {
+            val newPos = Vec3(
+                snap1m(b.localBasePos.x + delta.x),
+                snap1m(b.localBasePos.y + delta.y),
+                snap1m(b.localBasePos.z + delta.z)
+            )
+
+            newBlocks.add(b.copy(localBasePos = newPos))
+            newIndices.add(newBlocks.lastIndex)
+        }
+
+        val newSt = st.copy(blocks = newBlocks)
+        val lastIndex = newIndices.lastOrNull() ?: run { onDone(null); return }
+
+        rebuildFriendlyStructure(destStructureId, newSt, false, postRebuild = { rebuilt ->
+            clearSelectionVisuals()
+            selectedStructure = null
+
+            multiSelectedBlocks.clear()
+            multiStructureId = destStructureId
+            for (idx in newIndices) multiSelectedBlocks.add(PadKey(destStructureId, idx))
+            refreshMultiSelectionHighlights()
+
+            onDone(rebuilt.blocks.getOrNull(lastIndex))
+        })
+    }
 
     fun removeFriendlyStructureTemplate(id: Int) {
         level.actorTemplates.removeIf { it is FriendlyStructureTemplate && it.id == id }
@@ -333,16 +444,31 @@ class LevelEditEngine(val level: Level, val world: World) {
         else level.actorTemplates.add(snapshot)
     }
 
-    fun rebuildFriendlyStructure(id: Int, snapshot: FriendlyStructureTemplate, reselectStructure: Boolean, reselectBlockIndex: Int? = null) {
-        // 1) update level data
+    fun rebuildFriendlyStructure(
+        id: Int,
+        snapshot: FriendlyStructureTemplate,
+        reselectStructure: Boolean,
+        reselectBlockIndex: Int? = null,
+        postRebuild: ((FriendlyStructureActor) -> Unit)? = null
+    ) {
+        world.enqueueWorldEdit {
+            rebuildFriendlyStructureNow(id, snapshot, reselectStructure, reselectBlockIndex, postRebuild)
+        }
+    }
+
+    private fun rebuildFriendlyStructureNow(
+        id: Int,
+        snapshot: FriendlyStructureTemplate,
+        reselectStructure: Boolean,
+        reselectBlockIndex: Int? = null,
+        postRebuild: ((FriendlyStructureActor) -> Unit)? = null
+    ) {
         upsertFriendlyStructureTemplate(snapshot)
 
-        // 2) hard purge all runtime actors and visuals related to this structure id
-        // (blocks AND structure actor), not just old.blocks
         val toRemove = world.actors.filter { a ->
             when (a) {
                 is BuildingBlockActor -> a.structure.templateId == id
-                is FriendlyStructureActor -> a.templateId == id   // or whatever field you use
+                is FriendlyStructureActor -> a.templateId == id
                 else -> false
             }
         }
@@ -354,19 +480,57 @@ class LevelEditEngine(val level: Level, val world: World) {
             world.removeActorFromWorld(a)
         }
 
-        // 3) spawn new runtime from snapshot
         val rebuilt = world.spawnFriendlyStructure(snapshot) ?: return
 
-        // 4) selection
+        // Visual selection clear
         clearSelectionVisuals()
 
+        // Your old reselect behavior
         if (reselectBlockIndex != null) {
             rebuilt.blocks.getOrNull(reselectBlockIndex)?.select()
         } else if (reselectStructure) {
             rebuilt.select()
             selectedStructure = rebuilt
         }
+
+        // NEW: let caller do additional selection (multi-select etc)
+        postRebuild?.invoke(rebuilt)
     }
+
+//    fun rebuildFriendlyStructure(id: Int, snapshot: FriendlyStructureTemplate, reselectStructure: Boolean, reselectBlockIndex: Int? = null) {
+//        // 1) update level data
+//        upsertFriendlyStructureTemplate(snapshot)
+//
+//        // 2) hard purge all runtime actors and visuals related to this structure id
+//        // (blocks AND structure actor), not just old.blocks
+//        val toRemove = world.actors.filter { a ->
+//            when (a) {
+//                is BuildingBlockActor -> a.structure.templateId == id
+//                is FriendlyStructureActor -> a.templateId == id   // or whatever field you use
+//                else -> false
+//            }
+//        }
+//
+//        world.removeCivilianVisualsForStructure(id)
+//
+//        for (a in toRemove) {
+//            a.active = false
+//            world.removeActorFromWorld(a)
+//        }
+//
+//        // 3) spawn new runtime from snapshot
+//        val rebuilt = world.spawnFriendlyStructure(snapshot) ?: return
+//
+//        // 4) selection
+//        clearSelectionVisuals()
+//
+//        if (reselectBlockIndex != null) {
+//            rebuilt.blocks.getOrNull(reselectBlockIndex)?.select()
+//        } else if (reselectStructure) {
+//            rebuilt.select()
+//            selectedStructure = rebuilt
+//        }
+//    }
 
 
     fun setFriendlyStructureBaseZ(id: Int, newBaseZ: Float) {
@@ -444,10 +608,9 @@ class LevelEditEngine(val level: Level, val world: World) {
 
         val newSt = st.copy(blocks = newBlocks)
 
-        rebuildFriendlyStructure(structureId, newSt, false)
-
-        // restore highlight selection since actors were rebuilt
-        refreshMultiSelectionHighlights()
+        rebuildFriendlyStructure(structureId, newSt, false, postRebuild = {
+            refreshMultiSelectionHighlights()
+        })
     }
 
     fun removeSelectedBuildingBlocks(): Boolean {
@@ -919,6 +1082,124 @@ class LevelEditEngine(val level: Level, val world: World) {
                 selectedStructure = null
             }
         }
+    }
+
+
+    private fun selectedGroupLocalAabb(st: FriendlyStructureTemplate, indices: List<Int>): Aabb {
+        val aabb = Aabb(Vec3(), Vec3())
+        aabb.setEmpty()
+
+        for (i in indices) {
+            val b = st.blocks[i] as BuildingBlockTemplate
+            val hw = b.dimensions.x * 0.5f
+            val hd = b.dimensions.y * 0.5f
+            val hh = b.dimensions.z * 0.5f
+
+            val c = kotlin.math.cos(b.localYaw)
+            val s = kotlin.math.sin(b.localYaw)
+            val hx = (kotlin.math.abs(c) * hw + kotlin.math.abs(s) * hd).toFloat()
+            val hy = (kotlin.math.abs(s) * hw + kotlin.math.abs(c) * hd).toFloat()
+
+            val cx = b.localBasePos.x
+            val cy = b.localBasePos.y
+            val cz = b.localBasePos.z + hh
+
+            aabb.include(
+                cx - hx, cy - hy, cz - hh,
+                cx + hx, cy + hy, cz + hh
+            )
+        }
+        return aabb
+    }
+
+    private fun blocksMinLocalZ(blocks: List<BuildingBlockTemplate>): Float {
+        var minZ = Float.POSITIVE_INFINITY
+        for (b in blocks) {
+            if (b.localBasePos.z < minZ) minZ = b.localBasePos.z
+        }
+        return if (minZ.isFinite()) minZ else 0f
+    }
+
+    private fun blocksCentroid(blocks: List<BuildingBlockTemplate>): Vec3 {
+        var sx = 0f; var sy = 0f; var sz = 0f
+        for (b in blocks) {
+            sx += b.localBasePos.x
+            sy += b.localBasePos.y
+            sz += b.localBasePos.z
+        }
+        val n = blocks.size.toFloat()
+        return Vec3(sx / n, sy / n, sz / n)
+    }
+
+    private fun cameraPosLocal(structPos: Vec3, structYawRad: Double, cameraWorld: Vec3): Vec3 {
+        val dx = cameraWorld.x - structPos.x
+        val dy = cameraWorld.y - structPos.y
+        val dz = cameraWorld.z - structPos.z
+
+        val c = kotlin.math.cos(structYawRad)
+        val s = kotlin.math.sin(structYawRad)
+
+        // Inverse yaw: R(-yaw) * (world - pos)
+        val lx = (dx * c + dy * s).toFloat()
+        val ly = (-dx * s + dy * c).toFloat()
+        return Vec3(lx, ly, dz.toFloat())
+    }
+
+    private fun isLowAngleToHorizontal(v: Vec3, thresholdDeg: Float = 45f): Boolean {
+        val horiz = kotlin.math.sqrt(v.x * v.x + v.y * v.y)
+        if (horiz <= 1e-4f) return true // straight above/below -> treat as low-angle safe
+        val angleRad = kotlin.math.atan2(kotlin.math.abs(v.z), horiz)
+        val angleDeg = (angleRad * 180.0 / Math.PI).toFloat()
+        return angleDeg < thresholdDeg
+    }
+
+    private enum class OffsetDir { POS_X, NEG_X, POS_Y, NEG_Y, POS_Z }
+
+    private fun chooseOffsetDir(
+        groupCenterLocal: Vec3,
+        cameraLocal: Vec3
+    ): OffsetDir {
+        val v = Vec3(
+            cameraLocal.x - groupCenterLocal.x,
+            cameraLocal.y - groupCenterLocal.y,
+            cameraLocal.z - groupCenterLocal.z
+        )
+
+        // Your rule #1
+        if (isLowAngleToHorizontal(v, 45f)) return OffsetDir.POS_Z
+
+        // Your rule #2: which side camera is "in front" of
+        // (Assumption: "in front" = dominant horizontal component toward camera)
+        return if (kotlin.math.abs(v.x) >= kotlin.math.abs(v.y)) {
+            if (v.x >= 0f) OffsetDir.POS_X else OffsetDir.NEG_X
+        } else {
+            if (v.y >= 0f) OffsetDir.POS_Y else OffsetDir.NEG_Y
+        }
+    }
+
+    private fun computeAbutOffset(aabb: Aabb, dir: OffsetDir, gap: Float = 0f): Vec3 {
+        val spanX = aabb.width()
+        val spanY = aabb.depth()
+        val spanZ = aabb.height()
+
+        return when (dir) {
+            OffsetDir.POS_X -> Vec3(spanX + gap, 0f, 0f)
+            OffsetDir.NEG_X -> Vec3(-(spanX + gap), 0f, 0f)
+            OffsetDir.POS_Y -> Vec3(0f, spanY + gap, 0f)
+            OffsetDir.NEG_Y -> Vec3(0f, -(spanY + gap), 0f)
+            OffsetDir.POS_Z -> Vec3(0f, 0f, spanZ + gap)
+        }
+    }
+
+    private fun snap1m(v: Float): Float = round(v) // 1m grid
+    private fun snap1mCeil(v: Float): Float = kotlin.math.ceil(v).toFloat()
+    private fun snap1mFloor(v: Float): Float = kotlin.math.floor(v).toFloat()
+
+    private fun snapOffsetNonOverlapping(delta: Vec3): Vec3 {
+        fun snapAxis(x: Float): Float =
+            if (x >= 0f) snap1mCeil(x) else snap1mFloor(x)
+
+        return Vec3(snapAxis(delta.x), snapAxis(delta.y), snapAxis(delta.z))
     }
 
     //Computes a spawn point for a new actor.

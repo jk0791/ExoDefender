@@ -63,6 +63,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
     val structureAddBlockRow: View
     val spinnerBlockShape: Spinner
     val btnAddBlock: Button
+    val btnPasteBlocks: Button
 
     // BLOCK EDIT CONTROLS
     private val blockHeaderRow: TextView
@@ -205,6 +206,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         structureAddBlockRow = findViewById(R.id.structureAddBlockRow)
         spinnerBlockShape = findViewById(R.id.spinnerBlockShape)
         btnAddBlock = findViewById(R.id.btnAddBlock)
+        btnPasteBlocks = findViewById(R.id.btnPasteBlocks)
 
 
 
@@ -371,21 +373,41 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         btnWAPosZPlus10.setOnClickListener { nudge(editWAPosZ, +10f); applyBlockEditsFromUi() }
 
 
+//        btnDuplicateBlock.setOnClickListener {
+//            val src = actor as BuildingBlockActor
+//            val structureId = src.structure.templateId
+//            val blockIndex = src.blockIndex
+//
+//            parent.gLView.queueEvent {
+//                val newBlock =
+//                    parent.level.editEngine
+//                        .duplicateBlockInFriendlyStructure(structureId, blockIndex)
+//
+//                parent.mainActivity.runOnUiThread {
+//                    if (newBlock != null) {
+//                        load(parent, newBlock as Actor)   // rebind editor to NEW block
+//                    }
+//                    parent.writeToFile()
+//                }
+//            }
+//        }
+
         btnDuplicateBlock.setOnClickListener {
             val src = actor as BuildingBlockActor
             val structureId = src.structure.templateId
             val blockIndex = src.blockIndex
 
             parent.gLView.queueEvent {
-                val newBlock =
-                    parent.level.editEngine
-                        .duplicateBlockInFriendlyStructure(structureId, blockIndex)
-
-                parent.mainActivity.runOnUiThread {
-                    if (newBlock != null) {
-                        load(parent, newBlock as Actor)   // rebind editor to NEW block
+                parent.level.editEngine.duplicateSelectedClusterInFriendlyStructure(
+                    structureId,
+                    blockIndex
+                ) { newBlock ->
+                    parent.mainActivity.runOnUiThread {
+                        if (newBlock != null) {
+                            load(parent, newBlock as Actor)   // bind editor to LAST new block
+                        }
+                        parent.writeToFile()
                     }
-                    parent.writeToFile()
                 }
             }
         }
@@ -520,11 +542,31 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
                 }
             }
 
-//            this.visibility = VISIBLE
-//            this.bringToFront()
+
+            btnPasteBlocks.setOnClickListener {
+                val stActor = actor as FriendlyStructureActor
+                val destStructureId = stActor.templateId
+
+                val clipboard = mainActivity.levelManager.structureClipboard
+                    ?: return@setOnClickListener toast("Clipboard empty")
+                if (clipboard.blocks.isEmpty()) return@setOnClickListener toast("Clipboard has no blocks")
+
+                parent.gLView.queueEvent {
+                    parent.level.editEngine.pasteBlocksIntoFriendlyStructure(
+                        destStructureId,
+                        clipboard.blocks
+                    ) { newFocus ->
+                        parent.mainActivity.runOnUiThread {
+                            if (newFocus != null) load(parent, newFocus as Actor)
+                            parent.writeToFile()
+                        }
+                    }
+                }
+            }
+
+
         }
         else if (actor is BuildingBlockActor) {
-//            this.parent.visibility = INVISIBLE
             displayActorType.text = "BuildingBlockActor"
 
             btnDuplicateBlock.visibility = VISIBLE

@@ -80,4 +80,19 @@ class Aabb(
     fun height(): Float {
         return max.z - min.z
     }
+
+    fun setEmpty() {
+        min.set(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        max.set(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
+    }
+
+    fun include(minX: Float, minY: Float, minZ: Float, maxX: Float, maxY: Float, maxZ: Float) {
+        if (minX < min.x) min.x = minX
+        if (minY < min.y) min.y = minY
+        if (minZ < min.z) min.z = minZ
+        if (maxX > max.x) max.x = maxX
+        if (maxY > max.y) max.y = maxY
+        if (maxZ > max.z) max.z = maxZ
+    }
+
 }
