@@ -95,7 +95,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     lateinit var enemyExplosion: Explosion
     lateinit var friendlyExplosion: Explosion
     lateinit var structureExplosionPool: ExplosionPool
-    private val explosionFlash = ExplosionFlashSystem(maxFlashes = 64)
+    val explosionFlash = ExplosionFlashSystem(maxFlashes = 64)
 
     lateinit var flightLog: FlightLog
     private val cameraSample = CameraSample()

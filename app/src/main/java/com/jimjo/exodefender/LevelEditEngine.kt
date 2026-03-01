@@ -482,6 +482,29 @@ class LevelEditEngine(val level: Level, val world: World) {
 
         val rebuilt = world.spawnFriendlyStructure(snapshot) ?: return
 
+        parentRenderer?.let { renderer ->
+            rebuilt.initialize(
+                renderer,
+                level.world,
+                null,
+                renderer.ship,
+                renderer.friendlyLaserBoltPool,
+                renderer.friendlyExplosion,
+                renderer.explosionFlash
+            )
+            for (blockActor in rebuilt.blocks) {
+                blockActor.initialize(
+                    renderer,
+                    level.world,
+                    null,
+                    renderer.ship,
+                    renderer.friendlyLaserBoltPool,
+                    renderer.friendlyExplosion,
+                    renderer.explosionFlash
+                )
+            }
+        }
+
         // Visual selection clear
         clearSelectionVisuals()
 
