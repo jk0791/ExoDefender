@@ -35,6 +35,8 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
     @Volatile private var syncInFlight = false
 
     @Volatile var structureClipboard: FriendlyStructureTemplate? = null
+    @Volatile var editorLastLevelId: Int? = null
+    @Volatile var editorLastCameraPos: Camera.Location? = null
 
     init {
         levelsDir = File(levelsDirPath)

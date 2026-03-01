@@ -4,6 +4,19 @@ import kotlin.math.max
 
 enum class CameraMode {CHASE, TRACK, FIXED}
 class Camera(val flightControls: FlightControls, val ship: ShipActor, val world: World) {
+
+    data class Location(val position: Vec3 = Vec3(2500f, 2500f, 100f), var angleP: Double = 0.0, var angleE: Double = 0.0) {
+
+        fun set(src: Location) {
+            position.set(src.position)
+            angleP = src.angleP
+            angleE = src.angleE
+        }
+
+        fun deepCopy(): Location =
+            this.copy(position = this.position.copy())
+    }
+
     val position = Vec3()
     val focalPoint = Vec3()
 //    val orientationUp = Vec3(0f, 1f, 0f)
@@ -51,6 +64,18 @@ class Camera(val flightControls: FlightControls, val ship: ShipActor, val world:
     fun setDirection(angleP_: Double, angleE_: Double) {
         angleP = angleP_
         angleE = angleE_
+    }
+
+    fun getLocation() = Location(position.copy(), angleP, angleE)
+    fun readOutLocationTo(location: Location) {
+        location.position.set(position)
+        location.angleP = angleP
+        location.angleE = angleE
+    }
+
+    fun applyLocation(location: Location) {
+        position.set(location.position)
+        setDirection(location.angleP, location.angleE)
     }
 
     fun forwardWorld(out: Vec3): Vec3 {

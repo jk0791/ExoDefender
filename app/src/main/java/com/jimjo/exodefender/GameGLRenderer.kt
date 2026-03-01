@@ -100,6 +100,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
     lateinit var flightLog: FlightLog
     private val cameraSample = CameraSample()
 
+    private val editorLastCameraPos = Camera.Location()
+
     val shipLaserBoltPool = DoubleLaserBoltPool(60)
     val enemyLaserBoltPool = SingleLaserBoltPool(LaserBolt.SourceType.ENEMY, 40, 10f)
     val friendlyLaserBoltPool = SingleLaserBoltPool(LaserBolt.SourceType.FRIENDLY, 40, 5f)
@@ -180,8 +182,19 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
         }
         else if (parent.levelBuilderMode) {
-            ship.chaseFocalPointWorld.set(ship.position)
-            camera.updateForChase()
+
+            val lm = parent.mainActivity.levelManager
+
+            if (lm.editorLastCameraPos == null || lm.editorLastLevelId != level.id) {
+                ship.chaseFocalPointWorld.set(ship.position)
+                camera.updateForChase()
+                lm.editorLastCameraPos = camera.getLocation()
+                lm.editorLastLevelId = level.id
+            }
+            else {
+                camera.applyLocation(lm.editorLastCameraPos!!)
+            }
+
         }
         else {
             flightLog.level = level.getLevelSerializable()
@@ -694,6 +707,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
             // playing level builder
             camera.updateDirectly(interval)
+            camera.readOutLocationTo(parent.mainActivity.levelManager.editorLastCameraPos!!)
 
             // relocate actor is necessary
             if (level.editEngine.lbRelocatingShip || level.editEngine.relocatingActor != null) {
