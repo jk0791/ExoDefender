@@ -3,6 +3,7 @@ package com.jimjo.exodefender
 import android.content.Context
 import android.os.Message
 import com.jimjo.exodefender.Level.LevelVersionedSerializable
+import com.jimjo.exodefender.Networker.LevelUpsertResult
 import com.jimjo.exodefender.ServerConfig.getHostServer
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -149,7 +150,16 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
         val world = worldManager.worldLookupById[levelJson.mapId]
 
         if (world != null) {
-            val level = Level(levelJson.id, levelJson.campaignCode, levelJson.type, levelJson.objectiveType, levelVersioned.version, levelJson.order, world, levelJson.difficultyWeight)
+            val level = Level(
+                levelJson.id,
+                levelJson.campaignCode,
+                levelJson.type,
+                levelJson.objectiveType,
+                levelVersioned.version,
+                levelJson.order, world,
+                levelJson.difficultyWeight,
+                levelVersioned.uploadStatus,
+            )
             level.type = levelJson.type
             level.name = levelJson.name
             level.shipPosition.set(levelJson.shipPosition)
@@ -262,7 +272,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
 
     private val levelSaveLock = Any()
 
-    fun writeLevelfile(level: Level) {
+    fun writeLevelfile(level: Level): Boolean {
         synchronized(levelSaveLock) {
             val filename = filenameFromId(level.id)
             val target = File(levelsDir, filename)
@@ -272,12 +282,12 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
                 level.stringifyFull()   // build BEFORE touching the file
             } catch (t: Throwable) {
                 android.util.Log.e("LevelSave", "Save FAILED: ${t.message}", t)
-                return
+                return false
             }
 
             if (text.isBlank()) {
                 android.util.Log.e("LevelSave", "Refusing to write blank output for ${target.absolutePath}")
-                return
+                return false
             }
 
             val tmp = File(dir, "$filename.tmp")
@@ -297,10 +307,32 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
                 tmp.copyTo(target, overwrite = true)
                 tmp.delete()
             }
+            return true
         }
     }
 
+    fun updateUploadDetails(upsertResults: List<LevelUpsertResult>) {
+        for (ur in upsertResults) {
+            if (ur.status == Networker.UpsertStatus.INSERTED || ur.status == Networker.UpsertStatus.UPDATED) {
+                val level = levelIdLookup[ur.levelId]
+                if (level != null) {
+                    markClean(level)
+                    level.version = ur.newVersion
+                    writeLevelfile(level)
+                }
+            }
+        }
+    }
 
+    fun markClean(level: Level) {
+        level.uploadStatus = Level.UploadStatus.CLEAN
+    }
+
+    fun markDirty(level: Level, reason: String? = null) {
+        if (level.uploadStatus != Level.UploadStatus.DIRTY) {
+            level.uploadStatus = Level.UploadStatus.DIRTY
+        }
+    }
 
     fun generateNewLevelId(): Int {
         var highestLevelId = 0
@@ -344,7 +376,8 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
                 0,
                 order,
                 gameMap,
-                difficultyWeight
+                difficultyWeight,
+                Level.UploadStatus.NOT_UPLOADED,
             )
             level.name = name
             level.shipPosition.set(2500f, 2500f, 375f)

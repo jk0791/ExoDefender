@@ -222,7 +222,7 @@ class LevelEditorToolbarView(context: Context, attrs: AttributeSet? = null) :
     }
 
     fun writeToFile() {
+        mainActivity.levelManager.markDirty(level)
         mainActivity.levelManager.writeLevelfile(level)
     }
-
 }

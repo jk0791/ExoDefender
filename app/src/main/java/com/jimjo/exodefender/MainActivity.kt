@@ -725,9 +725,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
             gLView!!.renderer.onDestroyRenderer()
             gLView = null
         }
-//        if (mainLayout.contains(screenOverlay)) {
-//            mainLayout.removeView(screenOverlay)
-//        }
         screenOverlay.visibility = GONE
         screenOverlay.stopCountdownTicker()
         screenOverlay.showScreenAnnotations(false)
@@ -755,6 +752,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
             }
         } else {
             levelManager.loadLevelsFromInternalStorage()
+            levelEditorView.loadLevels()
             levelEditorView.bringToFront()
             levelEditorView.visibility = VISIBLE
             setCurrentFeature(Feature.ADMIN_LEVELS)
@@ -768,15 +766,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         if (!levelEditorMode && gLView != null && currentLevel != null) {
             levelCompletionManager.completeLevel(currentLevel!!, gLView!!.flightLog, replayMode)
         }
-    }
-
-    private fun wrapPi(a: Float): Float {
-        var x = a
-        val pi = Math.PI.toFloat()
-        val twoPi = (2.0 * Math.PI).toFloat()
-        while (x > pi) x -= twoPi
-        while (x < -pi) x += twoPi
-        return x
     }
 
     override fun onSensorChanged(event: SensorEvent?) {

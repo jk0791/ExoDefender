@@ -12,10 +12,11 @@ class Level(
     var campaignCode: String? = null,
     var type: LevelType,
     var objectiveType: ObjectiveType = ObjectiveType.UNKNOWN,
-    val version: Int,
+    var version: Int,
     var order: Int,
     val world: World,
     var difficultyWeight: Float = 1.0f,
+    var uploadStatus: UploadStatus = UploadStatus.NOT_UPLOADED,
 ): Comparable<Level> {
 
     @Serializable
@@ -28,6 +29,16 @@ class Level(
         TRAINING,
         @SerialName("DEVELOPMENT")
         DEVELOPMENT
+    }
+
+    @Serializable
+    enum class UploadStatus {
+        @SerialName("NOT_UPLOADED")
+        NOT_UPLOADED,
+        @SerialName("DIRTY")
+        DIRTY,
+        @SerialName("CLEAN")
+        CLEAN,
     }
 
     @Serializable
@@ -157,18 +168,16 @@ class Level(
         val id: Int,
         val version: Int,
         val updatedAt: String,
+        var uploadStatus: UploadStatus = UploadStatus.NOT_UPLOADED,
         val json: String,
     )
 
     var parentRenderer: GameGLRenderer? = null
     val editEngine = LevelEditEngine(this, world)
-
     var name = "Level $id"
     val shipPosition = Vec3()
     var shipDirection = 0.0
     val actorTemplates = mutableListOf<ActorTemplate>()
-
-    var nextFriendlyStructureId: Int = 1
 
     var index = -1 // zero-based position within campaign
     var globalIndex: Int = -1   // zero-based position in *presented* mission sequence
@@ -227,7 +236,8 @@ class Level(
                 id,
                 version,
                 "n/a",
-                innerJson
+                uploadStatus,
+                innerJson,
             )
         )
     }

@@ -23,6 +23,9 @@ class LevelEditorView(context: Context, attrs: AttributeSet? = null) :
 
     var levelBuilderEnabled = false
 
+    val warningTextColor = Color(210f / 255, 10f / 255, 10f/ 255).toArgb()
+    val disabledTextColor = 0x445ADC00
+
     init {
         inflate(context, R.layout.level_editor, this)
         levelsTable = findViewById(R.id.levelsTable)
@@ -75,7 +78,7 @@ class LevelEditorView(context: Context, attrs: AttributeSet? = null) :
     fun addRowToTable(level: Level?, textSize: Float, headingRow: Boolean = false) {
         val tableRow = TableRow(context)
         val tableRowLayoutParams = TableLayout.LayoutParams(TableLayout.LayoutParams.WRAP_CONTENT, TableLayout.LayoutParams.WRAP_CONTENT)
-        tableRowLayoutParams.setMargins(8)
+        tableRowLayoutParams.setMargins(0, 15, 0, 15)
         tableRow.layoutParams = tableRowLayoutParams
 
         val campaignCodeTextView = TextView(context, null, 0, R.style.DefaultText)
@@ -123,8 +126,7 @@ class LevelEditorView(context: Context, attrs: AttributeSet? = null) :
         tableRow.addView(idTextView)
 
 
-        val descriptionTextView = TextView(context)
-        descriptionTextView.setTextColor(Color.White.toArgb())
+        val descriptionTextView = TextView(context, null, 0, R.style.DefaultText)
         if (!headingRow && level != null) {
             descriptionTextView.id = level.id
             descriptionTextView.setOnClickListener(object : OnClickListener {
@@ -134,8 +136,14 @@ class LevelEditorView(context: Context, attrs: AttributeSet? = null) :
             })
             descriptionTextView.text = level.name
 
-            if (level.globalIndex == -1) {
-                descriptionTextView.setTextColor(Color.Red.toArgb())
+            if (level.uploadStatus == Level.UploadStatus.NOT_UPLOADED) {
+                descriptionTextView.setTextColor(Color.White.toArgb())
+            }
+            else if (level.uploadStatus == Level.UploadStatus.DIRTY) {
+                descriptionTextView.setTextColor(warningTextColor)
+            }
+            else if (level.globalIndex == -1) {
+                descriptionTextView.setTextColor(disabledTextColor)  // not within the first 10 of a campaign
             }
 
         }
@@ -163,6 +171,20 @@ class LevelEditorView(context: Context, attrs: AttributeSet? = null) :
         typeViewParams.setMargins(0, 0, 10, 0)
         typeTextView.layoutParams = typeViewParams
         tableRow.addView(typeTextView)
+
+        val versionTextView = TextView(context, null, 0, R.style.DefaultText)
+        versionTextView.textSize = textSize
+        if (!headingRow && level != null) {
+            versionTextView.text = "${level.version}"
+        }
+        else {
+            versionTextView.text = "Ver"
+        }
+        val versionTextViewParams = TableRow.LayoutParams(TableRow.LayoutParams.WRAP_CONTENT, TableRow.LayoutParams.WRAP_CONTENT)
+        versionTextViewParams.gravity = Gravity.CENTER
+        versionTextViewParams.setMargins(0, 0, 10, 0)
+        versionTextView.layoutParams = versionTextViewParams
+        tableRow.addView(versionTextView)
 
         val orderTextView = TextView(context, null, 0, R.style.DefaultText)
         orderTextView.textSize = textSize

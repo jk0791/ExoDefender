@@ -11,13 +11,13 @@ import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import com.jimjo.exodefender.ServerConfig.getHostServer
 import android.os.Handler
 import android.os.Looper
+import android.widget.FrameLayout
 
 class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
     LinearLayout(context, attrs), NetworkResponseReceiver {
@@ -60,7 +60,7 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
 
     val hostnameLabel: TextView
     val uploadLevelButton: Button
-    val networkProgress: ProgressBar
+    val networkProgress: FrameLayout
     var ignoreUiCallbacks = true
 
     private val writeRunnable = Runnable {
@@ -326,6 +326,8 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
     fun uploadLevel() {
         if (level != null) {
 
+            setEditorEnabled(false)
+
             networkProgress.visibility = VISIBLE
 
             var levels = mutableListOf(level!!)
@@ -334,33 +336,73 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             // DEBUG: uncomment to upload all levels to server!
 //            levels = levelManager.levels
 
-            mainActivity.adminLogView.printout("Sending levels update to server $displayIds...")
+            mainActivity.adminLogView.printout("Sending level updates to server [$displayIds]...")
             Thread({Networker(this, getHostServer(mainActivity)).upsertLevels(levels) }).start()
         }
+    }
 
+    fun processUpsertLevelsResponse(response: Networker.UpsertLevelsResponse) {
 
+        levelManager.updateUploadDetails(response.results)
+
+        val inserts = response.results.count { it.status == Networker.UpsertStatus.INSERTED }
+        val updates = response.results.count { it.status == Networker.UpsertStatus.UPDATED }
+        val failures = response.results.count { it.status == Networker.UpsertStatus.FAILED }
+
+        fun plural(count: Int, singular: String, plural: String = "${singular}s"): String =
+            "$count ${if (count == 1) singular else plural}"
+
+        val parts = mutableListOf<String>()
+
+        if (inserts > 0) parts += plural(inserts, "insert")
+        if (updates > 0) parts += plural(updates, "update")
+        if (failures > 0) parts += plural(failures, "failure")
+
+        val summary = parts.joinToString(", ")
+
+        val prefix = when {
+            !response.success -> "Failed"
+            failures > 0 -> "Partial Success"
+            else -> "Success"
+        }
+
+        val message = if (summary.isNotEmpty())
+            "$prefix: $summary"
+        else
+            "$prefix"
+
+        mainActivity.adminLogView.printout(message)
+        Toast.makeText(mainActivity, message, Toast.LENGTH_SHORT).show()
 
     }
 
-    fun writeToFile(): Boolean {
-        val lvl = level ?: return false
+    fun writeToFile() {
+        val lvl = level ?: return
 
         lvl.name = editName.text.toString()
         lvl.order = editOrder.text.toString().toIntOrNull()
             ?: run {
                 Toast.makeText(context, "Invalid number, defaulting to 0", Toast.LENGTH_SHORT)
                     .show()
-                return false
+                return
             }
         lvl.difficultyWeight = editDifficultyWeight.text.toString().toFloatOrNull()
             ?: run {
                 Toast.makeText(context, "Invalid difficulty weight", Toast.LENGTH_SHORT).show()
-                return false
+                return
             }
 
+        mainActivity.levelManager.markDirty(lvl)
         mainActivity.levelManager.writeLevelfile(lvl)
         levelManager.loadLevelsFromInternalStorage()
-        return true
+    }
+
+    private fun setEditorEnabled(enabled: Boolean) {
+        if (enabled) {
+            this.setOnTouchListener(null)
+        } else {
+            this.setOnTouchListener { _, _ -> true } // consume ALL touches
+        }
     }
 
 
@@ -368,17 +410,19 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
         when (msg.what) {
             NetworkResponse.UPSERT_LEVELS.value -> {
                 val upsertLevelsResponse = msg.obj as Networker.UpsertLevelsResponse
-                val message = "Levels inserted: ${upsertLevelsResponse.insertCount}; updated: ${upsertLevelsResponse.updateCount}; failed: ${upsertLevelsResponse.failureCount}"
+                processUpsertLevelsResponse(upsertLevelsResponse)
+            }
+            -1, -2, -3, -4 -> {
+
+                var message = "[${msg.what}] ${msg.obj}]"
+                if (msg.what == -4) message = "Server Error: " + message
+                else message = "Network error occured: " + message
+
                 mainActivity.adminLogView.printout(message)
-                Toast.makeText(mainActivity, message, Toast.LENGTH_SHORT).show()
-            }
-            -1, -2, -3 -> {
-                mainActivity.adminLogView.printout("Server Error: [${msg.what}] ${msg.obj}")
-            }
-            -4 -> {
-                mainActivity.adminLogView.printout("Network error occured: [${msg.what}] ${msg.obj}")
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
         }
         networkProgress.visibility = GONE
+        setEditorEnabled(true)
     }
 }

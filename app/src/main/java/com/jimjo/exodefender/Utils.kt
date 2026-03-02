@@ -191,6 +191,14 @@ fun getElevationAngle(angleP: Double, deltaY: Double, deltaZ: Double): Double {
     return Math.atan(deltaZ / (xy))
 }
 
+fun wrapPi(a: Float): Float {
+    var x = a
+    val pi = Math.PI.toFloat()
+    val twoPi = (2.0 * Math.PI).toFloat()
+    while (x > pi) x -= twoPi
+    while (x < -pi) x += twoPi
+    return x
+}
 
 fun interpolate(start: Float, end: Float, fraction: Float): Float {
     return (end - start) * fraction + start
