@@ -3,6 +3,7 @@ package com.jimjo.exodefender
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
+import com.jimjo.exodefender.Level.UploadStatus
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
 import java.net.URL
@@ -130,7 +131,7 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
 
     @Serializable
     @JsonIgnoreUnknownKeys
-    data class LevelSerializable(val id: Int, val type: String, val json: String, val version: Int, val updatedAt: String)
+    data class LevelSerializable(val id: Int, var uploadStatus: UploadStatus = UploadStatus.CLEAN, val type: String, val json: String, val version: Int, val updatedAt: String)
 
     @Serializable
     data class LevelsResponse(val success: Boolean, val levels: List<LevelSerializable>)

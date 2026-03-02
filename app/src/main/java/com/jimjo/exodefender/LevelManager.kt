@@ -263,12 +263,6 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
         }
     }
 
-//    fun writeLevelfile(level: Level) {
-//        val filename = filenameFromId(level.id)
-//        val outputStreamWriter = OutputStreamWriter(FileOutputStream(File(levelsDir, filename)))
-//        outputStreamWriter.write(level.stringifyFull())
-//        outputStreamWriter.close()
-//    }
 
     private val levelSaveLock = Any()
 
