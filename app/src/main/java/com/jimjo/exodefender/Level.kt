@@ -35,7 +35,14 @@ class Level(
         @SerialName("TRAINING")
         TRAINING,
         @SerialName("DEVELOPMENT")
-        DEVELOPMENT
+        DEVELOPMENT;
+
+        fun shortForm(): String = when (this) {
+            MISSION -> "MIS"
+            MILKRUN -> "OP"
+            TRAINING -> "TRG"
+            DEVELOPMENT -> "DEV"
+        }
     }
 
     @Serializable

@@ -161,7 +161,7 @@ class LevelEditorView(context: Context, attrs: AttributeSet? = null) :
         val typeTextView = TextView(context, null, 0, R.style.DefaultText)
         typeTextView.textSize = textSize
         if (!headingRow && level != null) {
-            typeTextView.text = "${level.type}"
+            typeTextView.text = level.type.shortForm()
         }
         else {
             typeTextView.text = "Type"
