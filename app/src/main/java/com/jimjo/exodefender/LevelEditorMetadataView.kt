@@ -18,6 +18,7 @@ import com.jimjo.exodefender.ServerConfig.getHostServer
 import android.os.Handler
 import android.os.Looper
 import android.widget.FrameLayout
+import androidx.appcompat.app.AlertDialog
 
 class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
     LinearLayout(context, attrs), NetworkResponseReceiver {
@@ -57,6 +58,7 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
 
     val saveButton: Button
     val closeCancelButton: Button
+    val deleteButton: Button
 
     val hostnameLabel: TextView
     val uploadLevelButton: Button
@@ -146,10 +148,13 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
         networkProgress.visibility = GONE
 
 
+        deleteButton = this.findViewById(R.id.deleteLevelButton)
+        deleteButton.setOnClickListener({ deleteLevel() })
+
         saveButton = this.findViewById(R.id.saveCreateLevelButton)
         saveButton.setOnClickListener({ createNewLevel() })
 
-        closeCancelButton = this.findViewById(R.id.closeCencelCreateLevelButton)
+        closeCancelButton = this.findViewById(R.id.closeCancelCreateLevelButton)
         closeCancelButton.setOnClickListener({ mainActivity.closeLevelBuilderMetadata() })
 
         attachWatchersOnce()
@@ -195,6 +200,7 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
         if (level != null) {
             saveButton.visibility = GONE
             closeCancelButton.text = "Close"
+            deleteButton.visibility = VISIBLE
             displayId.text = level.id.toString()
             editName.setText(level.name, TextView.BufferType.EDITABLE)
             mapSpinner.setSelection(maps.indexOf(level.world.mapId))
@@ -222,6 +228,7 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             newLevelId = levelManager.generateNewLevelId()
 
             saveButton.visibility = VISIBLE
+            deleteButton.visibility = INVISIBLE
             uploadLevelButton.isEnabled = false
             closeCancelButton.text = "Cancel"
             displayId.text = newLevelId.toString()
@@ -376,6 +383,37 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
 
     }
 
+    fun deleteLevel() {
+        val l = level
+        if (l == null) return
+
+        if (l.uploadStatus == Level.UploadStatus.NOT_UPLOADED || l.uploadStatus == Level.UploadStatus.DIRTY ) {
+
+            val message =
+                if (l.uploadStatus == Level.UploadStatus.NOT_UPLOADED) "This level has not been uploaded to the server. All data will be lost!"
+                else "This level has changes that have not been uploaded to the server and will be lost!"
+
+            showConfirm(
+                context = context,
+                title = "Delete Level?",
+                message,
+            ) {
+                deleteLevelConfirmed()
+            }
+        }
+        else {
+            deleteLevelConfirmed()
+        }
+
+    }
+
+    fun deleteLevelConfirmed() {
+        level?.let {
+            levelManager.deleteLevel(it)
+            mainActivity.closeLevelBuilderMetadata()
+        }
+    }
+
     fun writeToFile() {
         val lvl = level ?: return
 
@@ -402,6 +440,20 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
         } else {
             this.setOnTouchListener { _, _ -> true } // consume ALL touches
         }
+    }
+
+    fun showConfirm(
+        context: Context,
+        title: String,
+        message: String,
+        onYes: () -> Unit
+    ) {
+        AlertDialog.Builder(context)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("Yes") { _, _ -> onYes() }
+            .setNegativeButton("No", null)
+            .show()
     }
 
 

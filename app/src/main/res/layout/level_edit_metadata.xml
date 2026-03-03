@@ -240,13 +240,19 @@
         android:gravity="bottom|right"
         android:orientation="horizontal">
         <Button
+            android:id="@+id/deleteLevelButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            style="@style/DefaultButton"
+            android:text="Delete" />
+        <Button
             android:id="@+id/saveCreateLevelButton"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
             style="@style/DefaultButton"
             android:text="Save" />
         <Button
-            android:id="@+id/closeCencelCreateLevelButton"
+            android:id="@+id/closeCancelCreateLevelButton"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
             style="@style/DefaultButton"
@@ -259,7 +265,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/black"
-        android:alpha="0.6">
+        android:alpha="0.5"
+        android:visibility="gone">
 
         <ProgressBar
             android:layout_width="wrap_content"

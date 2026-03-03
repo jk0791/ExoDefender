@@ -255,6 +255,19 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
         }
     }
 
+    fun deleteLevel(level: Level) {
+
+        val filename = filenameFromId(level.id)
+        val file = File(levelsDir, filename)
+        if (!file.exists()) return
+
+        // backup last good
+        val bak = File(levelsDir, "$filename.bak")
+        try { file.copyTo(bak, overwrite = true) } catch (_: Throwable) {}
+
+        file.delete()
+
+    }
 
     fun processDownloadedLevels(upsertLevels: Networker.LevelsResponse) {
         try {
@@ -276,30 +289,6 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
             endSync() // ✅ pipeline complete
         }
     }
-
-
-
-//    fun writeSerializableTofile(levelSerializable: Networker.LevelSerializable) {
-//        val filename = filenameFromId(levelSerializable.id)
-//        val target = File(levelsDir, filename)
-//        val tmp = File(levelsDir, "$filename.tmp")
-//
-//        val str = Json.encodeToString(levelSerializable)
-//
-//        tmp.outputStream().use { os ->
-//            OutputStreamWriter(os, Charsets.UTF_8).use { w ->
-//                w.write(str)
-//            }
-//        }
-//
-//        // atomic replace on most Android filesystems
-//        if (target.exists()) target.delete()
-//        if (!tmp.renameTo(target)) {
-//            // fallback: copy then delete
-//            tmp.copyTo(target, overwrite = true)
-//            tmp.delete()
-//        }
-//    }
 
 
     private val levelSaveLock = Any()
@@ -362,7 +351,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
     }
 
     fun markDirty(level: Level, reason: String? = null) {
-        if (level.uploadStatus != Level.UploadStatus.DIRTY) {
+        if (level.uploadStatus != Level.UploadStatus.DIRTY && level.uploadStatus != Level.UploadStatus.NOT_UPLOADED) {
             level.uploadStatus = Level.UploadStatus.DIRTY
         }
     }
