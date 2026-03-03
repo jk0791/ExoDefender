@@ -115,7 +115,7 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
     @Serializable
     data class UpsertLevelsResponse(val success: Boolean, val results: List<LevelUpsertResult>)
     @Serializable
-    data class LevelUpsertResult(val levelId: Int, val newVersion: Int, val status: UpsertStatus, val message: String? = null)
+    data class LevelUpsertResult(val levelId: Int, val newVersion: Int, val updatedAt: String, val status: UpsertStatus, val message: String? = null)
 
     @Serializable
     enum class UpsertStatus { INSERTED, UPDATED, FAILED }

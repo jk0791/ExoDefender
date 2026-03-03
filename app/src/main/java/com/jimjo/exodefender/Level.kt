@@ -1,9 +1,11 @@
 package com.jimjo.exodefender
 
+import com.jimjo.exodefender.Level.LevelType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.*
+import kotlin.String
 
 const val MISSIONS_PER_CAMPAIGN = 10
 
@@ -17,6 +19,11 @@ class Level(
     val world: World,
     var difficultyWeight: Float = 1.0f,
     var uploadStatus: UploadStatus = UploadStatus.NOT_UPLOADED,
+    var name: String = "Level $id",
+    val shipPosition: Vec3 = Vec3(),
+    var shipDirection: Double = 0.0,
+    val actorTemplates: MutableList<ActorTemplate> = mutableListOf(),
+    var updatedAt: String = "n/a",
 ): Comparable<Level> {
 
     @Serializable
@@ -169,15 +176,24 @@ class Level(
         val version: Int,
         val updatedAt: String,
         var uploadStatus: UploadStatus = UploadStatus.NOT_UPLOADED,
-        val json: String,
+        var campaignCode: String? = null,
+        val type: LevelType,
+        var objectiveType: ObjectiveType = ObjectiveType.UNKNOWN,
+        val lzParams: LzParams? = null,
+        val name: String,
+        val order: Int,
+        val mapId: Int,
+        val difficultyWeight: Float = 1.0f,
+        val shipPosition: Vec3,
+        val shipDirection: Double,
+        val actors: MutableList<ActorTemplate>
     )
+
+    // Level properties created after init
+
 
     var parentRenderer: GameGLRenderer? = null
     val editEngine = LevelEditEngine(this, world)
-    var name = "Level $id"
-    val shipPosition = Vec3()
-    var shipDirection = 0.0
-    val actorTemplates = mutableListOf<ActorTemplate>()
 
     var index = -1 // zero-based position within campaign
     var globalIndex: Int = -1   // zero-based position in *presented* mission sequence
@@ -235,9 +251,19 @@ class Level(
             LevelVersionedSerializable(
                 id,
                 version,
-                "n/a",
+                updatedAt,
                 uploadStatus,
-                innerJson,
+                campaignCode,
+                type,
+                objectiveType,
+                lzParams,
+                name,
+                order,
+                world.mapId,
+                difficultyWeight,
+                shipPosition,
+                shipDirection,
+                actorTemplates,
             )
         )
     }

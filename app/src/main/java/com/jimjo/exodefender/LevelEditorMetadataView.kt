@@ -336,7 +336,7 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
             // DEBUG: uncomment to upload all levels to server!
 //            levels = levelManager.levels
 
-            mainActivity.adminLogView.printout("Sending level updates to server [$displayIds]...")
+            mainActivity.adminLogView.printout("Sending level updates to server: [$displayIds]")
             Thread({Networker(this, getHostServer(mainActivity)).upsertLevels(levels) }).start()
         }
     }
@@ -394,7 +394,6 @@ class LevelEditorMetadataView(context: Context, attrs: AttributeSet? = null) :
 
         mainActivity.levelManager.markDirty(lvl)
         mainActivity.levelManager.writeLevelfile(lvl)
-        levelManager.loadLevelsFromInternalStorage()
     }
 
     private fun setEditorEnabled(enabled: Boolean) {

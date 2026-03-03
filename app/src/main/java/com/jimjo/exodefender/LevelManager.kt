@@ -8,7 +8,6 @@ import com.jimjo.exodefender.ServerConfig.getHostServer
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
-import java.io.OutputStreamWriter
 import kotlin.String
 import kotlin.collections.Map
 import kotlin.math.max
@@ -143,36 +142,69 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
 
     fun createLevelFromFileSerializable(data: String): Level? {
 
-        val levelVersioned = Json.decodeFromString(LevelVersionedSerializable.serializer(), data)
-        val levelJson = Json.decodeFromString(Level.LevelSerializable.serializer(), levelVersioned.json)
+        val levelFull = Json.decodeFromString(LevelVersionedSerializable.serializer(), data)
 
+        val world = worldManager.worldLookupById[levelFull.mapId]
+        if (world == null) {
+            mainActivity.adminLogView.printout("Error parsing downloaded level, no such map ID: " + levelFull.mapId)
+            return null
+        }
 
-        val world = worldManager.worldLookupById[levelJson.mapId]
+        val level = Level(
+            levelFull.id,
+            levelFull.campaignCode,
+            levelFull.type,
+            levelFull.objectiveType,
+            levelFull.version,
+            levelFull.order,
+            world,
+            levelFull.difficultyWeight,
+            levelFull.uploadStatus,
+            levelFull.name,
+            levelFull.shipPosition.copy(),
+            levelFull.shipDirection,
+        )
+        level.actorTemplates.addAll(levelFull.actors)
 
-        if (world != null) {
+        return level
+
+    }
+
+    fun createLevelFromNetworkSerializable(levelFull: Networker.LevelSerializable): Level? {
+
+        try {
+
+            val levelData = Json.decodeFromString(Level.LevelSerializable.serializer(), levelFull.json)
+
+            val world = worldManager.worldLookupById[levelData.mapId]
+            if (world == null) {
+                mainActivity.adminLogView.printout("Error parsing downloaded level, no such map ID: " + levelData.mapId)
+                return null
+            }
+
             val level = Level(
-                levelJson.id,
-                levelJson.campaignCode,
-                levelJson.type,
-                levelJson.objectiveType,
-                levelVersioned.version,
-                levelJson.order, world,
-                levelJson.difficultyWeight,
-                levelVersioned.uploadStatus,
+                id = levelFull.id,
+                campaignCode = levelData.campaignCode,
+                type = levelData.type,
+                objectiveType = levelData.objectiveType,
+                version = levelFull.version,
+                levelData.order,
+                world = world, // not used
+                difficultyWeight = levelData.difficultyWeight,
+                uploadStatus = Level.UploadStatus.CLEAN,
+                name = levelData.name,
+                shipPosition = levelData.shipPosition.copy(),
+                shipDirection = levelData.shipDirection,
+                updatedAt = levelFull.updatedAt
             )
-            level.type = levelJson.type
-            level.name = levelJson.name
-            level.shipPosition.set(levelJson.shipPosition)
-            level.shipDirection = levelJson.shipDirection
-            level.actorTemplates.clear()
-            level.actorTemplates.addAll(levelJson.actors)
+            level.actorTemplates.addAll(levelData.actors)
 
             return level
         }
-        else {
-            mainActivity.adminLogView.printout("ERROR: Cannot load level, no such mapId: " + levelJson.mapId)
+        catch (e: Exception) {
+            mainActivity.adminLogView.printout("Error parsing downloaded level: " + e.message)
+            return null
         }
-        return null
     }
 
    fun getLatestSyncManifest(includeDevelopment: Boolean) {
@@ -196,7 +228,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
         val (toDelete, toUpsert) = diffLevels(allLevels, syncManifest.levels)
 
         mainActivity.adminLogView.printout("Levels to delete: $toDelete")
-        mainActivity.adminLogView.printout("Levels to upsert: $toUpsert")
+        mainActivity.adminLogView.printout("Downloaded levels to update: $toUpsert")
 
         for (levelId in toDelete) {
             val filename = filenameFromId(levelId)
@@ -224,10 +256,14 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
     }
 
 
-    fun processUpsertLevels(upsertLevels: Networker.LevelsResponse) {
+    fun processDownloadedLevels(upsertLevels: Networker.LevelsResponse) {
         try {
             for (upsertLevel in upsertLevels.levels) {
-                writeSerializableTofile(upsertLevel)
+
+                val level = createLevelFromNetworkSerializable(upsertLevel)
+                if (level != null) {
+                    writeLevelfile(level)
+                }
             }
             loadLevelsFromInternalStorage()
             mainActivity.refreshAllLevelLists()
@@ -241,27 +277,29 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
         }
     }
 
-    fun writeSerializableTofile(level: Networker.LevelSerializable) {
-        val filename = filenameFromId(level.id)
-        val target = File(levelsDir, filename)
-        val tmp = File(levelsDir, "$filename.tmp")
 
-        val str = Json.encodeToString(level)
 
-        tmp.outputStream().use { os ->
-            OutputStreamWriter(os, Charsets.UTF_8).use { w ->
-                w.write(str)
-            }
-        }
-
-        // atomic replace on most Android filesystems
-        if (target.exists()) target.delete()
-        if (!tmp.renameTo(target)) {
-            // fallback: copy then delete
-            tmp.copyTo(target, overwrite = true)
-            tmp.delete()
-        }
-    }
+//    fun writeSerializableTofile(levelSerializable: Networker.LevelSerializable) {
+//        val filename = filenameFromId(levelSerializable.id)
+//        val target = File(levelsDir, filename)
+//        val tmp = File(levelsDir, "$filename.tmp")
+//
+//        val str = Json.encodeToString(levelSerializable)
+//
+//        tmp.outputStream().use { os ->
+//            OutputStreamWriter(os, Charsets.UTF_8).use { w ->
+//                w.write(str)
+//            }
+//        }
+//
+//        // atomic replace on most Android filesystems
+//        if (target.exists()) target.delete()
+//        if (!tmp.renameTo(target)) {
+//            // fallback: copy then delete
+//            tmp.copyTo(target, overwrite = true)
+//            tmp.delete()
+//        }
+//    }
 
 
     private val levelSaveLock = Any()
@@ -312,6 +350,7 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
                 if (level != null) {
                     markClean(level)
                     level.version = ur.newVersion
+                    level.updatedAt = ur.updatedAt
                     writeLevelfile(level)
                 }
             }
@@ -733,8 +772,8 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
             NetworkResponse.GET_LEVELS.value -> {
                 val upsertLevels = msg.obj as Networker.LevelsResponse
                 if (upsertLevels.success) {
-                    mainActivity.adminLogView.printout("Upsert levels received")
-                    processUpsertLevels(upsertLevels)
+                    mainActivity.adminLogView.printout("Downloaded levels received")
+                    processDownloadedLevels(upsertLevels)
                 }
                 else {
                     endSync()

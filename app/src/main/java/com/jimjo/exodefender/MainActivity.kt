@@ -1022,6 +1022,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
 
     fun closeLevelBuilderMetadata() {
         setPauseGame(false)
+        levelManager.loadLevelsFromInternalStorage()
         levelEditorView.loadLevels()
         levelEditorMetadataView.visibility = GONE
     }
