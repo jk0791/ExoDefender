@@ -254,19 +254,22 @@ abstract class Actor(
             renderer.flashLinesOnce(timeMs)
             hitPoints--
             if (hitPoints == 0) {
-                active = false
-                world.removeActorFromWorld(this)
-                logEvent(timeMs, hit = 1, destroyed = 1)
-//                parent.notifyActorDestroyed(playSoundWhenDestroyed, this is FriendlyActor)
-                parent.notifyActorDestroyed(this)
-                explosion?.activateLarge(position)
-                explosionFlash?.spawnWorldLarge(position)
+                destroy(timeMs)
             } else {
                 logEvent(timeMs, hit = 1)
                 explosion?.activateSmall(position)
                 explosionFlash?.spawnWorldSmall(position)
             }
         }
+    }
+
+    fun destroy(timeMs: Int) {
+        active = false
+        world.removeActorFromWorld(this)
+        logEvent(timeMs, hit = 1, destroyed = 1)
+        parent.notifyActorDestroyed(this)
+        explosion?.activateLarge(position)
+        explosionFlash?.spawnWorldLarge(position)
     }
 
     open fun replayUpdate(flightLog: FlightLog, event: ActorLog.LogEvent?, dt: Float, dtMs: Int, timeMs: Int) {

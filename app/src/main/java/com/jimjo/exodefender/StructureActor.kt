@@ -1,7 +1,9 @@
 package com.jimjo.exodefender
 
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 import kotlin.random.Random
 
 class BuildingBlockActor(
@@ -73,7 +75,6 @@ class BuildingBlockActor(
     override fun toTemplate() = null
 }
 
-
 class FriendlyStructureActor(
     world: World,
     instance: ModelInstance,
@@ -118,6 +119,8 @@ class FriendlyStructureActor(
     var destroyed: Boolean = false
         private set
 
+    private var didCollapseKillFriendlies = false
+
     /** Keep last seen level time to support destructRemainingMs. */
     private var lastLevelTimeMs: Int = 0
 
@@ -135,12 +138,9 @@ class FriendlyStructureActor(
     override fun getDestructionSound(audio: AudioPlayer): AudioPlayer.Soundfile = audio.explosion4
 
     val boundsAabb = Aabb(Vec3(), Vec3())
+    val localBoundsAabb = Aabb(Vec3(), Vec3()) // local to yaw
 
     private var lastReplayTimeMs: Int = Int.MIN_VALUE
-
-//    init {
-//        playSoundWhenDestroyed = true
-//    }
 
     private fun destructFailMs(): Int = destructEndMs + destructPostZeroBeatMs
 
@@ -161,6 +161,7 @@ class FriendlyStructureActor(
 
         destructEnabled = (s != null && s > 0)
         destroyed = false
+        didCollapseKillFriendlies = false
 
         destructEndMs = if (destructEnabled) (s!! * 1000) else 0
         lastLevelTimeMs = 0
@@ -218,6 +219,7 @@ class FriendlyStructureActor(
     override fun select() {
         super.select()
         updateBoundsAabb()
+        updateAlignedBoundsLocal(localBoundsAabb)
     }
 
     fun getCiviliansRemaining(): Int =
@@ -231,6 +233,17 @@ class FriendlyStructureActor(
 
         hideAtMs?.let {
             if (timeMs >= it) {
+                if (!didCollapseKillFriendlies) {
+
+                    val nearbyFriendlies = mutableListOf<Actor>() // reuse; don't allocate per destruction
+                    world.queryFriendlyForAabbInto(boundsAabb.min, boundsAabb.max, nearbyFriendlies)
+
+                    for (b in blocks) {
+                        if (!b.active) continue
+                        world.destroyGroundFriendliesNearBlock(timeMs, nearbyFriendlies, b.instance.worldAabb)
+                    }
+                    didCollapseKillFriendlies = true
+                }
                 world.removeActorFromWorld(this)
                 hideAtMs = null
             }
@@ -270,6 +283,7 @@ class FriendlyStructureActor(
             if (!shouldBeDestroyed) {
                 destroyed = false
                 hideAtMs = null
+                didCollapseKillFriendlies = false
 
                 // reset VFX state so crossing forward replays the sequence
                 scheduledBursts.clear()
@@ -292,9 +306,6 @@ class FriendlyStructureActor(
             startDestructionVfx(failMs, boundsAabb)
             hideAtMs = hideMs
 
-//            if (playSoundWhenDestroyed) {
-//                parent.notifyActorDestroyed(true, false)
-//            }
             parent.notifyActorDestroyed(this)
         }
 
@@ -331,7 +342,6 @@ class FriendlyStructureActor(
         // Let the initial boom read before disappearing.
         hideAtMs = timeMs + 350  // 350–600 feels good
 
-//        parent.notifyActorDestroyed(playSoundWhenDestroyed, false)
         parent.notifyActorDestroyed(this)
     }
 
@@ -373,49 +383,6 @@ class FriendlyStructureActor(
         }
     }
 
-    override fun draw(vpMatrix: FloatArray, timeMs: Int) {
-        if (drawEditorBounds) {
-            renderer.drawAabbWire(vpMatrix, boundsAabb, renderer.highlightLineColor)
-        }
-    }
-
-    override fun toTemplate() = null
-
-    fun updateBoundsAabb(): Boolean {
-        boundsAabb.min.set(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        boundsAabb.max.set(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
-
-        var any = false
-        for (b in blocks) {
-            if (!b.active) continue
-            any = true
-
-            val c = b.instance.position
-            val h = b.halfExtents
-
-            val x0 = c.x - h.x
-            val y0 = c.y - h.y
-            val z0 = c.z - h.z
-            val x1 = c.x + h.x
-            val y1 = c.y + h.y
-            val z1 = c.z + h.z
-
-            if (x0 < boundsAabb.min.x) boundsAabb.min.x = x0
-            if (y0 < boundsAabb.min.y) boundsAabb.min.y = y0
-            if (z0 < boundsAabb.min.z) boundsAabb.min.z = z0
-
-            if (x1 > boundsAabb.max.x) boundsAabb.max.x = x1
-            if (y1 > boundsAabb.max.y) boundsAabb.max.y = y1
-            if (z1 > boundsAabb.max.z) boundsAabb.max.z = z1
-        }
-
-        if (!any) return false
-
-        val pad = 2f
-        boundsAabb.min.x -= pad; boundsAabb.min.y -= pad; boundsAabb.min.z -= pad
-        boundsAabb.max.x += pad; boundsAabb.max.y += pad; boundsAabb.max.z += pad
-        return true
-    }
 
     fun startDestructionVfx(timeMs: Int, structureAabb: Aabb) {
         destructionStartedMs = timeMs
@@ -436,6 +403,166 @@ class FriendlyStructureActor(
         }
 
         scheduledBursts.addFirst(ScheduledBurst(timeMs, Vec3(center.x, center.y, center.z), large = true))
+    }
+
+    override fun draw(vpMatrix: FloatArray, timeMs: Int) {
+        if (drawEditorBounds) {
+//            renderer.drawAabbWire(vpMatrix, boundsAabb, renderer.highlightLineColor)
+            renderer.drawYawObbWire(
+                vpMatrix = vpMatrix,
+                originWorld = instance.position,
+                yawRad = -yawRad.toFloat(),
+                localAabb = localBoundsAabb,
+                color = renderer.highlightLineColor
+            )
+        }
+    }
+
+    override fun toTemplate() = null
+
+//    fun updateBoundsAabb(): Boolean {
+//        boundsAabb.min.set(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+//        boundsAabb.max.set(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
+//
+//        var any = false
+//        for (b in blocks) {
+//            if (!b.active) continue
+//            any = true
+//
+//            val c = b.instance.position
+//            val h = b.halfExtents
+//
+//            val x0 = c.x - h.x
+//            val y0 = c.y - h.y
+//            val z0 = c.z - h.z
+//            val x1 = c.x + h.x
+//            val y1 = c.y + h.y
+//            val z1 = c.z + h.z
+//
+//            if (x0 < boundsAabb.min.x) boundsAabb.min.x = x0
+//            if (y0 < boundsAabb.min.y) boundsAabb.min.y = y0
+//            if (z0 < boundsAabb.min.z) boundsAabb.min.z = z0
+//
+//            if (x1 > boundsAabb.max.x) boundsAabb.max.x = x1
+//            if (y1 > boundsAabb.max.y) boundsAabb.max.y = y1
+//            if (z1 > boundsAabb.max.z) boundsAabb.max.z = z1
+//        }
+//
+//        if (!any) return false
+//
+//        val pad = 2f
+//        boundsAabb.min.x -= pad; boundsAabb.min.y -= pad; boundsAabb.min.z -= pad
+//        boundsAabb.max.x += pad; boundsAabb.max.y += pad; boundsAabb.max.z += pad
+//        return true
+//    }
+
+    fun updateBoundsAabb(): Boolean {
+        boundsAabb.min.set(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        boundsAabb.max.set(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
+
+        var any = false
+        for (b in blocks) {
+            if (!b.active) continue
+            any = true
+
+            val a = b.instance.worldAabb  // must be correct
+
+            if (a.min.x < boundsAabb.min.x) boundsAabb.min.x = a.min.x
+            if (a.min.y < boundsAabb.min.y) boundsAabb.min.y = a.min.y
+            if (a.min.z < boundsAabb.min.z) boundsAabb.min.z = a.min.z
+
+            if (a.max.x > boundsAabb.max.x) boundsAabb.max.x = a.max.x
+            if (a.max.y > boundsAabb.max.y) boundsAabb.max.y = a.max.y
+            if (a.max.z > boundsAabb.max.z) boundsAabb.max.z = a.max.z
+        }
+
+        return any
+    }
+
+
+    fun updateAlignedBoundsLocal(outLocalAabb: Aabb): Boolean {
+        outLocalAabb.min.set(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        outLocalAabb.max.set(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
+
+        val origin = instance.position
+
+        // NOTE: wire/debug rendering swaps Y/Z (handedness flip), so negate yaw for OBB debug draw
+        val syWire = -yawRad.toFloat()              // structure world
+
+
+        val cosN = cos(-syWire)
+        val sinN = sin(-syWire)
+
+        fun toLocal(p: Vec3, out: Vec3) {
+            val dx = p.x - origin.x
+            val dy = p.y - origin.y
+            out.x =  cosN * dx - sinN * dy
+            out.y =  sinN * dx + cosN * dy
+            out.z =  p.z - origin.z
+        }
+
+        var any = false
+        val lc = Vec3()
+
+        println("------")
+        val b = blocks.first()
+        val world = b.instance.position
+
+        val dx = world.x - instance.position.x
+        val dy = world.y - instance.position.y
+
+        val c = cos(-syWire)
+        val s = sin(-syWire)
+
+        val lx = c * dx - s * dy
+        val ly = s * dx + c * dy
+
+        val c2 = cos(syWire)
+        val s2 = sin(syWire)
+
+        val wx2 = instance.position.x + (c2 * lx - s2 * ly)
+        val wy2 = instance.position.y + (s2 * lx + c2 * ly)
+
+        for (b in blocks) {
+            if (!b.active) continue
+            any = true
+
+            // block center in structure-local
+            toLocal(b.instance.position, lc)
+
+            // in structure-local frame, block yaw is just its local yaw
+            val yawLocal = b.yawRad.toFloat() + syWire // block yaw relative to structure
+            val h = b.halfExtents
+
+            val c = kotlin.math.abs(cos(yawLocal))
+            val s = kotlin.math.abs(sin(yawLocal))
+
+            val hxW = c * h.x + s * h.y
+            val hyW = s * h.x + c * h.y
+            val hzW = h.z
+
+            val x0 = lc.x - hxW
+            val y0 = lc.y - hyW
+            val z0 = lc.z - hzW
+            val x1 = lc.x + hxW
+            val y1 = lc.y + hyW
+            val z1 = lc.z + hzW
+
+            if (x0 < outLocalAabb.min.x) outLocalAabb.min.x = x0
+            if (y0 < outLocalAabb.min.y) outLocalAabb.min.y = y0
+            if (z0 < outLocalAabb.min.z) outLocalAabb.min.z = z0
+
+            if (x1 > outLocalAabb.max.x) outLocalAabb.max.x = x1
+            if (y1 > outLocalAabb.max.y) outLocalAabb.max.y = y1
+            if (z1 > outLocalAabb.max.z) outLocalAabb.max.z = z1
+
+
+
+        }
+
+        outLocalAabb.expand(2.5f)
+
+        return any
     }
 
     fun sampleExplosionPointsFromBlocks(

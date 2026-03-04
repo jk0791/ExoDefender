@@ -685,6 +685,24 @@ class World(val mapId: Int) {
         }
     }
 
+//    private val tmpActors = mutableListOf<Actor>() // reuse; don't allocate per destruction
+    private val tmpExpandedAabb = Aabb(Vec3(), Vec3())
+
+    fun destroyGroundFriendliesNearBlock(timeMs: Int, nearbyFriendlies: List<Actor>, blockAabb: Aabb, margin: Float = 3f) {
+
+        tmpExpandedAabb.copy(blockAabb)
+        tmpExpandedAabb.expand(margin)
+
+        for (a in nearbyFriendlies) {
+            val gf = a as? GroundFriendlyActor ?: continue
+            if (!gf.active) continue
+
+            if (tmpExpandedAabb.contains(gf.position)) {
+                gf.destroy(timeMs)
+            }
+        }
+    }
+
     fun getNearestActor(location: Vec3): Actor? {
         var minDistanceAwaySquared = Float.POSITIVE_INFINITY
         var nearestActor: Actor? = null

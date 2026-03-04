@@ -1,12 +1,5 @@
 package com.jimjo.exodefender
 
-import android.opengl.GLES20
-import android.opengl.Matrix
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.FloatBuffer
-import java.nio.ShortBuffer
-
 class Aabb(
     val min: Vec3 = Vec3(),
     val max: Vec3 = Vec3()
@@ -52,11 +45,24 @@ class Aabb(
             (max.z + min.z) / 2f,
         )
     }
-    fun copy(sourceAabb: Aabb) {
-        min.set(sourceAabb.min)
-        max.set(sourceAabb.max)
+    fun copy(src: Aabb) {
+        min.set(src.min)
+        max.set(src.max)
     }
 
+    fun expand(margin: Float) {
+        min.set(
+            min.x - margin,
+            min.y - margin,
+            min.z - margin
+        )
+
+        max.set(
+            max.x + margin,
+            max.y + margin,
+            max.z + margin
+        )
+    }
 
     fun repositionCenter(newCenter: Vec3) {
         min.set(

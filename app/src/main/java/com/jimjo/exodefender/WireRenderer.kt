@@ -745,7 +745,129 @@ class WireRenderer(
         return verts.toFloatArray()
     }
 
+    fun drawYawObbWire(
+        vpMatrix: FloatArray,
+        originWorld: Vec3,      // structure origin in world
+        yawRad: Float,          // structure world yaw (radians)
+        localAabb: Aabb,        // bounds in structure-local space (axis-aligned)
+        color: FloatArray
+    ) {
+        // IMPORTANT: unbind any VBO so the FloatBuffer is used (client-side attrib array)
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0)
 
+        val c = kotlin.math.cos(yawRad)
+        val s = kotlin.math.sin(yawRad)
+
+        fun toWorldX(lx: Float, ly: Float): Float = originWorld.x + (c * lx - s * ly)
+        fun toWorldY(lx: Float, ly: Float): Float = originWorld.y + (s * lx + c * ly)
+
+        // local corners
+        val x0 = localAabb.min.x; val x1 = localAabb.max.x
+        val y0 = localAabb.min.y; val y1 = localAabb.max.y
+        val z0 = localAabb.min.z; val z1 = localAabb.max.z
+
+        // Helper: push a world-space point but write it in *render space* (swap Y/Z)
+        fun putWorldAsRender(verts: FloatArray, idx: Int, wx: Float, wy: Float, wz: Float): Int {
+            verts[idx]     = wx       // renderX = worldX
+            verts[idx + 1] = wz       // renderY = worldZ
+            verts[idx + 2] = wy       // renderZ = worldY
+            return idx + 3
+        }
+
+        // Build 8 world corners (but store in render-space array)
+        // corner order: 0..3 bottom, 4..7 top
+        val corners = FloatArray(8 * 3)
+        var ci = 0
+
+        fun corner(lx: Float, ly: Float, lz: Float) {
+            val wx = toWorldX(lx, ly)
+            val wy = toWorldY(lx, ly)
+            val wz = originWorld.z + lz
+            ci = putWorldAsRender(corners, ci, wx, wy, wz)
+        }
+
+        // Bottom (z0)
+        corner(x0, y0, z0) // 0
+        corner(x1, y0, z0) // 1
+        corner(x1, y1, z0) // 2
+        corner(x0, y1, z0) // 3
+        // Top (z1)
+        corner(x0, y0, z1) // 4
+        corner(x1, y0, z1) // 5
+        corner(x1, y1, z1) // 6
+        corner(x0, y1, z1) // 7
+
+        // 12 edges -> 24 vertices -> 72 floats
+        val verts = FloatArray(24 * 3)
+        var vi = 0
+
+        fun addEdge(i0: Int, i1: Int) {
+            val a = i0 * 3
+            val b = i1 * 3
+            verts[vi++] = corners[a];     verts[vi++] = corners[a + 1]; verts[vi++] = corners[a + 2]
+            verts[vi++] = corners[b];     verts[vi++] = corners[b + 1]; verts[vi++] = corners[b + 2]
+        }
+
+        // bottom
+        addEdge(0, 1); addEdge(1, 2); addEdge(2, 3); addEdge(3, 0)
+        // top
+        addEdge(4, 5); addEdge(5, 6); addEdge(6, 7); addEdge(7, 4)
+        // verticals
+        addEdge(0, 4); addEdge(1, 5); addEdge(2, 6); addEdge(3, 7)
+
+        val vertexBuffer = ByteBuffer.allocateDirect(verts.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+            .apply { put(verts); position(0) }
+
+        GLES20.glUseProgram(program)
+
+        if (uColorLoc >= 0) GLES20.glUniform4fv(uColorLoc, 1, color, 0)
+        if (uMvpLoc >= 0) GLES20.glUniformMatrix4fv(uMvpLoc, 1, false, vpMatrix, 0)
+
+        if (aPosLoc >= 0) {
+            GLES20.glEnableVertexAttribArray(aPosLoc)
+            GLES20.glVertexAttribPointer(aPosLoc, 3, GLES20.GL_FLOAT, false, 3 * 4, vertexBuffer)
+        }
+
+        GLES20.glDrawArrays(GLES20.GL_LINES, 0, verts.size / 3)
+
+        if (aPosLoc >= 0) GLES20.glDisableVertexAttribArray(aPosLoc)
+    }
+
+    private fun rotateYawLocalToWorld(origin: Vec3, sy: Float, lx: Float, ly: Float, lz: Float, out: Vec3) {
+        val c = kotlin.math.cos(sy)
+        val s = kotlin.math.sin(sy)
+        // rotate around Z then translate
+        out.x = origin.x + (c * lx - s * ly)
+        out.y = origin.y + (s * lx + c * ly)
+        out.z = origin.z + lz
+    }
+
+    private fun buildYawObbCorners(
+        origin: Vec3,
+        sy: Float,
+        localAabb: Aabb,
+        outCorners: Array<Vec3>
+    ) {
+        // Expect outCorners size == 8 and Vec3 preallocated.
+        val x0 = localAabb.min.x; val x1 = localAabb.max.x
+        val y0 = localAabb.min.y; val y1 = localAabb.max.y
+        val z0 = localAabb.min.z; val z1 = localAabb.max.z
+
+        // bottom (z0)
+        rotateYawLocalToWorld(origin, sy, x0, y0, z0, outCorners[0])
+        rotateYawLocalToWorld(origin, sy, x1, y0, z0, outCorners[1])
+        rotateYawLocalToWorld(origin, sy, x1, y1, z0, outCorners[2])
+        rotateYawLocalToWorld(origin, sy, x0, y1, z0, outCorners[3])
+
+        // top (z1)
+        rotateYawLocalToWorld(origin, sy, x0, y0, z1, outCorners[4])
+        rotateYawLocalToWorld(origin, sy, x1, y0, z1, outCorners[5])
+        rotateYawLocalToWorld(origin, sy, x1, y1, z1, outCorners[6])
+        rotateYawLocalToWorld(origin, sy, x0, y1, z1, outCorners[7])
+    }
 
 
 }
