@@ -41,6 +41,76 @@
                 android:textColor="@color/white"
                 android:textSize="14dp" />
 
+            <!-- Ground Actor Z -->
+            <LinearLayout
+                android:id="@+id/groundActorZRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Centre Z (m)"
+                    android:textColor="@color/white"
+                    android:textSize="20dp" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnGrndZMinus10"
+                        style="@style/DefaultButton.CompactSquare"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="-10" />
+
+                    <Button
+                        android:id="@+id/btnGrndZMinus1"
+                        style="@style/DefaultButton.CompactSquare"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:text="-1" />
+
+                    <EditText
+                        android:id="@+id/editGrndBaseZ"
+                        android:layout_width="100dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:inputType="numberDecimal|numberSigned"
+                        android:textColor="@color/gray_400"
+                        android:textSize="20dp" />
+
+                    <Button
+                        android:id="@+id/btnGrndZPlus1"
+                        style="@style/DefaultButton.CompactSquare"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:text="+1" />
+
+                    <Button
+                        android:id="@+id/btnGrndZPlus10"
+                        style="@style/DefaultButton.CompactSquare"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="6dp"
+                        android:text="+10" />
+                </LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="(empty locks to terrain)"
+                    android:textColor="@color/white"
+                    android:textSize="20dp" />
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/flyingRadiusRow"
                 android:layout_width="wrap_content"

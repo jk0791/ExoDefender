@@ -6,14 +6,15 @@ import kotlin.random.Random
 
 class BuildingBlockActor(
     val blockIndex: Int,
-    override val instance: ModelInstance,
-    public override val renderer: WireRenderer,
+    world: World,
+    instance: ModelInstance,
+    renderer: WireRenderer,
     val explosionPool: ExplosionPool,
     val halfExtents: Vec3,
     val landingPadTop: Boolean,
     var civilianCluster: CivilianClusterVisual? = null,
     val structure: FriendlyStructureActor,
-) : FriendlyActor(instance, renderer) {
+) : FriendlyActor(world, instance, renderer) {
 
     override val replayPolicy = ReplayPolicy.DRIVEN_BY_PARENT
 
@@ -74,12 +75,13 @@ class BuildingBlockActor(
 
 
 class FriendlyStructureActor(
-    override val instance: ModelInstance,
-    override val renderer: WireRenderer,
+    world: World,
+    instance: ModelInstance,
+    renderer: WireRenderer,
     override val maxHitPoints: Int = 8000,
     val initialDestructSeconds: Int? = null,
     val explosionPool: ExplosionPool,
-) : FriendlyActor(instance, renderer) {
+) : FriendlyActor(world, instance, renderer) {
 
     override val replayPolicy = ReplayPolicy.ANIMATED_MISSION_LOG
 

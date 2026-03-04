@@ -4,9 +4,10 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 class AdvFlyingEnemyActor(
+    world: World,
     instance: ModelInstance,
     renderer: WireRenderer
-) : EnemyActor(instance, renderer) {
+) : EnemyActor(world, instance, renderer) {
 
     override val continuous = true
     override val qInterval = 400

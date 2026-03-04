@@ -16,7 +16,11 @@ import kotlin.random.Random
 enum class ActorType {
     FRIENDLY, ENEMY, GROUND_FRIENDLY, EASY_GROUND_ENEMY, GROUND_ENEMY, EASY_FLYING_ENEMY, FLYING_ENEMY, ADV_FLYING_ENEMY, FRIENDLY_STRUCTURE,
 }
-abstract class Actor: GridActor {
+abstract class Actor(
+    val world: World,
+    override val instance: ModelInstance,
+    val renderer: WireRenderer
+): GridActor {
     enum class ReplayPolicy {
         REQUIRES_ACTOR_LOG,         // default: if replaying and no log => treat as error/inactive
         STATIC_NO_LOG,        // safe without log: exists in replay, no state syncing needed
@@ -28,10 +32,10 @@ abstract class Actor: GridActor {
     open val replayPolicy: ReplayPolicy
         get() = ReplayPolicy.REQUIRES_ACTOR_LOG
 
-    override abstract val instance: ModelInstance
-    protected abstract val renderer: WireRenderer
+//    override abstract val instance: ModelInstance
+//    protected abstract val renderer: WireRenderer
     protected lateinit var parent: ModelParent
-    lateinit var world: World
+//    lateinit var world: World
     lateinit var ship: ShipActor
     var log: ActorLog? = null
     lateinit var laserBoltPool: SingleLaserBoltPool
@@ -90,12 +94,14 @@ abstract class Actor: GridActor {
     abstract val qInterval: Int
     protected var msSinceLastEvent = 0
 
+
+    open var editorlockToGround = false
+
     open fun getDestructionSound(audio: AudioPlayer): AudioPlayer.Soundfile? = audio.explosion1
 
-    open fun initialize(parent: ModelParent, world: World, log: ActorLog?, ship: ShipActor, laserBoltPool: SingleLaserBoltPool, explosion: Explosion?, explosionFlash: ExplosionFlashSystem?) {
+    open fun initialize(parent: ModelParent, log: ActorLog?, ship: ShipActor, laserBoltPool: SingleLaserBoltPool, explosion: Explosion?, explosionFlash: ExplosionFlashSystem?) {
 
         this.parent = parent
-        this.world = world
         this.ship = ship
         this.laserBoltPool = laserBoltPool
         this.explosion = explosion
@@ -316,6 +322,13 @@ abstract class Actor: GridActor {
         msSinceLastEvent = 0
     }
 
+    fun verticalDistanceFromTerrain(): Float? {
+        val elevationAtActor = world.terrainElevationAt(position.x, position.y)
+        if (elevationAtActor != null) {
+            return instance.model.localAabb.height() / 2 - elevationAtActor
+        }
+        return null
+    }
 
     open fun computeMuzzleWorld() {}
 
@@ -441,7 +454,11 @@ abstract class Actor: GridActor {
     open fun toTemplate(): ActorTemplate? = null
 }
 
-abstract class SingleMuzzleActor : Actor() {
+abstract class SingleMuzzleActor(
+    world: World,
+    instance: ModelInstance,
+    renderer: WireRenderer
+) : Actor(world, instance, renderer) {
 
     // weapon orientation already in Actor:
     // var weaponYawRad, weaponPitchRad
@@ -489,9 +506,10 @@ abstract class SingleMuzzleActor : Actor() {
 // Enemy base
 // ----------------------------
 abstract class EnemyActor(
-    override val instance: ModelInstance,
-    override val renderer: WireRenderer
-) : SingleMuzzleActor() {
+    world: World,
+    instance: ModelInstance,
+    renderer: WireRenderer
+) : SingleMuzzleActor(world, instance, renderer) {
 
     override val maxHitPoints = 5
     open var aggressionFactor = 0.2f // effectively average number of shots fired per second
@@ -710,9 +728,10 @@ abstract class EnemyActor(
 }
 
 class GroundTrainingTargetActor(
+    world: World,
     instance: ModelInstance,
     renderer: WireRenderer
-) : EnemyActor(instance, renderer) {
+) : EnemyActor(world, instance, renderer) {
 
     override val continuous = false
     override val maxHitPoints = 1
@@ -735,9 +754,10 @@ class GroundTrainingTargetActor(
 }
 
 class EasyGroundEnemyActor(
+    world: World,
     instance: ModelInstance,
     renderer: WireRenderer
-) : EnemyActor(instance, renderer) {
+) : EnemyActor(world, instance, renderer) {
 
     override var aggressionFactor = 0.15f
     override val maxHitPoints = 1
@@ -772,13 +792,15 @@ class EasyGroundEnemyActor(
 }
 
 class GroundEnemyActor(
+    world: World,
     instance: ModelInstance,
     renderer: WireRenderer
-) : EnemyActor(instance, renderer) {
+) : EnemyActor(world, instance, renderer) {
 
     override val continuous = false
     override val qInterval = 400
     override val randomInitialYaw = true
+    override var editorlockToGround = true
 
     init {
         muzzleUpOffset = 1.5f
@@ -804,9 +826,10 @@ class GroundEnemyActor(
 }
 
 class EasyFlyingEnemyActor(
+    world: World,
     instance: ModelInstance,
     renderer: WireRenderer
-) : EnemyActor(instance, renderer) {
+) : EnemyActor(world, instance, renderer) {
 
     override var aggressionFactor = 0.15f
     override val maxHitPoints = 1
@@ -901,9 +924,10 @@ class EasyFlyingEnemyActor(
 }
 
 class FlyingEnemyActor(
+    world: World,
     instance: ModelInstance,
     renderer: WireRenderer
-) : EnemyActor(instance, renderer) {
+) : EnemyActor(world, instance, renderer) {
 
     override val continuous = true
     override val randomInitialYaw = true
@@ -995,9 +1019,10 @@ class FlyingEnemyActor(
 // Friendlies
 // ----------------------------
 abstract class FriendlyActor(
-    override val instance: ModelInstance,
-    override val renderer: WireRenderer
-) : SingleMuzzleActor() {
+    world: World,
+    instance: ModelInstance,
+    renderer: WireRenderer
+) : SingleMuzzleActor(world, instance, renderer) {
 
     override val maxHitPoints = 3
 
@@ -1011,13 +1036,15 @@ abstract class FriendlyActor(
 }
 
 class GroundFriendlyActor(
+    world: World,
     instance: ModelInstance,
     renderer: WireRenderer
-) : FriendlyActor(instance, renderer) {
+) : FriendlyActor(world, instance, renderer) {
 
     override val continuous = false
     override val qInterval = 400
     override val randomInitialYaw = true
+    override var editorlockToGround = true
 
     override fun getDestructionSound(audio: AudioPlayer): AudioPlayer.Soundfile? = null
 

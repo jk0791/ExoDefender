@@ -3,6 +3,7 @@ package com.jimjo.exodefender
 import android.graphics.PointF
 import android.graphics.RectF
 import androidx.core.graphics.contains
+import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -266,10 +267,24 @@ class World(val mapId: Int) {
                 signalLineColor = floatArrayOf(0.9f, 0.9f, 0.9f, 1f)
             }
 
-            val actor = GroundFriendlyActor(instance, renderer)
+            val actor = GroundFriendlyActor(this, instance, renderer)
             actor.initialPosition.set(instance.position)
 
+            // set if initially locked to ground (for editor only)
+            val terrainZ = terrainElevationAt(instance.position.x, instance.position.y)
+            if (terrainZ != null) {
+                val vDistanceFromTerrain = abs(terrainZ - (instance.position.z - instance.model.localAabb.height() / 2))
+                actor.editorlockToGround = vDistanceFromTerrain < 2f
+            }
+            else {
+                actor.editorlockToGround = false
+            }
+
             actor.resetPosition()
+
+            val v = actor.verticalDistanceFromTerrain()
+            actor.editorlockToGround = v != null && abs(v) < 2f
+
             actors.add(actor)
             friendlyActors.add(actor)
             return actor
@@ -289,7 +304,7 @@ class World(val mapId: Int) {
                 normalFillColor = floatArrayOf(0f, 0f, 0f, 1f)
                 normalLineColor = floatArrayOf(0.85f, 0.85f, 0.85f, 1.0f)
             }
-            val actor = GroundTrainingTargetActor(instance, renderer)
+            val actor = GroundTrainingTargetActor(this, instance, renderer)
             actor.initialPosition.set(instance.position)
             actor.initialYawRad = yaw
 
@@ -314,7 +329,7 @@ class World(val mapId: Int) {
                 normalLineColor = floatArrayOf(0.85f, 0.85f, 0.85f, 1.0f)
             }
 
-            val actor = GroundEnemyActor(instance, renderer)
+            val actor = GroundEnemyActor(this, instance, renderer)
             actor.initialPosition.set(instance.position)
 
             actor.resetPosition()
@@ -338,7 +353,7 @@ class World(val mapId: Int) {
                 normalLineColor = floatArrayOf(0.85f, 0.85f, 0.85f, 1.0f)
             }
 
-            val actor = EasyGroundEnemyActor(instance, renderer)
+            val actor = EasyGroundEnemyActor(this, instance, renderer)
             actor.initialPosition.set(instance.position)
 
             actor.resetPosition()
@@ -362,7 +377,7 @@ class World(val mapId: Int) {
                 normalLineColor = floatArrayOf(0.85f, 0.85f, 0.85f, 1.0f)
             }
 
-            val actor = EasyFlyingEnemyActor(instance, renderer)
+            val actor = EasyFlyingEnemyActor(this, instance, renderer)
             actor.initialPosition.set(instance.position)
             actor.flyingRadius = flyingRadius
             actor.antiClockWise = antiClockwise
@@ -387,7 +402,7 @@ class World(val mapId: Int) {
                 normalLineColor = floatArrayOf(0.85f, 0.85f, 0.85f, 1.0f)
             }
 
-            val actor = FlyingEnemyActor(instance, renderer)
+            val actor = FlyingEnemyActor(this, instance, renderer)
             actor.initialPosition.set(instance.position)
             actor.flyingRadius = flyingRadius
             actor.antiClockWise = antiClockwise
@@ -412,7 +427,7 @@ class World(val mapId: Int) {
                 normalLineColor = floatArrayOf(0.85f, 0.85f, 0.85f, 1.0f)
             }
 
-            val actor = AdvFlyingEnemyActor(instance, renderer)
+            val actor = AdvFlyingEnemyActor(this, instance, renderer)
             actor.initialPosition.set(instance.position)
             actor.aabbHalfX= aabbHalfX
             actor.aabbHalfY = aabbHalfY
@@ -462,6 +477,7 @@ class World(val mapId: Int) {
         }
 
         val structure = FriendlyStructureActor(
+            world = this,
             instance = structureInstance,
             renderer = structureRenderer,
             maxHitPoints = t.hitpoints.toInt(),
@@ -557,6 +573,7 @@ class World(val mapId: Int) {
 
             val blockActor = BuildingBlockActor(
                 blockIndex = blockIndex,
+                world = this,
                 instance = instance,
                 renderer = renderer,
                 explosionPool = structure.explosionPool,

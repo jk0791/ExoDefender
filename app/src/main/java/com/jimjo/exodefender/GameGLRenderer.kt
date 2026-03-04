@@ -188,6 +188,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             if (lm.editorLastCameraPos == null || lm.editorLastLevelId != level.id) {
                 ship.chaseFocalPointWorld.set(ship.position)
                 camera.updateForChase()
+
+                // for convenience remember where camera was last
                 lm.editorLastCameraPos = camera.getLocation()
                 lm.editorLastLevelId = level.id
             }
@@ -470,9 +472,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             laserBoltPool = friendlyLaserBoltPool
 
             if (actor != null) {
-                actor.initialize(this, level.world, null, ship, laserBoltPool, explosion, explosionFlash)
+                actor.initialize(this, null, ship, laserBoltPool, explosion, explosionFlash)
                 for (blockActor in actor.blocks) {
-                    blockActor.initialize(this, level.world, null, ship, laserBoltPool, null, explosionFlash)
+                    blockActor.initialize(this, null, ship, laserBoltPool, null, explosionFlash)
                 }
             }
 
@@ -548,7 +550,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                 // live game so create new actor log
                 actorLog = flightLog.createActorLog(actor, actorTemplate)
             }
-            actor.initialize(this, level.world, actorLog, ship, laserBoltPool, explosion, explosionFlash)
+            actor.initialize(this, actorLog, ship, laserBoltPool, explosion, explosionFlash)
         }
 
     }
@@ -849,7 +851,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
 
         flightControls.setDeviceNeutral = true
 
-        ship.initialize(this, level.world, flightLog.shipLog, shipLaserBoltPool, shipExplosion)
+        ship.initialize(this, flightLog.shipLog, shipLaserBoltPool, shipExplosion)
         if (flightLog.replayActive) {
             level.world.shipStartPosition.set(flightLog.shipInitialPosition)
             level.world.shipStartDirection = flightLog.shipInitialDirection
@@ -1331,7 +1333,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             normalLineColor = floatArrayOf(0f, 1f, 0f, 1f)
         }
 
-        return ShipActor(flightControls, flightLog, instance, renderer).apply {
+        return ShipActor(flightControls, flightLog, level.world, instance, renderer).apply {
             initialPosition.set(instance.position)
             initialYawRad = instance.yawRad
             initialPitchRad = instance.pitchRad

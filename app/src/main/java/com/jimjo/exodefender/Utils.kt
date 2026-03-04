@@ -13,6 +13,7 @@ import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.round
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -199,6 +200,10 @@ fun wrapPi(a: Float): Float {
     while (x < -pi) x += twoPi
     return x
 }
+
+fun snap1f(v: Float): Float = round(v) // 1m grid
+fun snap1Ceil(v: Float): Float = kotlin.math.ceil(v)
+fun snap1Floor(v: Float): Float = kotlin.math.floor(v)
 
 fun interpolate(start: Float, end: Float, fraction: Float): Float {
     return (end - start) * fraction + start

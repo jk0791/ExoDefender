@@ -199,9 +199,9 @@ class LevelEditEngine(val level: Level, val world: World) {
         )
 
         // snap to 1m grid
-        localBase.x = snap1m(localBase.x)
-        localBase.y = snap1m(localBase.y)
-        localBase.z = snap1m(localBase.z)
+        localBase.x = snap1f(localBase.x)
+        localBase.y = snap1f(localBase.y)
+        localBase.z = snap1f(localBase.z)
 
         // Default authoring size (visible and consistent)
         val defaultDims = Vec3(20f, 20f, 20f)
@@ -225,18 +225,6 @@ class LevelEditEngine(val level: Level, val world: World) {
             rebuilt.blocks.getOrNull(newIndex)?.select()
         })
 
-//        // Rebuild from authoritative snapshot
-//        rebuildFriendlyStructure(structureId, newSt, false)
-//
-//        // Select the new block (last index), not the structure
-//        val newIndex = newBlocks.size - 1
-//        clearEditorSelection()
-//        selectedStructure = null
-//
-//        world.findFriendlyStructureActor(structureId)
-//            ?.blocks
-//            ?.getOrNull(newIndex)
-//            ?.select()
     }
 
     fun duplicateSelectedClusterInFriendlyStructure(
@@ -278,9 +266,9 @@ class LevelEditEngine(val level: Level, val world: World) {
             anchorPos.y + deltaLocal.y,
             anchorPos.z + deltaLocal.z
         ).apply {
-            x = snap1m(x)
-            y = snap1m(y)
-            z = snap1m(z)
+            x = snap1f(x)
+            y = snap1f(y)
+            z = snap1f(z)
         }
 
         // ---- Offsets from anchor in LOCAL space ----
@@ -305,9 +293,9 @@ class LevelEditEngine(val level: Level, val world: World) {
                 newAnchor.y + it.offset.y,
                 newAnchor.z + it.offset.z
             ).apply {
-                x = snap1m(x)
-                y = snap1m(y)
-                z = snap1m(z)
+                x = snap1f(x)
+                y = snap1f(y)
+                z = snap1f(z)
             }
 
             val dup = src.copy(localBasePos = newPos)
@@ -358,8 +346,8 @@ class LevelEditEngine(val level: Level, val world: World) {
         val camLocal = cameraPosLocal(st.position, st.yaw, camWorld)
 
         // Spawn point in LOCAL space (XY near camera; Z is forced to base plane)
-        val spawnX = snap1m(camLocal.x)
-        val spawnY = snap1m(camLocal.y)
+        val spawnX = snap1f(camLocal.x)
+        val spawnY = snap1f(camLocal.y)
 
         // Center the pasted cluster around spawnX/spawnY
         val srcCenter = blocksCentroid(clipboardBlocks)
@@ -378,9 +366,9 @@ class LevelEditEngine(val level: Level, val world: World) {
 
         for (b in clipboardBlocks) {
             val newPos = Vec3(
-                snap1m(b.localBasePos.x + delta.x),
-                snap1m(b.localBasePos.y + delta.y),
-                snap1m(b.localBasePos.z + delta.z)
+                snap1f(b.localBasePos.x + delta.x),
+                snap1f(b.localBasePos.y + delta.y),
+                snap1f(b.localBasePos.z + delta.z)
             )
 
             newBlocks.add(b.copy(localBasePos = newPos))
@@ -485,7 +473,6 @@ class LevelEditEngine(val level: Level, val world: World) {
         parentRenderer?.let { renderer ->
             rebuilt.initialize(
                 renderer,
-                level.world,
                 null,
                 renderer.ship,
                 renderer.friendlyLaserBoltPool,
@@ -495,7 +482,6 @@ class LevelEditEngine(val level: Level, val world: World) {
             for (blockActor in rebuilt.blocks) {
                 blockActor.initialize(
                     renderer,
-                    level.world,
                     null,
                     renderer.ship,
                     renderer.friendlyLaserBoltPool,
@@ -518,51 +504,6 @@ class LevelEditEngine(val level: Level, val world: World) {
 
         // NEW: let caller do additional selection (multi-select etc)
         postRebuild?.invoke(rebuilt)
-    }
-
-//    fun rebuildFriendlyStructure(id: Int, snapshot: FriendlyStructureTemplate, reselectStructure: Boolean, reselectBlockIndex: Int? = null) {
-//        // 1) update level data
-//        upsertFriendlyStructureTemplate(snapshot)
-//
-//        // 2) hard purge all runtime actors and visuals related to this structure id
-//        // (blocks AND structure actor), not just old.blocks
-//        val toRemove = world.actors.filter { a ->
-//            when (a) {
-//                is BuildingBlockActor -> a.structure.templateId == id
-//                is FriendlyStructureActor -> a.templateId == id   // or whatever field you use
-//                else -> false
-//            }
-//        }
-//
-//        world.removeCivilianVisualsForStructure(id)
-//
-//        for (a in toRemove) {
-//            a.active = false
-//            world.removeActorFromWorld(a)
-//        }
-//
-//        // 3) spawn new runtime from snapshot
-//        val rebuilt = world.spawnFriendlyStructure(snapshot) ?: return
-//
-//        // 4) selection
-//        clearSelectionVisuals()
-//
-//        if (reselectBlockIndex != null) {
-//            rebuilt.blocks.getOrNull(reselectBlockIndex)?.select()
-//        } else if (reselectStructure) {
-//            rebuilt.select()
-//            selectedStructure = rebuilt
-//        }
-//    }
-
-
-    fun setFriendlyStructureBaseZ(id: Int, newBaseZ: Float) {
-        val t = level.actorTemplates
-            .filterIsInstance<FriendlyStructureTemplate>()
-            .firstOrNull { it.id == id } ?: return
-
-        val newT = t.copy(position = t.position.copy().apply { z = newBaseZ })
-        rebuildFriendlyStructure(id, newT, true)
     }
 
     fun removeSelectedActors() {
@@ -1214,13 +1155,9 @@ class LevelEditEngine(val level: Level, val world: World) {
         }
     }
 
-    private fun snap1m(v: Float): Float = round(v) // 1m grid
-    private fun snap1mCeil(v: Float): Float = kotlin.math.ceil(v).toFloat()
-    private fun snap1mFloor(v: Float): Float = kotlin.math.floor(v).toFloat()
-
     private fun snapOffsetNonOverlapping(delta: Vec3): Vec3 {
         fun snapAxis(x: Float): Float =
-            if (x >= 0f) snap1mCeil(x) else snap1mFloor(x)
+            if (x >= 0f) snap1Ceil(x) else snap1Floor(x)
 
         return Vec3(snapAxis(delta.x), snapAxis(delta.y), snapAxis(delta.z))
     }

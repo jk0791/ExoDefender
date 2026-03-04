@@ -60,9 +60,10 @@ class DebugLogger(val frequency: Int = 1) {
 class ShipActor(
     val flightControls: FlightControls,
     val flightLog: FlightLog,
-    override val instance: ModelInstance,
-    override val renderer: WireRenderer
-): Actor() {
+    world: World,
+    instance: ModelInstance,
+    renderer: WireRenderer
+): Actor(world, instance, renderer) {
 
 
     override val maxHitPoints = 7
@@ -195,9 +196,9 @@ class ShipActor(
         maxDiveVelocity = maxForwardVelocity * stallMinPower / maxPitch.toFloat()
     }
 
-    fun initialize(parent: ModelParent, world: World, log: ActorLog, laserBoltPool: DoubleLaserBoltPool, explosion: Explosion) {
+    fun initialize(parent: ModelParent, log: ActorLog, laserBoltPool: DoubleLaserBoltPool, explosion: Explosion) {
         this.parent = parent
-        this.world = world
+//        this.world = world
         this.log = log
         this.doubleLaserBoltPool = laserBoltPool
         this.explosion = explosion

@@ -13,6 +13,7 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
+import kotlin.math.abs
 
 class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
     ConstraintLayout(context, attrs){
@@ -26,6 +27,14 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
 
     val displayActorType: TextView
     val displayActorPosition: TextView
+
+
+    val groundZRow: View
+    val editGrndBaseZ: EditText
+    val btnGrndZMinus10: Button
+    val btnGrndZMinus1: Button
+    val btnGrndZPlus1: Button
+    val btnGrndZPlus10: Button
 
     val flyingRadiusRow: View
     val antiClockwiseRow: View
@@ -47,6 +56,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
     val btnStructZMinus1: Button
     val btnStructZPlus1: Button
     val btnStructZPlus10: Button
+
 
 
     val structureBaseZRow: View
@@ -161,11 +171,26 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         displayActorType = this.findViewById(R.id.displayActorType)
         displayActorPosition = this.findViewById(R.id.displayActorPosition)
 
+        // GROUND ACTOR CONTROLS
+        groundZRow = findViewById(R.id.groundActorZRow)
+        editGrndBaseZ = findViewById(R.id.editGrndBaseZ)
+        btnGrndZMinus10 = findViewById(R.id.btnGrndZMinus10)
+        btnGrndZMinus1 = findViewById(R.id.btnGrndZMinus1)
+        btnGrndZPlus1 = findViewById(R.id.btnGrndZPlus1)
+        btnGrndZPlus10 = findViewById(R.id.btnGrndZPlus10)
+
+        btnGrndZMinus10.setOnClickListener { nudgeSnap(editGrndBaseZ, -10f); applyGoundActorEditsFromUi() }
+        btnGrndZMinus1.setOnClickListener { nudgeSnap(editGrndBaseZ, -1f); applyGoundActorEditsFromUi() }
+        btnGrndZPlus1.setOnClickListener { nudgeSnap(editGrndBaseZ, +1f); applyGoundActorEditsFromUi() }
+        btnGrndZPlus10.setOnClickListener { nudgeSnap(editGrndBaseZ, +10f); applyGoundActorEditsFromUi() }
+
+
+        // FLYING ACTOR CONTROLS
+
         flyingRadiusRow = findViewById(R.id.flyingRadiusRow)
         antiClockwiseRow = findViewById(R.id.antiClockwiseRow)
         editFlyingRadius = this.findViewById(R.id.editActorFlyingRadius)
         btnActorAnticlockwise = this.findViewById(R.id.btnActorAnticlockwise)
-
 
         boundsRadiusXRow = findViewById(R.id.radiusXRow)
         editRadiusX = findViewById(R.id.editRadiusX)
@@ -173,6 +198,8 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         editRadiusY = findViewById(R.id.editRadiusY)
         boundsRadiusZRow = findViewById(R.id.radiusZRow)
         editRadiusZ = findViewById(R.id.editRadiusZ)
+
+        // STRUCTURE CONTROLS
 
         structureBaseZRow = findViewById(R.id.structureBaseZRow)
         editStructureBaseZ = findViewById(R.id.editStructureBaseZ)
@@ -372,26 +399,6 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         btnWAPosZPlus1.setOnClickListener { nudge(editWAPosZ, +1f); applyBlockEditsFromUi() }
         btnWAPosZPlus10.setOnClickListener { nudge(editWAPosZ, +10f); applyBlockEditsFromUi() }
 
-
-//        btnDuplicateBlock.setOnClickListener {
-//            val src = actor as BuildingBlockActor
-//            val structureId = src.structure.templateId
-//            val blockIndex = src.blockIndex
-//
-//            parent.gLView.queueEvent {
-//                val newBlock =
-//                    parent.level.editEngine
-//                        .duplicateBlockInFriendlyStructure(structureId, blockIndex)
-//
-//                parent.mainActivity.runOnUiThread {
-//                    if (newBlock != null) {
-//                        load(parent, newBlock as Actor)   // rebind editor to NEW block
-//                    }
-//                    parent.writeToFile()
-//                }
-//            }
-//        }
-
         btnDuplicateBlock.setOnClickListener {
             val src = actor as BuildingBlockActor
             val structureId = src.structure.templateId
@@ -440,9 +447,6 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         findViewById<ImageView>(R.id.closeEditActor).apply {
             setOnClickListener({ closeButtonClicked() })
         }
-
-
-
     }
 
     fun updatePositionText() {
@@ -459,9 +463,15 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         ignoreUiCallbacks = true
         updatePositionText()
 
+        if (actor is GroundEnemyActor || actor is GroundFriendlyActor) {
+            displayActorType.text = "Ground Actor"
 
-        if (actor is EasyFlyingEnemyActor) {
-//            this.parent.visibility = INVISIBLE
+            groundZRow.visibility = VISIBLE
+
+            editGrndBaseZ.setText(actor.position.z.toString(), TextView.BufferType.EDITABLE)
+
+        }
+        else if (actor is EasyFlyingEnemyActor) {
             displayActorType.text = "EasyFlyingEnemyActor"
 
             flyingRadiusRow.visibility = VISIBLE
@@ -470,11 +480,8 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             editFlyingRadius.setText(actor.flyingRadius.toString(), TextView.BufferType.EDITABLE)
             btnActorAnticlockwise.isChecked = actor.antiClockWise
 
-//            this.visibility = VISIBLE
-//            this.bringToFront()
         }
         else if (actor is FlyingEnemyActor) {
-//            this.parent.visibility = INVISIBLE
             displayActorType.text = "FlyingEnemyActor"
 
             flyingRadiusRow.visibility = VISIBLE
@@ -483,11 +490,8 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             editFlyingRadius.setText(actor.flyingRadius.toString(), TextView.BufferType.EDITABLE)
             btnActorAnticlockwise.isChecked = actor.antiClockWise
 
-//            this.visibility = VISIBLE
-//            this.bringToFront()
         }
         else if (actor is AdvFlyingEnemyActor) {
-//            this.parent.visibility = INVISIBLE
             displayActorType.text = "AdvFlyingEnemyActor"
 
             boundsRadiusXRow.visibility = VISIBLE
@@ -498,12 +502,8 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             editRadiusY.setText(actor.aabbHalfY.toString(), TextView.BufferType.EDITABLE)
             editRadiusZ.setText(actor.aabbHalfZ.toString(), TextView.BufferType.EDITABLE)
 
-//            this.visibility = VISIBLE
-//            this.bringToFront()
-
         }
         else if (actor is FriendlyStructureActor) {
-//            this.parent.visibility = INVISIBLE
             displayActorType.text = "FriendlyStructureActor"
 
             btnCopyStructure.visibility = VISIBLE
@@ -640,6 +640,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
     }
 
     fun hideAllNonCommonRows() {
+        groundZRow.visibility = GONE
         flyingRadiusRow.visibility = GONE
         antiClockwiseRow.visibility = GONE
         boundsRadiusXRow.visibility = GONE
@@ -666,6 +667,12 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
     }
 
     fun applyButtonClicked() {
+
+        if (actor is GroundFriendlyActor || actor is GroundEnemyActor) {
+            applyGoundActorEditsFromUi()
+            toast("Ground actor changes applied")
+            return
+        }
 
         if (actor is FriendlyStructureActor) {
             applyStructureEditsFromUi()
@@ -728,6 +735,51 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
+    private fun applyGoundActorEditsFromUi() {
+        if (actor !is GroundFriendlyActor && actor !is GroundEnemyActor) return
+
+        val newZ: Float?
+        val terrainZ = parent.level.world.terrainElevationAt(actor.position.x, actor.position.y)
+        if (editGrndBaseZ.text.toString() == "") {
+            if (terrainZ != null) {
+
+                // place actor on terrain
+                newZ = terrainZ + actor.instance.model.localAabb.height() / 2
+                editGrndBaseZ.setText(newZ.toString(), TextView.BufferType.EDITABLE)
+
+                actor.editorlockToGround = true
+            }
+            else {
+                newZ = null
+            }
+        }
+        else {
+            newZ = editGrndBaseZ.text.toString().toFloatOrNull() ?: return toast("Invalid Z")
+
+            // decide if close enough to terrain to lock to terrain
+            actor.editorlockToGround = terrainZ != null && abs(newZ - terrainZ) < 2f
+        }
+
+        if (newZ == null) return
+
+
+        // Debounce: coalesce multiple taps into one rebuild per frame-ish
+        if (pendingApply) return
+        pendingApply = true
+
+        parent.gLView.queueEvent {
+            pendingApply = false
+
+            actor.setPositionAndUpdate(actor.position.x, actor.position.y, newZ)
+            parent.level.writeGameMapStateToLevel()
+
+            parent.mainActivity.runOnUiThread {
+                parent.writeToFile() // now atomic/safe
+            }
+        }
+        updatePositionText()
+        println("actor.editorlockToGround = ${actor.editorlockToGround}")
+    }
     private fun applyStructureEditsFromUi() {
         if (actor !is FriendlyStructureActor) return
         val s = actor as FriendlyStructureActor
@@ -859,6 +911,11 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
         field.setText(nv.toString())
     }
 
+    private fun nudgeSnap(field: EditText, delta: Float) {
+        val v = field.text.toString().toFloatOrNull() ?: 0f
+        val nv = snap1f(v + delta)
+        field.setText(nv.toString())
+    }
 
 
     private fun nudgeInt(field: EditText, delta: Int) {
