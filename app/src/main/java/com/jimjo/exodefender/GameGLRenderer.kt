@@ -712,46 +712,46 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             camera.readOutLocationTo(parent.mainActivity.levelManager.editorLastCameraPos!!)
 
             // relocate actor is necessary
-            if (level.editEngine.lbRelocatingShip || level.editEngine.relocatingActor != null) {
+
+            val relocatingActor: Actor? =
+                if (level.editEngine.lbRelocatingShip) ship
+                else if (level.editEngine.relocatingActor != null) level.editEngine.relocatingActor
+                else null
+
+            if (relocatingActor != null) {
 
                 val newPosition = camera.position + level.editEngine.vectorCameraToRelocatingActor
                 val terrainZ = level.world.terrainElevationAt(newPosition.x, newPosition.y)
 
-                if (level.editEngine.lbRelocatingShip ||
-                    level.editEngine.relocatingActor!! is EasyFlyingEnemyActor ||
-                    level.editEngine.relocatingActor!! is FlyingEnemyActor ||
-                    level.editEngine.relocatingActor!! is AdvFlyingEnemyActor) {
+                if (relocatingActor is ShipActor ||
+                    relocatingActor is EasyFlyingEnemyActor ||
+                    relocatingActor is FlyingEnemyActor ||
+                    relocatingActor is AdvFlyingEnemyActor) {
                     val minAGL = 5f
                     if (terrainZ != null && newPosition.z < terrainZ + minAGL) {
                         newPosition.z = terrainZ + minAGL
                     }
                 }
-                else if (terrainZ != null) { // ground-based actor
-                    newPosition.z = terrainZ + level.editEngine.relocatingActor!!.instance.model.localAabb.height() / 2
+                else if (terrainZ != null && relocatingActor.editorlockToGround) { // ground-based actor
+                    newPosition.z = terrainZ + relocatingActor.instance.model.localAabb.height() / 2
+                }
+                else {
+                    newPosition.z = relocatingActor.position.z
                 }
 
-                if (level.editEngine.lbRelocatingShip) {
-                    ship.setPositionAndUpdate(newPosition, yawRad = camera.angleP)
-                } else { // non-ship actor
-
-                    if (level.editEngine.relocatingActor!! is GroundTrainingTargetActor) {
-                        level.editEngine.relocatingActor!!.setPositionAndUpdate(newPosition, yawRad = camera.angleP)
-                    }
-                    else {
-                        level.editEngine.relocatingActor!!.setPositionAndUpdate(newPosition)
-                    }
+                if (relocatingActor is ShipActor || relocatingActor is GroundTrainingTargetActor) {
+                    relocatingActor.setPositionAndUpdate(newPosition, yawRad = camera.angleP)
+                } else {
+                    relocatingActor.setPositionAndUpdate(newPosition)
                 }
             }
             else if (level.editEngine.relocatingStructure != null) {
-                if (level.editEngine.relocatingStructure != null) {
-                    val newBase = camera.position + level.editEngine.vectorCameraToRelocatingActor
+                val newBase = camera.position + level.editEngine.vectorCameraToRelocatingActor
 
-                    // lock Z
-                    newBase.z = level.editEngine.structureRelocateStartBase.z
+                // lock Z
+                newBase.z = level.editEngine.structureRelocateStartBase.z
 
-                    level.editEngine.applyStructureRelocateInPlace(newBase)
-
-                }
+                level.editEngine.applyStructureRelocateInPlace(newBase)
             }
         }
         else if (flightLog.replayActive) {

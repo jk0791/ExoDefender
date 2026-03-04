@@ -778,7 +778,7 @@ class ActorEditMetadataView(context: Context, attrs: AttributeSet? = null) :
             }
         }
         updatePositionText()
-        println("actor.editorlockToGround = ${actor.editorlockToGround}")
+//        println("actor.editorlockToGround = ${actor.editorlockToGround}")
     }
     private fun applyStructureEditsFromUi() {
         if (actor !is FriendlyStructureActor) return
