@@ -26,6 +26,8 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     private val uiHandler = Handler(Looper.getMainLooper())
     private var countdownRunning = false
 
+    private var structureRadioWarningGiven = false
+
 
     val throttle: ThrottleDisplay
     val tranDisplay: JoystickDisplay
@@ -410,6 +412,13 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
                 structureCountdownDisplay.visibility = VISIBLE
                 structureCountdownDisplay.update(secondsLeft)
 
+                if (!structureRadioWarningGiven) {
+                    if (secondsLeft < 10) {
+                        mainActivity.audioPlayer.radio.onStructureWarning(gLView.renderer.flightTimeMs.toLong())
+                        structureRadioWarningGiven = true
+                    }
+                }
+
             } else {
                 structureCountdownDisplay.visibility = GONE
 
@@ -419,6 +428,8 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
     fun reset(levelBuilderMode: Boolean) {
         this.levelBuilderMode = levelBuilderMode
+
+        structureRadioWarningGiven = false
 
         setDisplayFrozen(false)
 

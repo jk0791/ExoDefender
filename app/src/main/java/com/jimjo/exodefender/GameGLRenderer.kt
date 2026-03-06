@@ -211,9 +211,15 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         audioPlayer.resetRadioSchedule()
         val shouldEnableRadioForThisLevel =
             (level.type == Level.LevelType.MISSION || level.type == Level.LevelType.MILKRUN) &&
-            parent.mainActivity.isRadioSettingEnabled()
+            parent.mainActivity.isRadioSettingEnabled() && !parent.levelBuilderMode
+
         audioPlayer.setRadioEnabled(shouldEnableRadioForThisLevel)
-        audioPlayer.radio.onMissionStart(flightTimeMs.toLong())
+        when (level.objectiveType) {
+            Level.ObjectiveType.CAS -> audioPlayer.radio.onCasStart(flightTimeMs.toLong())
+            Level.ObjectiveType.DEFEND -> audioPlayer.radio.onDefendStart(flightTimeMs.toLong())
+            Level.ObjectiveType.EVAC -> audioPlayer.radio.onEvacStart(flightTimeMs.toLong())
+            else -> {}
+        }
 
         parent.setPause(paused)
 

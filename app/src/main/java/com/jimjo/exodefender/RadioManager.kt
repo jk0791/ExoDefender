@@ -3,14 +3,30 @@ package com.jimjo.exodefender
 import kotlin.math.max
 import kotlin.random.Random
 
-enum class RadioType { CHECK_IN, FRIENDLY_LOSS, FORWARD_PROGRESS, SHIP_DESTROYED, GRATITUDE }
+enum class RadioType {
+    CAS_STARTED,
+    FRIENDLY_LOSS,
+    FORWARD_PROGRESS,
+    SHIP_DESTROYED,
+    GRATITUDE,
+    STRUCTURE_WARNING,
+    DEFEND_STARTED,
+    EVAC_STARTED,
+    EVAC_ALL,
+    EVAC_WARNING,
+}
 
 private sealed class RadioEvent(val atMs: Long) {
 
     class EnemyKilled(atMs: Long) : RadioEvent(atMs)
     class FriendlyKilled(atMs: Long) : RadioEvent(atMs)
 
-    class MissionStart(atMs: Long) : RadioEvent(atMs)
+    class CasStart(atMs: Long) : RadioEvent(atMs)
+    class DefendStart(atMs: Long) : RadioEvent(atMs)
+    class EvacStart(atMs: Long) : RadioEvent(atMs)
+    class StructureWarning(atMs: Long) : RadioEvent(atMs)
+    class EvacAll(atMs: Long) : RadioEvent(atMs)
+    class EvacWarning(atMs: Long) : RadioEvent(atMs)
     class MissionComplete(atMs: Long) : RadioEvent(atMs)
 
     class ShipDestroyed(atMs: Long) : RadioEvent(atMs)
@@ -44,11 +60,16 @@ class RadioManager(
     private var checkInDone = false
 
     private val tuning = hashMapOf(
-        RadioType.CHECK_IN to TypeTuning(chance = 1f, cooldownMs = 0L, durationMs = 2500L),
         RadioType.FRIENDLY_LOSS to TypeTuning(chance = 0.40f, cooldownMs = 0L),
         RadioType.FORWARD_PROGRESS to TypeTuning(chance = 0.40f, cooldownMs = 0L),
         RadioType.SHIP_DESTROYED to TypeTuning(chance = 0.35f, cooldownMs = 60000L),
         RadioType.GRATITUDE to TypeTuning(chance = 1f, cooldownMs = 0L),
+        RadioType.STRUCTURE_WARNING to TypeTuning(chance = 0.4f, cooldownMs = 0L),
+        RadioType.CAS_STARTED to TypeTuning(chance = 1f, cooldownMs = 0L, durationMs = 2500L),
+        RadioType.DEFEND_STARTED to TypeTuning(chance = 1f, cooldownMs = 0L),
+        RadioType.EVAC_STARTED to TypeTuning(chance = 1f, cooldownMs = 0L),
+        RadioType.EVAC_ALL to TypeTuning(chance = 0.4f, cooldownMs = 0L),
+        RadioType.EVAC_WARNING to TypeTuning(chance = 0.4f, cooldownMs = 0L),
     )
 
     private val loggingEnabled = false
@@ -112,7 +133,10 @@ class RadioManager(
         var friendlyDeaths = 0
         var hasShipDestroyed = false
         var hasMissionComplete = false
-        var hasMissionStart = false
+        var hasCasStart = false
+        var hasDefendStart = false
+        var hasEvacStart = false
+        var hasStructureWarning = false
 
         if (pendingEvents.isNotEmpty()) {
             while (pendingEvents.isNotEmpty()) {
@@ -121,7 +145,11 @@ class RadioManager(
                     is RadioEvent.FriendlyKilled -> friendlyDeaths++
                     is RadioEvent.ShipDestroyed -> hasShipDestroyed = true
                     is RadioEvent.MissionComplete -> hasMissionComplete = true
-                    is RadioEvent.MissionStart -> hasMissionStart = true
+                    is RadioEvent.CasStart -> hasCasStart = true
+                    is RadioEvent.DefendStart -> hasDefendStart = true
+                    is RadioEvent.EvacStart -> hasEvacStart = true
+                    is RadioEvent.StructureWarning -> hasStructureWarning = true
+                    else -> {}
                 }
             }
         }
@@ -148,12 +176,9 @@ class RadioManager(
 
         if (missionElapsedMs < suppressUntilMs) return
 
-        if (hasMissionStart) {
-            log("TICK hasMissionStart")
-
-            scheduleCheckIn(missionElapsedMs)
-
-        }
+        if (hasCasStart) scheduleCheckIn(missionElapsedMs, RadioType.CAS_STARTED)
+        if (hasDefendStart) scheduleCheckIn(missionElapsedMs, RadioType.DEFEND_STARTED)
+        if (hasEvacStart) scheduleCheckIn(missionElapsedMs, RadioType.EVAC_STARTED)
 
         if (friendlyDeaths > 0) {
             log("TICK friendlyDeaths > 0")
@@ -164,31 +189,37 @@ class RadioManager(
             log("TICK enemyKills > 0")
             tryPlay(RadioType.FORWARD_PROGRESS, missionElapsedMs)
         }
+
+        if (hasStructureWarning) {
+            scheduleOnce(missionElapsedMs) {
+                forcePlay(RadioType.STRUCTURE_WARNING, missionElapsedMs)
+            }
+        }
     }
 
 
-    private fun scheduleCheckIn(startMs: Long) {
+    private fun scheduleCheckIn(startMs: Long, radioType: RadioType) {
         if (checkInDone) return
         val atMs = startMs + 1500L
-        scheduleOnce(atMs) { attemptCheckIn(atMs) }
+        scheduleOnce(atMs) { attemptCheckIn(atMs, radioType) }
     }
 
-    private fun attemptCheckIn(atMs: Long) {
+    private fun attemptCheckIn(atMs: Long, radioType: RadioType) {
         if (checkInDone) return
 
         // If something important is reserving airtime, wait.
         if (atMs < suppressUntilMs) {
-            scheduleOnce(suppressUntilMs + 400L) { attemptCheckIn(suppressUntilMs + 400L) }
+            scheduleOnce(suppressUntilMs + 400L) { attemptCheckIn(suppressUntilMs + 400L, radioType) }
             return
         }
 
         // Force so it doesn't randomly miss, but still respects global gap + non-recent.
-        if (forcePlay(RadioType.CHECK_IN, atMs)) {
+        if (forcePlay(radioType, atMs)) {
             checkInDone = true
         } else {
             // Channel busy (global gap). Retry once shortly.
             val retryAt = atMs + 700L
-            scheduleOnce(retryAt) { attemptCheckIn(retryAt) }
+            scheduleOnce(retryAt) { attemptCheckIn(retryAt, radioType) }
         }
     }
 
@@ -314,7 +345,12 @@ class RadioManager(
 
     fun onEnemyKilled(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.EnemyKilled(atMs)) }
     fun onFriendlyKilled(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.FriendlyKilled(atMs)) }
-    fun onMissionStart(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.MissionStart(atMs)) }
+    fun onCasStart(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.CasStart(atMs)) }
+    fun onDefendStart(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.DefendStart(atMs)) }
+    fun onEvacStart(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.EvacStart(atMs)) }
+    fun onStructureWarning(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.StructureWarning(atMs)) }
+    fun onEvacAll(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.EvacAll(atMs)) }
+    fun onEvacWarning(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.DefendStart(atMs)) }
     fun onMissionComplete(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.MissionComplete(atMs)) }
     fun onShipDestroyed(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.ShipDestroyed(atMs)) }
 }

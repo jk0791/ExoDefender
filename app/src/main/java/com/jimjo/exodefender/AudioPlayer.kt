@@ -120,6 +120,27 @@ class AudioPlayer(val context: Context) {
         Soundfile(R.raw.radio_failure_03_a, 1.0f),
     )
 
+    private val radioStructureWarning = listOf(
+        Soundfile(R.raw.radio_temp_structure_warning_01, 1.0f),
+        Soundfile(R.raw.radio_temp_structure_warning_02, 1.0f),
+    )
+    private val radioDefendStarted = listOf(
+        Soundfile(R.raw.radio_temp_defend_start_01, 1.0f),
+        Soundfile(R.raw.radio_temp_defend_start_02, 1.0f),
+    )
+    private val radioEvacStarted = listOf(
+        Soundfile(R.raw.radio_temp_evac_start_01, 1.0f),
+        Soundfile(R.raw.radio_temp_evac_start_02, 1.0f),
+    )
+    private val radioEvacAll = listOf(
+        Soundfile(R.raw.radio_temp_evac_all_01, 1.0f),
+        Soundfile(R.raw.radio_temp_evac_all_02, 1.0f),
+    )
+    private val radioEvacWarning = listOf(
+        Soundfile(R.raw.radio_temp_evac_warning_01, 1.0f),
+        Soundfile(R.raw.radio_temp_evac_warning_02, 1.0f),
+    )
+
 
 
     init {
@@ -167,13 +188,23 @@ class AudioPlayer(val context: Context) {
         loadRadioList(radioForwardProgress)
         loadRadioList(radioGratitude)
         loadRadioList(radioShipDestroyed)
+        loadRadioList(radioStructureWarning)
+        loadRadioList(radioDefendStarted)
+        loadRadioList(radioEvacStarted)
+        loadRadioList(radioEvacAll)
+        loadRadioList(radioEvacWarning)
 
         // Register radio with manager
-        radio.addAll(RadioType.CHECK_IN, radioCheckIn)
+        radio.addAll(RadioType.CAS_STARTED, radioCheckIn)
         radio.addAll(RadioType.FRIENDLY_LOSS, radioFriendlyLoss)
         radio.addAll(RadioType.FORWARD_PROGRESS, radioForwardProgress)
         radio.addAll(RadioType.GRATITUDE, radioGratitude)
         radio.addAll(RadioType.SHIP_DESTROYED, radioShipDestroyed)
+        radio.addAll(RadioType.STRUCTURE_WARNING, radioStructureWarning)
+        radio.addAll(RadioType.DEFEND_STARTED, radioDefendStarted)
+        radio.addAll(RadioType.EVAC_STARTED, radioEvacStarted)
+        radio.addAll(RadioType.EVAC_ALL, radioEvacAll)
+        radio.addAll(RadioType.EVAC_WARNING, radioEvacWarning)
 
     }
 

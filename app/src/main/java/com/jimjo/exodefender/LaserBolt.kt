@@ -209,6 +209,7 @@ class LaserBolt(val sourceType: SourceType, val length: Float, val velocityF: Fl
         if (active) {
             if (sourceType == SourceType.ENEMY) {
                 // use contains() for enemy-fired projectiles (20 times less CPU intensive than segment sweeping)
+                // If bolts×actors gets big, add SpatialGrid point query for contains() broadphase.
                 if (ship.active && ship.instance.worldAabb.contains(nextPosition)) {
                     ship.onHit(flightTimeMs, false, nextPosition)
                     active = false
@@ -246,7 +247,9 @@ class LaserBolt(val sourceType: SourceType, val length: Float, val velocityF: Fl
                 }
             } else if (sourceType == SourceType.FRIENDLY){
                 for (enemy in world.enemyActors) {
+
                     // use contains() for friendly-fired projectiles
+                    // If bolts×actors gets big, add SpatialGrid point query for contains() broadphase.
                     if (enemy.active && enemy.instance.worldAabb.contains(nextPosition)) {
                         active = false
                         break
