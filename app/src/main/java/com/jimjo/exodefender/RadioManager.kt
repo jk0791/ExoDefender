@@ -137,6 +137,7 @@ class RadioManager(
         var hasDefendStart = false
         var hasEvacStart = false
         var hasStructureWarning = false
+        var hasEvacAll = false
 
         if (pendingEvents.isNotEmpty()) {
             while (pendingEvents.isNotEmpty()) {
@@ -149,6 +150,7 @@ class RadioManager(
                     is RadioEvent.DefendStart -> hasDefendStart = true
                     is RadioEvent.EvacStart -> hasEvacStart = true
                     is RadioEvent.StructureWarning -> hasStructureWarning = true
+                    is RadioEvent.EvacAll -> hasEvacAll = true
                     else -> {}
                 }
             }
@@ -193,6 +195,12 @@ class RadioManager(
         if (hasStructureWarning) {
             scheduleOnce(missionElapsedMs) {
                 forcePlay(RadioType.STRUCTURE_WARNING, missionElapsedMs)
+            }
+        }
+
+        if (hasEvacAll) {
+            scheduleOnce(missionElapsedMs) {
+                forcePlay(RadioType.EVAC_ALL, missionElapsedMs)
             }
         }
     }

@@ -430,8 +430,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                     }
                 }
                 else if (remaining == 0) {
-                    // mission completion
+                    // all civilians evaced, now start checking if out of the battle zone or all enemies destroyed
                     evacCompletionArmed = true
+                    audioPlayer.radio.onEvacAll(flightTimeMs.toLong())
                 }
             }
         }
