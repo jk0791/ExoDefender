@@ -1,348 +1,450 @@
 package com.jimjo.exodefender
 
-import kotlin.math.max
 import kotlin.random.Random
 
-enum class RadioType {
+sealed class RadioTrigger {
+    data object EnemyKilled : RadioTrigger()
+    data object FriendlyKilled : RadioTrigger()
+    data object CasStart : RadioTrigger()
+    data object DefendStart : RadioTrigger()
+    data object EvacStart : RadioTrigger()
+    data object StructureWarning : RadioTrigger()
+    data object EvacAll : RadioTrigger()
+    data object EvacWarning : RadioTrigger()
+    data object MissionComplete : RadioTrigger()
+    data object ShipDestroyed : RadioTrigger()
+}
+
+enum class RadioCueType {
     CAS_STARTED,
-    FRIENDLY_LOSS,
-    FORWARD_PROGRESS,
-    SHIP_DESTROYED,
-    GRATITUDE,
-    STRUCTURE_WARNING,
     DEFEND_STARTED,
     EVAC_STARTED,
+
+    SHIP_DESTROYED,
+    GRATITUDE,
+
+    STRUCTURE_WARNING,
     EVAC_ALL,
     EVAC_WARNING,
+
+    FRIENDLY_LOSS,
+    FORWARD_PROGRESS,
 }
 
-private sealed class RadioEvent(val atMs: Long) {
-
-    class EnemyKilled(atMs: Long) : RadioEvent(atMs)
-    class FriendlyKilled(atMs: Long) : RadioEvent(atMs)
-
-    class CasStart(atMs: Long) : RadioEvent(atMs)
-    class DefendStart(atMs: Long) : RadioEvent(atMs)
-    class EvacStart(atMs: Long) : RadioEvent(atMs)
-    class StructureWarning(atMs: Long) : RadioEvent(atMs)
-    class EvacAll(atMs: Long) : RadioEvent(atMs)
-    class EvacWarning(atMs: Long) : RadioEvent(atMs)
-    class MissionComplete(atMs: Long) : RadioEvent(atMs)
-
-    class ShipDestroyed(atMs: Long) : RadioEvent(atMs)
-}
-data class TypeTuning(
-    var chance: Float = 1f,
-    var cooldownMs: Long = 0L,
-    var durationMs: Long = 1000L,
-    var enabled: Boolean = true
+data class RadioClip(
+    val sound: AudioPlayer.Soundfile,
+    val durationMs: Int
 )
+
+data class RadioRequestProfile(
+    val priority: Int,
+    val clips: List<RadioClip>,
+
+    val delayMs: Int = 0,
+    val chance: Float = 1f,
+    val cooldownMs: Int = 0,
+    val expiresAfterMs: Int? = null,
+    val avoidRecentCount: Int = 0,
+    val repeatable: Boolean = true,
+
+    val blocksOthersUntilPlayed: Boolean = false,
+    val closesRadioAfterPlay: Boolean = false
+)
+
+data class RadioRequest(
+    val cueType: RadioCueType,
+    val createdAtMs: Int,
+    val earliestAtMs: Int,
+    val expiresAtMs: Int? = null,
+    val force: Boolean = false
+) {
+    fun debugString(nowMs: Int): String {
+        val waitMs = earliestAtMs - nowMs
+        val expMs = expiresAtMs?.minus(nowMs)
+
+        return buildString {
+            append(cueType)
+            append(" wait=")
+            append(waitMs)
+            append("ms")
+            if (expMs != null) {
+                append(" exp=")
+                append(expMs)
+                append("ms")
+            }
+            if (force) append(" force")
+        }
+    }
+}
+
+private enum class WaitReason {
+    NONE,
+    BUSY,
+    BLOCKED_BY_RESERVED,
+    NO_ELIGIBLE
+}
+
+
+
 class RadioManager(
     private val playClip: (AudioPlayer.Soundfile) -> Boolean,
-    private val scheduleOnce: (Long, () -> Unit) -> Unit
+    private val profilesByType: Map<RadioCueType, RadioRequestProfile>
 ) {
 
-    private val pendingEvents = ArrayDeque<RadioEvent>()
+    var loggingEnabled = true
 
+    // Incoming gameplay events.
+    private val triggerQueue = ArrayDeque<Pair<RadioTrigger, Int>>()
 
-    // Context snapshot updated each tick
-    private var enemyRatio: Float = 1f
-    private var friendlyRatio: Float = 1f
+    // Pending radio requests.
+    private val requestQueue = mutableListOf<RadioRequest>()
 
+    // One-shot cue tracking.
+    private val usedCueTypes = mutableSetOf<RadioCueType>()
 
+    // Per-cue cooldown tracking.
+    private val lastPlayedMsByCueType = mutableMapOf<RadioCueType, Int>()
 
-    // Tunables
-    var globalMinGapMs: Long = 900L
-    private val radioTailMs: Long = 1000L
+    // Recent clip indexes per cue type.
+    private val recentClipIndexesByCueType = mutableMapOf<RadioCueType, ArrayDeque<Int>>()
 
-    var avoidRecentPerType: Int = 2
-    private var hasSpokenLossThisMission = false
-    private var checkInDone = false
+    // Channel / mission state.
+    private var busyUntilMs: Int = 0
+    private var radioClosed: Boolean = false
 
-    private val tuning = hashMapOf(
-        RadioType.FRIENDLY_LOSS to TypeTuning(chance = 0.40f, cooldownMs = 0L),
-        RadioType.FORWARD_PROGRESS to TypeTuning(chance = 0.40f, cooldownMs = 0L),
-        RadioType.SHIP_DESTROYED to TypeTuning(chance = 0.35f, cooldownMs = 60000L),
-        RadioType.GRATITUDE to TypeTuning(chance = 1f, cooldownMs = 0L),
-        RadioType.STRUCTURE_WARNING to TypeTuning(chance = 0.4f, cooldownMs = 0L),
-        RadioType.CAS_STARTED to TypeTuning(chance = 1f, cooldownMs = 0L, durationMs = 2500L),
-        RadioType.DEFEND_STARTED to TypeTuning(chance = 1f, cooldownMs = 0L),
-        RadioType.EVAC_STARTED to TypeTuning(chance = 1f, cooldownMs = 0L),
-        RadioType.EVAC_ALL to TypeTuning(chance = 0.4f, cooldownMs = 0L),
-        RadioType.EVAC_WARNING to TypeTuning(chance = 0.4f, cooldownMs = 0L),
-    )
+    private var lastWaitReason = WaitReason.NONE
+    private var lastWaitCueType: RadioCueType? = null
+    private var lastWaitUntilMs: Int = Int.MIN_VALUE
 
-    private val loggingEnabled = false
-
-
-    // Internal state
-    var enabled: Boolean = true
-        private set
-    private val clips = HashMap<RadioType, MutableList<AudioPlayer.Soundfile>>()
-    private val recentByType = HashMap<RadioType, ArrayDeque<Int>>() // indexes into list
-    private val lastTypeMs = HashMap<RadioType, Long>()
-    private var lastRadioMs: Long = -1L
-    private var radioBusyUntilMs: Long = -1L
-    private var suppressUntilMs: Long = 0L  // suppression window (silence tail)
-
+    // Safety gap after each line.
+    private val radioTailMs: Int = 250
 
     fun setEnabled(on: Boolean) {
-        enabled = on
         if (!on) {
-            // Clear internal queues so nothing “fires later”
-            pendingEvents.clear()
-            suppressUntilMs = 0L
-            checkInDone = false
-            // Optional: reset gating so when re-enabled it starts clean
-            lastRadioMs = -1L
-            radioBusyUntilMs = -1L
+            clear()
+            radioClosed = false
         }
     }
 
     fun clear() {
-        pendingEvents.clear()
-        suppressUntilMs = 0L
-        hasSpokenLossThisMission = false
-        checkInDone = false
-
-        // Reset gating
-        lastRadioMs = -1L
-        radioBusyUntilMs = -1L
-        lastTypeMs.clear()
-        recentByType.clear()
-
-        // Reset snapshot (optional)
-        enemyRatio = 1f
-        friendlyRatio = 1f
+        triggerQueue.clear()
+        requestQueue.clear()
+        usedCueTypes.clear()
+        lastPlayedMsByCueType.clear()
+        recentClipIndexesByCueType.clear()
+        busyUntilMs = 0
+        radioClosed = false
     }
 
-    fun log(msg: String) {
-        if (loggingEnabled) println("[radio] " + msg)
+    fun closeRadio(nowMs: Int) {
+        requestQueue.clear()
+        radioClosed = true
+        logAt(nowMs, "radio closed")
     }
 
-    fun addAll(type: RadioType, list: List<AudioPlayer.Soundfile>) {
-        val dst = clips.getOrPut(type) { mutableListOf() }
-        dst.addAll(list)
+    fun post(trigger: RadioTrigger, nowMs: Int) {
+        if (radioClosed) {
+            logAt(nowMs, "ignore trigger $trigger (radio closed)")
+            return
+        }
+        triggerQueue.addLast(trigger to nowMs)
+        logAt(nowMs, "trigger $trigger")
     }
 
-    fun tick(missionElapsedMs: Long) {
+    private fun logWaitState(
+        nowMs: Int,
+        reason: WaitReason,
+        cueType: RadioCueType? = null,
+        untilMs: Int? = null,
+        msg: () -> String
+    ) {
+        val normalizedUntilMs = untilMs ?: Int.MIN_VALUE
 
-        if (!enabled) return;
+        val changed =
+            reason != lastWaitReason ||
+                    cueType != lastWaitCueType ||
+                    normalizedUntilMs != lastWaitUntilMs
+
+        if (changed) {
+            logAt(nowMs, msg())
+            lastWaitReason = reason
+            lastWaitCueType = cueType
+            lastWaitUntilMs = normalizedUntilMs
+        }
+    }
+
+    private fun clearWaitState() {
+        lastWaitReason = WaitReason.NONE
+        lastWaitCueType = null
+        lastWaitUntilMs = Int.MIN_VALUE
+    }
+
+    fun tick(nowMs: Int) {
+        removeExpiredRequests(nowMs)
+
+        if (radioClosed) {
+            if (triggerQueue.isNotEmpty()) {
+                logAt(nowMs, "discard ${triggerQueue.size} trigger(s) (radio closed)")
+                triggerQueue.clear()
+            }
+            return
+        }
+
+        drainTriggersIntoRequests(nowMs)
+        removeExpiredRequests(nowMs)
+
+        if (nowMs < busyUntilMs) {
+            logWaitState(
+                nowMs,
+                WaitReason.BUSY,
+                untilMs = busyUntilMs
+            ) { "busy ${busyUntilMs - nowMs}ms" }
+            return
+        }
+
+        val blockingRequest = findBlockingRequest()
+        if (blockingRequest != null && nowMs < blockingRequest.earliestAtMs) {
+            logWaitState(
+                nowMs,
+                WaitReason.BLOCKED_BY_RESERVED,
+                cueType = blockingRequest.cueType,
+                untilMs = blockingRequest.earliestAtMs
+            ) {
+                "blocked by ${blockingRequest.cueType} for ${blockingRequest.earliestAtMs - nowMs}ms"
+            }
+            return
+        }
+
+        val eligible = requestQueue
+            .filter { isEligible(it, nowMs) }
+            .sortedWith(
+                compareByDescending<RadioRequest> { profileOf(it).priority }
+                    .thenBy { it.createdAtMs }
+            )
+
+        if (eligible.isEmpty()) {
+            if (requestQueue.isEmpty()) {
+                clearWaitState()
+                return
+            }
+
+            logWaitState(nowMs, WaitReason.NO_ELIGIBLE) { "no eligible requests" }
+            return
+        }
+
+        playRequest(eligible.first(), nowMs)
+    }
+
+    private fun drainTriggersIntoRequests(nowMs: Int) {
+        if (triggerQueue.isEmpty()) return
 
         var enemyKills = 0
-        var friendlyDeaths = 0
-        var hasShipDestroyed = false
-        var hasMissionComplete = false
+        var friendlyKills = 0
+
         var hasCasStart = false
         var hasDefendStart = false
         var hasEvacStart = false
         var hasStructureWarning = false
         var hasEvacAll = false
+        var hasEvacWarning = false
+        var hasMissionComplete = false
+        var hasShipDestroyed = false
 
-        if (pendingEvents.isNotEmpty()) {
-            while (pendingEvents.isNotEmpty()) {
-                when (pendingEvents.removeFirst()) {
-                    is RadioEvent.EnemyKilled -> enemyKills++
-                    is RadioEvent.FriendlyKilled -> friendlyDeaths++
-                    is RadioEvent.ShipDestroyed -> hasShipDestroyed = true
-                    is RadioEvent.MissionComplete -> hasMissionComplete = true
-                    is RadioEvent.CasStart -> hasCasStart = true
-                    is RadioEvent.DefendStart -> hasDefendStart = true
-                    is RadioEvent.EvacStart -> hasEvacStart = true
-                    is RadioEvent.StructureWarning -> hasStructureWarning = true
-                    is RadioEvent.EvacAll -> hasEvacAll = true
-                    else -> {}
-                }
+        while (triggerQueue.isNotEmpty()) {
+            when (triggerQueue.removeFirst().first) {
+                RadioTrigger.EnemyKilled -> enemyKills++
+                RadioTrigger.FriendlyKilled -> friendlyKills++
+                RadioTrigger.CasStart -> hasCasStart = true
+                RadioTrigger.DefendStart -> hasDefendStart = true
+                RadioTrigger.EvacStart -> hasEvacStart = true
+                RadioTrigger.StructureWarning -> hasStructureWarning = true
+                RadioTrigger.EvacAll -> hasEvacAll = true
+                RadioTrigger.EvacWarning -> hasEvacWarning = true
+                RadioTrigger.MissionComplete -> hasMissionComplete = true
+                RadioTrigger.ShipDestroyed -> hasShipDestroyed = true
             }
         }
 
         if (hasShipDestroyed) {
-            log("tick hasShipDestroyed")
-            tryPlay(RadioType.SHIP_DESTROYED, missionElapsedMs)
-            suppressUntilMs = maxOf(suppressUntilMs, missionElapsedMs + 2500L)
-            return
+            enqueueCue(RadioCueType.SHIP_DESTROYED, nowMs, force = true)
         }
 
         if (hasMissionComplete) {
-            log("TICK hasMissionComplete")
-
-            val atMs = missionElapsedMs + 1200L
-            scheduleOnce(atMs) {
-                forcePlay(RadioType.GRATITUDE, atMs)
-            }
-
-            // Reserve the channel until the gratitude lands
-            suppressUntilMs = maxOf(suppressUntilMs, atMs)
-            return
+            enqueueCue(RadioCueType.GRATITUDE, nowMs, force = true)
         }
 
-        if (missionElapsedMs < suppressUntilMs) return
-
-        if (hasCasStart) scheduleCheckIn(missionElapsedMs, RadioType.CAS_STARTED)
-        if (hasDefendStart) scheduleCheckIn(missionElapsedMs, RadioType.DEFEND_STARTED)
-        if (hasEvacStart) scheduleCheckIn(missionElapsedMs, RadioType.EVAC_STARTED)
-
-        if (friendlyDeaths > 0) {
-            log("TICK friendlyDeaths > 0")
-            tryPlay(RadioType.FRIENDLY_LOSS, missionElapsedMs)
+        if (hasCasStart) {
+            enqueueCue(RadioCueType.CAS_STARTED, nowMs, force = true)
         }
-
-        if (enemyKills > 0) {
-            log("TICK enemyKills > 0")
-            tryPlay(RadioType.FORWARD_PROGRESS, missionElapsedMs)
+        if (hasDefendStart) {
+            enqueueCue(RadioCueType.DEFEND_STARTED, nowMs, force = true)
+        }
+        if (hasEvacStart) {
+            enqueueCue(RadioCueType.EVAC_STARTED, nowMs, force = true)
         }
 
         if (hasStructureWarning) {
-            scheduleOnce(missionElapsedMs) {
-                forcePlay(RadioType.STRUCTURE_WARNING, missionElapsedMs)
-            }
+            enqueueCue(RadioCueType.STRUCTURE_WARNING, nowMs, force = true)
         }
-
         if (hasEvacAll) {
-            scheduleOnce(missionElapsedMs) {
-                forcePlay(RadioType.EVAC_ALL, missionElapsedMs)
-            }
+            enqueueCue(RadioCueType.EVAC_ALL, nowMs, force = true)
+        }
+        if (hasEvacWarning) {
+            enqueueCue(RadioCueType.EVAC_WARNING, nowMs, force = true)
+        }
+
+        if (friendlyKills > 0) {
+            enqueueCue(RadioCueType.FRIENDLY_LOSS, nowMs, force = false)
+        }
+
+        if (enemyKills > 0) {
+            enqueueCue(RadioCueType.FORWARD_PROGRESS, nowMs, force = false)
         }
     }
 
-
-    private fun scheduleCheckIn(startMs: Long, radioType: RadioType) {
-        if (checkInDone) return
-        val atMs = startMs + 1500L
-        scheduleOnce(atMs) { attemptCheckIn(atMs, radioType) }
-    }
-
-    private fun attemptCheckIn(atMs: Long, radioType: RadioType) {
-        if (checkInDone) return
-
-        // If something important is reserving airtime, wait.
-        if (atMs < suppressUntilMs) {
-            scheduleOnce(suppressUntilMs + 400L) { attemptCheckIn(suppressUntilMs + 400L, radioType) }
+    private fun enqueueCue(
+        cueType: RadioCueType,
+        nowMs: Int,
+        force: Boolean
+    ) {
+        val profile = profilesByType[cueType] ?: run {
+            logAt(nowMs, "no profile for $cueType")
             return
         }
 
-        // Force so it doesn't randomly miss, but still respects global gap + non-recent.
-        if (forcePlay(radioType, atMs)) {
-            checkInDone = true
-        } else {
-            // Channel busy (global gap). Retry once shortly.
-            val retryAt = atMs + 700L
-            scheduleOnce(retryAt) { attemptCheckIn(retryAt, radioType) }
+        if (!profile.repeatable && cueType in usedCueTypes) {
+            logAt(nowMs, "skip $cueType (already used)")
+            return
+        }
+
+        if (!force && !roll(profile.chance)) {
+            logAt(nowMs, "skip $cueType (chance ${profile.chance})")
+            return
+        }
+
+        val req = RadioRequest(
+            cueType = cueType,
+            createdAtMs = nowMs,
+            earliestAtMs = nowMs + profile.delayMs,
+            expiresAtMs = profile.expiresAfterMs?.let { nowMs + it },
+            force = force
+        )
+
+        requestQueue.add(req)
+
+        if (!profile.repeatable) {
+            usedCueTypes.add(cueType)
+        }
+
+        logAt(
+            nowMs,
+            "request $cueType delay=${profile.delayMs}ms exp=${profile.expiresAfterMs ?: "∞"}"
+        )
+        dumpQueue(nowMs)
+    }
+
+    private fun removeExpiredRequests(nowMs: Int) {
+        val it = requestQueue.iterator()
+        while (it.hasNext()) {
+            val req = it.next()
+            val exp = req.expiresAtMs
+            if (exp != null && nowMs > exp) {
+                logAt(nowMs, "expired ${req.cueType}")
+                it.remove()
+            }
         }
     }
 
+    private fun findBlockingRequest(): RadioRequest? =
+        requestQueue
+            .filter { profileOf(it).blocksOthersUntilPlayed }
+            .minByOrNull { it.createdAtMs }
 
-    private fun isCriticalFriendlyLoss(lossesThisDrain: Int): Boolean {
-        if (lossesThisDrain >= 2) return true
-        // If we're already in trouble, treat even one as critical
-        return friendlyRatio <= 0.3f
-    }
+    private fun isEligible(req: RadioRequest, nowMs: Int): Boolean {
+        if (nowMs < req.earliestAtMs) return false
+        if (req.expiresAtMs != null && nowMs > req.expiresAtMs) return false
 
-    fun tryPlay(type: RadioType, nowMs: Long): Boolean =
-        tryPlayInternal(type, nowMs, scale = 1f)
-
-    private fun tryPlayScaled(type: RadioType, nowMs: Long, scale: Float): Boolean =
-        tryPlayInternal(type, nowMs, scale = scale)
-
-    private fun tryPlayInternal(type: RadioType, nowMs: Long, scale: Float): Boolean {
-        val t = tuning[type] ?: return false
-
-        val s = scale.coerceIn(0f, 1f)
-        val chance = (t.chance * s).coerceIn(0f, 1f)
-
-        if (!t.enabled) {
-            log(" blocked $type: disabled")
-            return false
+        val profile = profileOf(req)
+        val lastPlayed = lastPlayedMsByCueType[req.cueType]
+        if (lastPlayed != null && profile.cooldownMs > 0L) {
+            if (nowMs - lastPlayed < profile.cooldownMs) {
+                return false
+            }
         }
 
-        if (!roll(chance)) {
-            // Helpful to see the scaled chance while debugging
-            log(" blocked $type: chance (p=$chance, base=${t.chance}, scale=$s)")
-            return false
-        }
-
-        if (!cooldownOk(type, nowMs, t.cooldownMs)) {
-            log(" blocked $type: cooldown")
-            return false
-        }
-
-        val ok = play(type, nowMs)
-        if (!ok) log(" blocked $type: play()") else log(" played $type")
-        return ok
-    }
-
-    fun forcePlay(type: RadioType, nowMs: Long): Boolean {
-        log(" forcePlay() type=$type")
-        val t = tuning[type] ?: return false
-        if (!t.enabled) return false
-        log(" calling play() $type")
-        return play(type, nowMs) // keeps global gap + avoid-recent
-    }
-
-    fun play(type: RadioType, nowMs: Long): Boolean {
-        if (!canPlayNotBusy(nowMs)) return false
-        val list = clips[type] ?: return false
-        if (list.isEmpty()) return false
-
-        val idx = pickNonRecentIndex(type, list.size) ?: return false
-        val sf = list[idx]
-
-        val started = playClip(sf)
-        if (!started) {
-            log(" play blocked $type: SoundPool refused playback")
-            return false
-        }
-
-        val dur = (tuning[type]?.durationMs ?: 1800L)
-        lastRadioMs = nowMs
-        radioBusyUntilMs = nowMs + dur + radioTailMs
-
-        markPlayed(type, nowMs, idx)
         return true
     }
 
-    private fun cooldownOk(type: RadioType, nowMs: Long, cooldownMs: Long): Boolean {
-        val last = lastTypeMs[type] ?: -1L
-        return (last < 0L) || (nowMs - last >= cooldownMs)
-    }
-
-    private fun canPlayNotBusy(nowMs: Long): Boolean {
-        if (radioBusyUntilMs >= 0L && nowMs < radioBusyUntilMs) {
-            log(" blocked: busy")
-            return false
+    private fun playRequest(req: RadioRequest, nowMs: Int) {
+        val profile = profileOf(req)
+        val clipIndex = pickClipIndex(req.cueType, profile) ?: run {
+            logAt(nowMs, "no clip available for ${req.cueType}")
+            requestQueue.remove(req)
+            return
         }
-        if (lastRadioMs < 0L) return true
-        return (nowMs - lastRadioMs) >= globalMinGapMs
+
+        val clip = profile.clips[clipIndex]
+        logAt(nowMs, "selected ${req.cueType}")
+        val started = playClip(clip.sound)
+
+        if (!started) {
+            logAt(nowMs, "play refused ${req.cueType}")
+            return
+        }
+
+        logAt(nowMs, "play ${req.cueType} clip#$clipIndex")
+
+        requestQueue.remove(req)
+        lastPlayedMsByCueType[req.cueType] = nowMs
+        markRecentClip(req.cueType, clipIndex, profile.avoidRecentCount)
+        busyUntilMs = nowMs + clip.durationMs + radioTailMs
+        clearWaitState()
+
+        if (profile.closesRadioAfterPlay) {
+            requestQueue.clear()
+            radioClosed = true
+            logAt(nowMs, "radio closed by ${req.cueType}")
+        }
     }
 
-    private fun markPlayed(type: RadioType, nowMs: Long, idx: Int) {
-        log(" MARK_PLAYED type=$type now=$nowMs")
-        lastRadioMs = nowMs
-        lastTypeMs[type] = nowMs
-        val q = recentByType.getOrPut(type) { ArrayDeque() }
-        q.addLast(idx)
-        while (q.size > max(0, avoidRecentPerType)) q.removeFirst()
-    }
+    private fun profileOf(req: RadioRequest): RadioRequestProfile =
+        profilesByType[req.cueType]
+            ?: error("Missing RadioRequestProfile for ${req.cueType}")
 
-    private fun pickNonRecentIndex(type: RadioType, size: Int): Int? {
-        if (size <= 0) return null
-        if (size == 1) return 0
+    private fun pickClipIndex(
+        cueType: RadioCueType,
+        profile: RadioRequestProfile
+    ): Int? {
+        val clips = profile.clips
+        if (clips.isEmpty()) return null
+        if (clips.size == 1) return 0
 
-        val recentSet = recentByType[type]?.toHashSet() ?: emptySet()
+        val recent = recentClipIndexesByCueType[cueType]?.toSet() ?: emptySet()
 
-        // Try a few random picks that are not in recent
         repeat(6) {
-            val idx = Random.nextInt(size)
-            if (!recentSet.contains(idx)) return idx
+            val i = Random.nextInt(clips.size)
+            if (i !in recent) return i
         }
 
-        // Fallback: pick the first non-recent
-        for (i in 0 until size) {
-            if (!recentSet.contains(i)) return i
+        for (i in clips.indices) {
+            if (i !in recent) return i
         }
 
-        // If everything is "recent" (tiny list), allow any
-        return Random.nextInt(size)
+        return Random.nextInt(clips.size)
+    }
+
+    private fun markRecentClip(
+        cueType: RadioCueType,
+        clipIndex: Int,
+        keepCount: Int
+    ) {
+        if (keepCount <= 0) return
+
+        val q = recentClipIndexesByCueType.getOrPut(cueType) { ArrayDeque() }
+        q.addLast(clipIndex)
+        while (q.size > keepCount) {
+            q.removeFirst()
+        }
     }
 
     private fun roll(chance: Float): Boolean {
@@ -351,14 +453,31 @@ class RadioManager(
         return Random.nextFloat() < chance
     }
 
-    fun onEnemyKilled(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.EnemyKilled(atMs)) }
-    fun onFriendlyKilled(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.FriendlyKilled(atMs)) }
-    fun onCasStart(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.CasStart(atMs)) }
-    fun onDefendStart(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.DefendStart(atMs)) }
-    fun onEvacStart(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.EvacStart(atMs)) }
-    fun onStructureWarning(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.StructureWarning(atMs)) }
-    fun onEvacAll(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.EvacAll(atMs)) }
-    fun onEvacWarning(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.DefendStart(atMs)) }
-    fun onMissionComplete(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.MissionComplete(atMs)) }
-    fun onShipDestroyed(atMs: Long) { if (!enabled) return; pendingEvents.add(RadioEvent.ShipDestroyed(atMs)) }
+    private fun timeTag(nowMs: Int): String {
+        val seconds = nowMs / 1000
+        val tenths = (nowMs % 1000) / 100
+        return "%4d.%1ds".format(seconds, tenths)
+    }
+
+    fun log(msg: String) {
+        if (loggingEnabled) println("[radio] $msg")
+    }
+
+    private fun logAt(nowMs: Int, msg: String) {
+        if (loggingEnabled) println("[radio] ${timeTag(nowMs)}  $msg")
+    }
+
+    private fun dumpQueue(nowMs: Int) {
+        if (!loggingEnabled) return
+
+        if (requestQueue.isEmpty()) {
+            logAt(nowMs, "queue: <empty>")
+            return
+        }
+
+        logAt(nowMs, "queue:")
+        requestQueue.forEachIndexed { index, req ->
+            logAt(nowMs, "  [$index] ${req.debugString(nowMs)}")
+        }
+    }
 }

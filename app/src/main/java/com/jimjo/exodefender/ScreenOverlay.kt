@@ -414,7 +414,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
                 if (!structureRadioWarningGiven) {
                     if (secondsLeft < 10) {
-                        mainActivity.audioPlayer.radio.onStructureWarning(gLView.renderer.flightTimeMs.toLong())
+                        mainActivity.audioPlayer.radio.post(RadioTrigger.StructureWarning, timeMs)
                         structureRadioWarningGiven = true
                     }
                 }

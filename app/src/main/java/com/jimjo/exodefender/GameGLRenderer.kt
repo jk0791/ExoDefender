@@ -208,16 +208,16 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         scheduleEndOfFrameChecks()
 
         // radio
-        audioPlayer.resetRadioSchedule()
+        audioPlayer.resetRadio()
         val shouldEnableRadioForThisLevel =
             (level.type == Level.LevelType.MISSION || level.type == Level.LevelType.MILKRUN) &&
             parent.mainActivity.isRadioSettingEnabled() && !parent.levelBuilderMode
 
         audioPlayer.setRadioEnabled(shouldEnableRadioForThisLevel)
         when (level.objectiveType) {
-            Level.ObjectiveType.CAS -> audioPlayer.radio.onCasStart(flightTimeMs.toLong())
-            Level.ObjectiveType.DEFEND -> audioPlayer.radio.onDefendStart(flightTimeMs.toLong())
-            Level.ObjectiveType.EVAC -> audioPlayer.radio.onEvacStart(flightTimeMs.toLong())
+            Level.ObjectiveType.CAS -> audioPlayer.radio.post(RadioTrigger.CasStart, flightTimeMs)
+            Level.ObjectiveType.DEFEND -> audioPlayer.radio.post(RadioTrigger.DefendStart, flightTimeMs)
+            Level.ObjectiveType.EVAC -> audioPlayer.radio.post(RadioTrigger.EvacStart, flightTimeMs)
             else -> {}
         }
 
@@ -288,7 +288,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             if (!flightLog.replayActive) {
                 liveLevelCompleted = true
                 parent.mainActivity.haptics.crash()
-                audioPlayer.radio.onShipDestroyed(flightTimeMs.toLong())
+                audioPlayer.radio.post(RadioTrigger.ShipDestroyed, flightTimeMs)
             }
             flightLog.completionOutcome = CompletionOutcome.FAILED_DESTROYED
             levelCompletedCountdownMs = 1200
@@ -312,8 +312,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         }
 
         when (actor) {
-            is FriendlyActor -> audioPlayer.radio.onFriendlyKilled(flightTimeMs.toLong())
-            else -> audioPlayer.radio.onEnemyKilled(flightTimeMs.toLong())
+            is FriendlyActor -> audioPlayer.radio.post(RadioTrigger.FriendlyKilled, flightTimeMs)
+            else -> audioPlayer.radio.post(RadioTrigger.EnemyKilled, flightTimeMs)
         }
 
         scheduleEndOfFrameChecks()
@@ -365,7 +365,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                     flightLog.completionOutcome = CompletionOutcome.SUCCESS
                     levelCompletedCountdownMs = 4000
 
-                    audioPlayer.radio.onMissionComplete(flightTimeMs.toLong())
+                    audioPlayer.radio.post(RadioTrigger.MissionComplete, flightTimeMs)
+                    audioPlayer.radio.closeRadio(flightTimeMs)
                 }
             }
         }
@@ -383,6 +384,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                         flightLog.clockRemainingMsAtLastKill = 0
                         levelCompletedCountdownMs = 4000
                     }
+                    // TODO radio call "we lost the structure"
+                    audioPlayer.radio.closeRadio(flightTimeMs)
 
                     println("Mission failed!")
                 }
@@ -406,7 +409,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                         flightLog.clockRemainingMsAtLastKill = destructRemainingMsAtLastKill
                         levelCompletedCountdownMs = 4000
 
-                        audioPlayer.radio.onMissionComplete(flightTimeMs.toLong())
+                        audioPlayer.radio.post(RadioTrigger.MissionComplete, flightTimeMs)
+                        audioPlayer.radio.closeRadio(flightTimeMs)
                     }
                     println("Mission success!")
                 }
@@ -427,12 +431,16 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                         liveLevelCompleted = true
                         flightLog.completionOutcome = CompletionOutcome.FAILED_CIVILIANS_NOT_RESCUED
                         levelCompletedCountdownMs = 2000
+
+                        // TODO radio call "we lost the structure"
+                        audioPlayer.radio.closeRadio(flightTimeMs)
                     }
+
                 }
                 else if (remaining == 0) {
                     // all civilians evaced, now start checking if out of the battle zone or all enemies destroyed
                     evacCompletionArmed = true
-                    audioPlayer.radio.onEvacAll(flightTimeMs.toLong())
+                    audioPlayer.radio.post(RadioTrigger.EvacAll, flightTimeMs)
                 }
             }
         }
@@ -458,6 +466,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                     liveLevelCompleted = true
                     flightLog.completionOutcome = CompletionOutcome.SUCCESS
                     levelCompletedCountdownMs = 2000
+
+                    audioPlayer.radio.post(RadioTrigger.MissionComplete, flightTimeMs)
+                    audioPlayer.radio.closeRadio(flightTimeMs)
                 }
                 evacCompletionArmed = false
                 handler.sendEmptyMessage(UPDATE_SCREEN)
@@ -1010,7 +1021,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                 endOfFrameChecks()
             }
 
-            audioPlayer.updateRadio(flightTimeMs.toLong())
+            audioPlayer.updateRadio(flightTimeMs)
         }
 
         if (false) {
