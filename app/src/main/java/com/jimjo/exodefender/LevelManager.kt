@@ -515,23 +515,32 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
         return false
     }
 
-    fun copyLevelsFromRaw() {
+    fun countDirtyLevels(): Int {
+        var count = 0
+        for (level in allLevels) {
+            if (level.isDirtyOrNotUploaded()) count++
+        }
+        return count
+    }
 
-        val rawLevelsList = listOf(
-            "lvl10",
-            "lvl20",
-            "lvl30",
-            "lvl40",
-            "lvl50",
-            "lvl57",
-            "lvl60",
-            "lvl67",
-            "lvl70",
-            "lvl72",
-            "lvl77",
-            "lvl87",
-        )
-        copyRawFilesToInternalStorage(context, rawLevelsList, levelsDir)
+    fun deleteAllLevelFiles(): Int {
+
+        val files = levelsDir.listFiles() ?: return 0
+
+        var deletedCount = 0
+
+        for (file in files) {
+            if (file.name.startsWith("lvl")) {
+                if (file.delete()) {
+                    deletedCount++
+                } else {
+                    println("Failed to delete ${file.absolutePath}")
+                }
+            }
+        }
+
+        println("Deleted $deletedCount level file(s)")
+        return deletedCount
     }
 
     /**

@@ -207,6 +207,7 @@ class Level(
     val lzParams = LzParams()
     var unlocked = true
 
+    fun isDirtyOrNotUploaded() = uploadStatus == UploadStatus.DIRTY || uploadStatus == UploadStatus.NOT_UPLOADED
 
     fun loadGameMap() {
         world.loadLevel(this)

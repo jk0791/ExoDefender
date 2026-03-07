@@ -242,6 +242,12 @@
                     android:layout_margin="5dp"
                     android:text="Sync Latest Levels" />
                 <Button
+                    android:id="@+id/btnDeleteAllLevels"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_margin="5dp"
+                    android:text="Delete All Levels" />
+                <Button
                     android:id="@+id/btnCallMaybeAppReview"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"

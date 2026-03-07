@@ -43,7 +43,7 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
 
         override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
             if (!loadingView) {
-                // TODO
+                // if needed
             }
         }
         override fun afterTextChanged(s: Editable) {}
@@ -196,6 +196,12 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
             }
         }
 
+        findViewById<Button>(R.id.btnDeleteAllLevels).apply {
+            setOnClickListener {
+                deleteAllLevels()
+            }
+        }
+
         findViewById<Button>(R.id.btnCallMaybeAppReview).apply {
             setOnClickListener {
                 mainActivity.inAppReview.maybeAskForReview(4, true, "trigger=admin_button", true)
@@ -240,6 +246,28 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
         loadingView = false
     }
 
+    fun deleteAllLevels() {
+        val dirtyCount = mainActivity.levelManager.countDirtyLevels()
+
+        val message = if (dirtyCount > 0) {
+            "⚠ $dirtyCount level(s) have unsaved changes.\n\n" +
+                    "Deleting all levels will permanently erase these unsaved edits.\n\n" +
+                    "This cannot be undone."
+        } else {
+            "This will delete all level files stored on this device."
+        }
+
+        showConfirm(
+            context = context,
+            title = "Delete All Levels?",
+            message = message
+        ) {
+            val deletedCount = mainActivity.levelManager.deleteAllLevelFiles()
+            val word = if (deletedCount == 1) "file" else "files"
+            toast("$deletedCount level $word deleted")
+        }
+    }
+
     fun getActivityFlightLog() {
         try {
             val activityId = activityIdTxt.text.toString().toInt()
@@ -268,6 +296,10 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
             .setPositiveButton("Yes") { _, _ -> onYes() }
             .setNegativeButton("No", null)
             .show()
+    }
+
+    private fun toast(msg: String) {
+        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
     }
 
     override fun handleNetworkMessage(msg: Message) {
