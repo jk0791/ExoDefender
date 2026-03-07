@@ -9,6 +9,7 @@ sealed class RadioTrigger {
     data object DefendStart : RadioTrigger()
     data object EvacStart : RadioTrigger()
     data object StructureWarning : RadioTrigger()
+    data object StructureDestroyed : RadioTrigger()
     data object EvacAll : RadioTrigger()
     data object EvacWarning : RadioTrigger()
     data object MissionComplete : RadioTrigger()
@@ -24,6 +25,7 @@ enum class RadioCueType {
     GRATITUDE,
 
     STRUCTURE_WARNING,
+    STRUCTURE_DESTROYED,
     EVAC_ALL,
     EVAC_WARNING,
 
@@ -91,7 +93,7 @@ class RadioManager(
     private val profilesByType: Map<RadioCueType, RadioRequestProfile>
 ) {
 
-    var loggingEnabled = true
+    var loggingEnabled = false
 
     // Incoming gameplay events.
     private val triggerQueue = ArrayDeque<Pair<RadioTrigger, Int>>()
@@ -136,10 +138,13 @@ class RadioManager(
         radioClosed = false
     }
 
-    fun closeRadio(nowMs: Int) {
+    fun closeRadio(nowMs: Int, reason: String? = null) {
         requestQueue.clear()
         radioClosed = true
-        logAt(nowMs, "radio closed")
+
+        val r = if (reason != null) " ($reason)" else ""
+
+        logAt(nowMs, "radio closed" + r)
     }
 
     fun post(trigger: RadioTrigger, nowMs: Int) {
@@ -245,6 +250,7 @@ class RadioManager(
         var hasDefendStart = false
         var hasEvacStart = false
         var hasStructureWarning = false
+        var hasStructureDestroyed = false
         var hasEvacAll = false
         var hasEvacWarning = false
         var hasMissionComplete = false
@@ -258,6 +264,7 @@ class RadioManager(
                 RadioTrigger.DefendStart -> hasDefendStart = true
                 RadioTrigger.EvacStart -> hasEvacStart = true
                 RadioTrigger.StructureWarning -> hasStructureWarning = true
+                RadioTrigger.StructureDestroyed -> hasStructureDestroyed = true
                 RadioTrigger.EvacAll -> hasEvacAll = true
                 RadioTrigger.EvacWarning -> hasEvacWarning = true
                 RadioTrigger.MissionComplete -> hasMissionComplete = true
@@ -286,6 +293,11 @@ class RadioManager(
         if (hasStructureWarning) {
             enqueueCue(RadioCueType.STRUCTURE_WARNING, nowMs, force = true)
         }
+
+        if (hasStructureDestroyed) {
+            enqueueCue(RadioCueType.STRUCTURE_DESTROYED, nowMs, force = true)
+        }
+
         if (hasEvacAll) {
             enqueueCue(RadioCueType.EVAC_ALL, nowMs, force = true)
         }

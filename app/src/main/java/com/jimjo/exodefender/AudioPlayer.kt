@@ -150,6 +150,11 @@ class AudioPlayer(val context: Context) {
         rc(R.raw.radio_temp_evac_warning_02, 1.0f, 1900),
     )
 
+    private val radioStructureDestroyed = listOf(
+        rc(R.raw.radio_temp_structure_destroyed_01, 1.0f, 2100),
+        rc(R.raw.radio_temp_structure_destroyed_02, 1.0f, 2100),
+    )
+
     // --- Radio profiles ---
 
     private val profilesByType = mapOf(
@@ -193,6 +198,13 @@ class AudioPlayer(val context: Context) {
             clips = radioStructureWarning,
             delayMs = 150,
             repeatable = false,
+        ),
+        RadioCueType.STRUCTURE_DESTROYED to RadioRequestProfile(
+            priority = 80,
+            clips = radioStructureDestroyed,
+            delayMs = 1300,
+            repeatable = false,
+            closesRadioAfterPlay = true,
         ),
         RadioCueType.EVAC_ALL to RadioRequestProfile(
             priority = 80,

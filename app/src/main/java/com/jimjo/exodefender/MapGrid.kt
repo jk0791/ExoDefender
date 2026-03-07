@@ -8,26 +8,24 @@ import java.nio.IntBuffer
 
 class MapGrid {
 
-    lateinit var world: World
-
     var pointsCount = 0
-
-    private lateinit var coords: FloatArray
 
     val fillVerticesPerSquare = 6
     val lineVerticesPerSquare = 4 // draw two lines per square, 2 vertices per line
 
-    private lateinit var fillDrawOrder: IntArray
-    private lateinit var lineDrawOrder: IntArray
+    private var fillIndexCount = 0
+    private var lineIndexCount = 0
 
-    private lateinit var vertexBuffer: FloatBuffer
-    private lateinit var fillDrawListBuffer: IntBuffer
-    private lateinit var lineDrawListBuffer: IntBuffer
+    private var coords: FloatArray? = null
+    private var fillDrawOrder: IntArray? = null
+    private var lineDrawOrder: IntArray? = null
+
+    private var vertexBuffer: FloatBuffer? = null
+    private var fillDrawListBuffer: IntBuffer? = null
+    private var lineDrawListBuffer: IntBuffer? = null
     private val vertexStride: Int = COORDS_PER_VERTEX * 4
 
     private val fillColor = floatArrayOf(0f, 0f, 0f, 1.0f)
-//    private val fillColor = floatArrayOf(0.3f, 0.3f, 0.3f, 1.0f)
-//    private val lineColor = floatArrayOf(0.63671875f, 0.76953125f, 0.22265625f, 1.0f)
     private val lineColor = floatArrayOf(0.251f, 0.827f, 0.827f, 1.0f)
 
     private var mProgram: Int = -1
@@ -45,16 +43,12 @@ class MapGrid {
         loadCoords(world)
         loadDrawLists()
         loadByteArrays()
-//        loadGLProgram()
     }
 
     fun loadCoords(world: World) {
 
-        this.world = world
-
         pointsCount = MAP_GRID_SIZE * MAP_GRID_SIZE
-//        coords = FloatArray(pointsCount * COORDS_PER_VERTEX)
-        coords = FloatArray(pointsCount * COORDS_PER_VERTEX)
+        val coordsLocal = FloatArray(pointsCount * COORDS_PER_VERTEX)
         fillDrawOrder = IntArray((MAP_GRID_SIZE - 1) * (MAP_GRID_SIZE - 1)  * fillVerticesPerSquare)
         lineDrawOrder = IntArray((MAP_GRID_SIZE - 1) * (MAP_GRID_SIZE - 1) * lineVerticesPerSquare)
 
@@ -64,19 +58,25 @@ class MapGrid {
             for (x in 0 ..< MAP_GRID_SIZE) {
 
                 ordCounter++
-                coords[ordCounter] = x * MAP_GRID_SPACING
+                coordsLocal[ordCounter] = x * MAP_GRID_SPACING
 
                 // set y to elevation
                 ordCounter++
-                coords[ordCounter] = this.world.heightMap[y][x]
+                coordsLocal[ordCounter] = world.heightMap[y][x]
 
                 ordCounter++
-                coords[ordCounter] = y * MAP_GRID_SPACING
+                coordsLocal[ordCounter] = y * MAP_GRID_SPACING
             }
         }
+
+        coords = coordsLocal
     }
 
     fun loadDrawLists() {
+
+        val fillDrawOrderLocal = fillDrawOrder ?: error("fillDrawOrder not loaded")
+        val lineDrawOrderLocal = lineDrawOrder ?: error("lineDrawOrder not loaded")
+
 
         var fillCounter = 0
         var lineCounter = 0
@@ -91,129 +91,124 @@ class MapGrid {
 
                     if (y != MAP_GRID_SIZE - 1) {
                         // current row triangle
-                        fillDrawOrder[fillCounter++] = coordIndex
-                        fillDrawOrder[fillCounter++] = coordIndex + MAP_GRID_SIZE
-                        fillDrawOrder[fillCounter++] = coordIndex + 1
+                        fillDrawOrderLocal[fillCounter++] = coordIndex
+                        fillDrawOrderLocal[fillCounter++] = coordIndex + MAP_GRID_SIZE
+                        fillDrawOrderLocal[fillCounter++] = coordIndex + 1
                     }
 
                     if (y != 0) {
                         // previous row triangle
-                        fillDrawOrder[fillCounter++] = coordIndex
-                        fillDrawOrder[fillCounter++] = coordIndex + 1
-                        fillDrawOrder[fillCounter++] = coordIndex - MAP_GRID_SIZE + 1
+                        fillDrawOrderLocal[fillCounter++] = coordIndex
+                        fillDrawOrderLocal[fillCounter++] = coordIndex + 1
+                        fillDrawOrderLocal[fillCounter++] = coordIndex - MAP_GRID_SIZE + 1
                     }
                 }
                 // draw two lines bordering current row square
                 if (x != MAP_GRID_SIZE - 1 && y != MAP_GRID_SIZE - 1) {
-                    lineDrawOrder[lineCounter++] = coordIndex
-                    lineDrawOrder[lineCounter++] = coordIndex + 1
-                    lineDrawOrder[lineCounter++] = coordIndex
-                    lineDrawOrder[lineCounter++] = coordIndex + MAP_GRID_SIZE
+                    lineDrawOrderLocal[lineCounter++] = coordIndex
+                    lineDrawOrderLocal[lineCounter++] = coordIndex + 1
+                    lineDrawOrderLocal[lineCounter++] = coordIndex
+                    lineDrawOrderLocal[lineCounter++] = coordIndex + MAP_GRID_SIZE
                 }
             }
         }
-//        println("fillDrawOrder.size=${fillDrawOrder.size}")
+
+        fillIndexCount = fillCounter
+        lineIndexCount = lineCounter
+
+//        println("fillDrawOrderLocal.size=${fillDrawOrderLocal.size}")
 //        println("fillCounter=$fillCounter")
-//        println("lineDrawOrder.size=${lineDrawOrder.size}")
+//        println("lineDrawOrderLocal.size=${lineDrawOrderLocal.size}")
 //        println("lineCounter=$lineCounter")
     }
 
-    fun loadByteArrays() {
+    fun unload() {
+        coords = null
+        fillDrawOrder = null
+        lineDrawOrder = null
 
-        // initialize vertex byte buffer for shape coordinates
-        vertexBuffer = ByteBuffer.allocateDirect(coords.size * 4).run {
-            order(ByteOrder.nativeOrder())
-            asFloatBuffer().apply {
-                put(coords)
-                position(0)
-            }
-        }
+        vertexBuffer = null
+        fillDrawListBuffer = null
+        lineDrawListBuffer = null
 
-        // initialize byte buffer for the draw list
-        fillDrawListBuffer = ByteBuffer.allocateDirect(fillDrawOrder.size * 4).run {
-            order(ByteOrder.nativeOrder())
-            asIntBuffer().apply {
-                put(fillDrawOrder)
-                position(0)
-            }
-        }
-
-        lineDrawListBuffer = ByteBuffer.allocateDirect(lineDrawOrder.size * 4).run {
-            order(ByteOrder.nativeOrder())
-            asIntBuffer().apply {
-                put(lineDrawOrder)
-                position(0)
-            }
-        }
+        fillIndexCount = 0
+        lineIndexCount = 0
+        pointsCount = 0
     }
 
-//    fun loadGLProgram() {
-//        val vertexShaderCode =
-//        // This matrix member variable provides a hook to manipulate
-//            // the coordinates of the objects that use this vertex shader
-//            "uniform mat4 uMVPMatrix;" +
-//                    "attribute vec4 vPosition;" +
-//                    "void main() {" +
-//                    "  gl_Position = uMVPMatrix * vPosition;" +
-//                    "}"
-//
-//        val fragmentShaderCode =
-//            "precision mediump float;" +
-//                    "uniform vec4 vColor;" +
-//                    "void main() {" +
-//                    "  gl_FragColor = vColor;" +
-//                    "}"
-//
-//
-//        val vertexShader: Int = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode)
-//        val fragmentShader: Int = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode)
-//
-//        mProgram = GLES20.glCreateProgram()                 // create OpenGL ES Program
-//        GLES20.glAttachShader(mProgram, vertexShader)       // add the vertex shader to program
-//        GLES20.glAttachShader(mProgram, fragmentShader)     // add the fragment shader to program
-//        GLES20.glLinkProgram(mProgram)                      // creates OpenGL ES program executables
-//
-//        positionHandle = GLES20.glGetAttribLocation(mProgram, "vPosition")
-//        vPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix")
-//
-//    }
+    fun loadByteArrays() {
+        val coordsLocal = coords ?: error("coords not loaded")
+        val fillLocal = fillDrawOrder ?: error("fillDrawOrder not loaded")
+        val lineLocal = lineDrawOrder ?: error("lineDrawOrder not loaded")
+
+        vertexBuffer = ByteBuffer.allocateDirect(coordsLocal.size * 4).run {
+            order(ByteOrder.nativeOrder())
+            asFloatBuffer().apply {
+                put(coordsLocal)
+                position(0)
+            }
+        }
+
+        fillDrawListBuffer = ByteBuffer.allocateDirect(fillLocal.size * 4).run {
+            order(ByteOrder.nativeOrder())
+            asIntBuffer().apply {
+                put(fillLocal)
+                position(0)
+            }
+        }
+
+        lineDrawListBuffer = ByteBuffer.allocateDirect(lineLocal.size * 4).run {
+            order(ByteOrder.nativeOrder())
+            asIntBuffer().apply {
+                put(lineLocal)
+                position(0)
+            }
+        }
+
+        // release heap copies
+        coords = null
+        fillDrawOrder = null
+        lineDrawOrder = null
+    }
+
 
     fun draw(mvpMatrix: FloatArray) {
-        // Add program to OpenGL ES environment
+        val vertexBufferLocal = vertexBuffer ?: return
+        val fillDrawListBufferLocal = fillDrawListBuffer ?: return
+        val lineDrawListBufferLocal = lineDrawListBuffer ?: return
+
         GLES20.glUseProgram(mProgram)
 
-
-        // Enable a handle to the triangle vertices
         GLES20.glEnableVertexAttribArray(positionHandle)
 
-        // Prepare the triangle coordinate data
         GLES20.glVertexAttribPointer(
             positionHandle,
             COORDS_PER_VERTEX,
             GLES20.GL_FLOAT,
             false,
             vertexStride,
-            vertexBuffer
+            vertexBufferLocal
         )
 
-
-
-        // Pass the projection and view transformation to the shader
         GLES20.glUniformMatrix4fv(vPMatrixHandle, 1, false, mvpMatrix, 0)
 
-
-
-//        GLES20.glUniform4fv(mColorHandle, 1, lineColor, 0)
-//        GLES20.glDrawElements(GLES20.GL_LINES, fillDrawOrder.size, GLES20.GL_UNSIGNED_INT, fillDrawListBuffer)
-
         GLES20.glUniform4fv(mColorHandle, 1, fillColor, 0)
-        GLES20.glPolygonOffset(0.5f,1f)
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, fillDrawOrder.size, GLES20.GL_UNSIGNED_INT, fillDrawListBuffer)
+        GLES20.glPolygonOffset(0.5f, 1f)
+        GLES20.glDrawElements(
+            GLES20.GL_TRIANGLES,
+            fillIndexCount,
+            GLES20.GL_UNSIGNED_INT,
+            fillDrawListBufferLocal
+        )
 
         GLES20.glUniform4fv(mColorHandle, 1, lineColor, 0)
-        GLES20.glDrawElements(GLES20.GL_LINES, lineDrawOrder.size, GLES20.GL_UNSIGNED_INT, lineDrawListBuffer)
+        GLES20.glDrawElements(
+            GLES20.GL_LINES,
+            lineIndexCount,
+            GLES20.GL_UNSIGNED_INT,
+            lineDrawListBufferLocal
+        )
 
-        // Disable vertex array
         GLES20.glDisableVertexAttribArray(positionHandle)
     }
 }
