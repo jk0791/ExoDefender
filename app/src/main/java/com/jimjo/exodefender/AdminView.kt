@@ -184,21 +184,52 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
             }
         }
 
-        findViewById<Button>(R.id.btnSyncLatestLevels).apply {
+        findViewById<Button>(R.id.btnDownloadLatestLevels).apply {
             setOnClickListener {
+
+                val dirtyCount = mainActivity.levelManager.countDirtyLevels()
+
+                val message = if (dirtyCount > 0) {
+                    "⚠ $dirtyCount level(s) have unsaved changes.\n\n" +
+                            "If these level have LOWER version numbers than the server they will be overwritten.\n\n" +
+                            "This cannot be undone."
+                } else {
+                    "This will download all levels from the server."
+                }
+
                 showConfirm(
                     context = context,
-                    title = "Sync Latest Levels?",
-                    message = "This will overwrite all levels (including in dev) with what's on the server.",
+                    title = "Download All Levels (including dev)?",
+                    message = message
                 ) {
                     mainActivity.levelManager.getLatestSyncManifest(true)
+                    toast("Downloading levels...")
                 }
+
             }
         }
 
         findViewById<Button>(R.id.btnDeleteAllLevels).apply {
             setOnClickListener {
-                deleteAllLevels()
+                val dirtyCount = mainActivity.levelManager.countDirtyLevels()
+
+                val message = if (dirtyCount > 0) {
+                    "⚠ $dirtyCount level(s) have unsaved changes.\n\n" +
+                            "Deleting all levels will permanently erase these unsaved edits.\n\n" +
+                            "This cannot be undone."
+                } else {
+                    "This will delete all level files stored on this device."
+                }
+
+                showConfirm(
+                    context = context,
+                    title = "Delete All Levels?",
+                    message = message
+                ) {
+                    val deletedCount = mainActivity.levelManager.deleteAllLevelFiles()
+                    val word = if (deletedCount == 1) "file" else "files"
+                    toast("$deletedCount level $word deleted")
+                }
             }
         }
 
@@ -244,28 +275,6 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
         replayActivityButton.visibility = VISIBLE
 
         loadingView = false
-    }
-
-    fun deleteAllLevels() {
-        val dirtyCount = mainActivity.levelManager.countDirtyLevels()
-
-        val message = if (dirtyCount > 0) {
-            "⚠ $dirtyCount level(s) have unsaved changes.\n\n" +
-                    "Deleting all levels will permanently erase these unsaved edits.\n\n" +
-                    "This cannot be undone."
-        } else {
-            "This will delete all level files stored on this device."
-        }
-
-        showConfirm(
-            context = context,
-            title = "Delete All Levels?",
-            message = message
-        ) {
-            val deletedCount = mainActivity.levelManager.deleteAllLevelFiles()
-            val word = if (deletedCount == 1) "file" else "files"
-            toast("$deletedCount level $word deleted")
-        }
     }
 
     fun getActivityFlightLog() {
