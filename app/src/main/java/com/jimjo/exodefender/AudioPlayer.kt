@@ -37,8 +37,10 @@ class AudioPlayer(val context: Context) {
     )
 
     // SFX
-    val laser1 = Soundfile(R.raw.laser1, 0.5f)
+//    val laser1 = Soundfile(R.raw.laser1, 0.5f)
     val laser2 = Soundfile(R.raw.laser2, 0.5f)
+    val laser2_low = Soundfile(R.raw.laser2_low, 0.2f)
+    val laser2_high = Soundfile(R.raw.laser2_high, 0.2f)
     val explosion1 = Soundfile(R.raw.explosion1, 1f)
     val explosion2 = Soundfile(R.raw.explosion2, 1f)
     val explosion3 = Soundfile(R.raw.explosion3, 1.5f)
@@ -126,23 +128,28 @@ class AudioPlayer(val context: Context) {
     )
 
     private val radioStructureWarning = listOf(
-        rc(R.raw.radio_temp_structure_warning_01, 1.0f, 2000),
-        rc(R.raw.radio_temp_structure_warning_02, 1.0f, 2000),
+        rc(R.raw.radio_structure_warning_01_a, 1.0f, 2000),
+        rc(R.raw.radio_structure_warning_02_a, 1.0f, 2000),
+        rc(R.raw.radio_structure_warning_03_a, 1.0f, 2000),
+        rc(R.raw.radio_structure_warning_04_a, 1.0f, 2000),
     )
 
     private val radioDefendStarted = listOf(
-        rc(R.raw.radio_temp_defend_start_01, 1.0f, 2200),
-        rc(R.raw.radio_temp_defend_start_02, 1.0f, 2200),
+        rc(R.raw.radio_defend_start_01_a, 1.0f, 2200),
+        rc(R.raw.radio_defend_start_02_a, 1.0f, 2200),
+        rc(R.raw.radio_defend_start_03_a, 1.0f, 2200),
     )
 
     private val radioEvacStarted = listOf(
-        rc(R.raw.radio_temp_evac_start_01, 1.0f, 2200),
-        rc(R.raw.radio_temp_evac_start_02, 1.0f, 2200),
+        rc(R.raw.radio_evac_start_01_a, 1.0f, 2200),
+        rc(R.raw.radio_evac_start_02_a, 1.0f, 2200),
+        rc(R.raw.radio_evac_start_03_a, 1.0f, 2200),
     )
 
     private val radioEvacAll = listOf(
-        rc(R.raw.radio_temp_evac_all_01, 1.0f, 2000),
-        rc(R.raw.radio_temp_evac_all_02, 1.0f, 2000),
+        rc(R.raw.radio_evac_all_01_a, 1.0f, 2000),
+        rc(R.raw.radio_evac_all_02_a, 1.0f, 2000),
+        rc(R.raw.radio_evac_all_03_a, 1.0f, 2000),
     )
 
     private val radioEvacWarning = listOf(
@@ -260,8 +267,9 @@ class AudioPlayer(val context: Context) {
             .build()
 
         // Load SFX
-        laser1.loadIntoSoundPool(context, soundPool)
         laser2.loadIntoSoundPool(context, soundPool)
+        laser2_low.loadIntoSoundPool(context, soundPool)
+        laser2_high.loadIntoSoundPool(context, soundPool)
         explosion1.loadIntoSoundPool(context, soundPool)
         explosion2.loadIntoSoundPool(context, soundPool)
         explosion3.loadIntoSoundPool(context, soundPool)
@@ -289,7 +297,13 @@ class AudioPlayer(val context: Context) {
 
     // --- SFX helpers ---
 
-    fun playLaser(): Int = playSound(if (Random.nextBoolean()) laser1 else laser2)
+    fun playLaser(): Int = playSound(
+        when (Random.nextInt(3)) {
+            0 -> laser2
+            1 -> laser2
+            else -> laser2
+        }
+    )
 
     fun playExplosion(): Int =
         playSound(arrayOf(explosion1, explosion2, explosion3).random())

@@ -689,7 +689,8 @@ class ShipActor(
                     -weaponPitchRad
                 )
                 shotsFired += 2
-                parent.audioPlayer.playSound(parent.audioPlayer.laser2)
+//                parent.audioPlayer.playSound(parent.audioPlayer.laser2)
+                parent.audioPlayer.playLaser()
 
 //                debugLogger.printout()
 
