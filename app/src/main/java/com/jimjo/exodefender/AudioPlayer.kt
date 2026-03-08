@@ -6,6 +6,10 @@ import android.media.MediaPlayer
 import android.media.SoundPool
 import kotlin.random.Random
 
+data class RadioClipVariant(
+    val a: RadioClip,
+    val b: RadioClip
+)
 class AudioPlayer(val context: Context) {
 
     class Soundfile(var resourceId: Int, val volumeFactor: Float) {
@@ -46,6 +50,7 @@ class AudioPlayer(val context: Context) {
     val explosion3 = Soundfile(R.raw.explosion3, 1.5f)
     val explosion4 = Soundfile(R.raw.explosion4, 0.3f)
 
+
     val ai_intro = Soundfile(R.raw.ai_intro, 1f)
     val ai_yaw = Soundfile(R.raw.ai_yaw, 1f)
     val ai_pitch = Soundfile(R.raw.ai_pitch, 1f)
@@ -60,189 +65,201 @@ class AudioPlayer(val context: Context) {
     private fun rc(resourceId: Int, volumeFactor: Float, durationMs: Int): RadioClip =
         RadioClip(Soundfile(resourceId, volumeFactor), durationMs)
 
+    var currentRadioVoiceVariant = RadioVoiceVariant.A
+        private set
+
     // --- Radio clips ---
 
-    private val radioCheckIn = listOf(
-        rc(R.raw.radio_arrival_01_a, 0.90f, 2200),
-        rc(R.raw.radio_arrival_02_a, 0.90f, 2100),
-        rc(R.raw.radio_arrival_03_a, 0.90f, 2200),
-        rc(R.raw.radio_arrival_04_a, 0.90f, 2200),
-        rc(R.raw.radio_arrival_05_a, 0.90f, 2100),
-        rc(R.raw.radio_arrival_06_a, 0.90f, 2200),
-        rc(R.raw.radio_arrival_07_a, 0.90f, 2200),
-        rc(R.raw.radio_arrival_08_a, 0.90f, 2100),
-        rc(R.raw.radio_arrival_09_a, 0.90f, 2200),
-        rc(R.raw.radio_arrival_10_a, 0.90f, 2100),
+    private val radioCasStarted = listOf(
+        RadioClipVariant(rc(R.raw.radio_arrival_01_a, 0.90f, 2200), rc(R.raw.radio_arrival_01_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_arrival_02_a, 0.90f, 2100), rc(R.raw.radio_arrival_02_b, 0.90f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_arrival_03_a, 0.90f, 2200), rc(R.raw.radio_arrival_03_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_arrival_04_a, 0.90f, 2200), rc(R.raw.radio_arrival_04_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_arrival_05_a, 0.90f, 2100), rc(R.raw.radio_arrival_05_b, 0.90f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_arrival_06_a, 0.90f, 2200), rc(R.raw.radio_arrival_06_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_arrival_07_a, 0.90f, 2200), rc(R.raw.radio_arrival_07_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_arrival_08_a, 0.90f, 2100), rc(R.raw.radio_arrival_08_b, 0.90f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_arrival_09_a, 0.90f, 2200), rc(R.raw.radio_arrival_09_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_arrival_10_a, 0.90f, 2100), rc(R.raw.radio_arrival_10_b, 0.90f, 2100)),
     )
 
     private val radioFriendlyLoss = listOf(
-        rc(R.raw.radio_loss_01_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_02_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_03_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_04_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_05_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_06_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_07_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_08_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_09_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_10_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_11_a, 0.95f, 2200),
-        rc(R.raw.radio_loss_12_a, 0.95f, 2200),
+        RadioClipVariant(rc(R.raw.radio_loss_01_a, 0.95f, 2200), rc(R.raw.radio_loss_01_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_02_a, 0.95f, 2200), rc(R.raw.radio_loss_02_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_03_a, 0.95f, 2200), rc(R.raw.radio_loss_03_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_04_a, 0.95f, 2200), rc(R.raw.radio_loss_04_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_05_a, 0.95f, 2200), rc(R.raw.radio_loss_05_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_06_a, 0.95f, 2200), rc(R.raw.radio_loss_06_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_07_a, 0.95f, 2200), rc(R.raw.radio_loss_07_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_08_a, 0.95f, 2200), rc(R.raw.radio_loss_08_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_09_a, 0.95f, 2200), rc(R.raw.radio_loss_09_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_10_a, 0.95f, 2200), rc(R.raw.radio_loss_10_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_11_a, 0.95f, 2200), rc(R.raw.radio_loss_11_b, 0.95f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_loss_12_a, 0.95f, 2200), rc(R.raw.radio_loss_12_b, 0.95f, 2200)),
     )
 
     private val radioGratitude = listOf(
-        rc(R.raw.radio_thanks_01_a, 0.85f, 2200),
-        rc(R.raw.radio_thanks_02_a, 0.85f, 2200),
-        rc(R.raw.radio_thanks_03_a, 0.85f, 2200),
-        rc(R.raw.radio_thanks_04_a, 0.85f, 2200),
-        rc(R.raw.radio_thanks_05_a, 0.85f, 2200),
-        rc(R.raw.radio_thanks_06_a, 0.85f, 2200),
-        rc(R.raw.radio_thanks_07_a, 0.85f, 2200),
-        rc(R.raw.radio_thanks_08_a, 0.85f, 2200),
-        rc(R.raw.radio_thanks_09_a, 0.85f, 2200),
+        RadioClipVariant(rc(R.raw.radio_thanks_01_a, 0.85f, 2200), rc(R.raw.radio_thanks_01_b, 0.85f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_thanks_02_a, 0.85f, 2200), rc(R.raw.radio_thanks_02_b, 0.85f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_thanks_03_a, 0.85f, 2200), rc(R.raw.radio_thanks_03_b, 0.85f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_thanks_04_a, 0.85f, 2200), rc(R.raw.radio_thanks_04_b, 0.85f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_thanks_05_a, 0.85f, 2200), rc(R.raw.radio_thanks_05_b, 0.85f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_thanks_06_a, 0.85f, 2200), rc(R.raw.radio_thanks_06_b, 0.85f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_thanks_07_a, 0.85f, 2200), rc(R.raw.radio_thanks_07_b, 0.85f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_thanks_08_a, 0.85f, 2200), rc(R.raw.radio_thanks_08_b, 0.85f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_thanks_09_a, 0.85f, 2200), rc(R.raw.radio_thanks_09_b, 0.85f, 2200)),
     )
 
     private val radioForwardProgress = listOf(
-        rc(R.raw.radio_success_01_a, 0.85f, 2100),
-        rc(R.raw.radio_success_02_a, 0.85f, 2100),
-        rc(R.raw.radio_success_03_a, 0.85f, 2100),
-        rc(R.raw.radio_success_04_a, 0.85f, 2100),
-        rc(R.raw.radio_success_05_a, 0.85f, 2100),
-        rc(R.raw.radio_success_06_a, 0.85f, 2100),
-        rc(R.raw.radio_success_07_a, 0.85f, 2100),
-        rc(R.raw.radio_success_08_a, 0.85f, 2100),
-        rc(R.raw.radio_success_09_a, 0.85f, 2100),
-        rc(R.raw.radio_success_10_a, 0.85f, 2100),
-        rc(R.raw.radio_success_11_a, 0.85f, 2100),
-        rc(R.raw.radio_success_12_a, 0.85f, 2100),
-        rc(R.raw.radio_success_13_a, 0.85f, 2100),
-        rc(R.raw.radio_success_14_a, 0.85f, 2100),
-        rc(R.raw.radio_success_15_a, 0.85f, 2100),
-        rc(R.raw.radio_success_16_a, 0.85f, 2100),
+        RadioClipVariant(rc(R.raw.radio_success_01_a, 0.85f, 2100), rc(R.raw.radio_success_01_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_02_a, 0.85f, 2100), rc(R.raw.radio_success_02_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_03_a, 0.85f, 2100), rc(R.raw.radio_success_03_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_04_a, 0.85f, 2100), rc(R.raw.radio_success_04_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_05_a, 0.85f, 2100), rc(R.raw.radio_success_05_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_06_a, 0.85f, 2100), rc(R.raw.radio_success_06_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_07_a, 0.85f, 2100), rc(R.raw.radio_success_07_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_08_a, 0.85f, 2100), rc(R.raw.radio_success_08_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_09_a, 0.85f, 2100), rc(R.raw.radio_success_09_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_10_a, 0.85f, 2100), rc(R.raw.radio_success_10_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_11_a, 0.85f, 2100), rc(R.raw.radio_success_11_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_12_a, 0.85f, 2100), rc(R.raw.radio_success_12_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_13_a, 0.85f, 2100), rc(R.raw.radio_success_13_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_14_a, 0.85f, 2100), rc(R.raw.radio_success_14_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_15_a, 0.85f, 2100), rc(R.raw.radio_success_15_b, 0.85f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_success_16_a, 0.85f, 2100), rc(R.raw.radio_success_16_b, 0.85f, 2100)),
     )
 
     private val radioShipDestroyed = listOf(
-        rc(R.raw.radio_failure_01_a, 1.0f, 2300),
-        rc(R.raw.radio_failure_02_a, 1.0f, 2300),
-        rc(R.raw.radio_failure_03_a, 1.0f, 2300),
+        RadioClipVariant(rc(R.raw.radio_failure_01_a, 1.0f, 2300), rc(R.raw.radio_failure_01_b, 1.0f, 2300)),
+        RadioClipVariant(rc(R.raw.radio_failure_02_a, 1.0f, 2300), rc(R.raw.radio_failure_02_b, 1.0f, 2300)),
+        RadioClipVariant(rc(R.raw.radio_failure_03_a, 1.0f, 2300), rc(R.raw.radio_failure_03_b, 1.0f, 2300)),
     )
 
     private val radioStructureWarning = listOf(
-        rc(R.raw.radio_structure_warning_01_a, 1.0f, 2000),
-        rc(R.raw.radio_structure_warning_02_a, 1.0f, 2000),
-        rc(R.raw.radio_structure_warning_03_a, 1.0f, 2000),
-        rc(R.raw.radio_structure_warning_04_a, 1.0f, 2000),
+        RadioClipVariant(rc(R.raw.radio_structure_warning_01_a, 1.0f, 2000), rc(R.raw.radio_structure_warning_01_b, 1.0f, 2000)),
+        RadioClipVariant(rc(R.raw.radio_structure_warning_02_a, 1.0f, 2000), rc(R.raw.radio_structure_warning_02_b, 1.0f, 2000)),
+        RadioClipVariant(rc(R.raw.radio_structure_warning_03_a, 1.0f, 2000), rc(R.raw.radio_structure_warning_03_b, 1.0f, 2000)),
+        RadioClipVariant(rc(R.raw.radio_structure_warning_04_a, 1.0f, 2000), rc(R.raw.radio_structure_warning_04_b, 1.0f, 2000)),
     )
 
     private val radioDefendStarted = listOf(
-        rc(R.raw.radio_defend_start_01_a, 1.0f, 2200),
-        rc(R.raw.radio_defend_start_02_a, 1.0f, 2200),
-        rc(R.raw.radio_defend_start_03_a, 1.0f, 2200),
+        RadioClipVariant(rc(R.raw.radio_defend_start_01_a, 1.0f, 2500), rc(R.raw.radio_defend_start_01_b, 1.0f, 2500)),
+        RadioClipVariant(rc(R.raw.radio_defend_start_02_a, 1.0f, 2500), rc(R.raw.radio_defend_start_02_b, 1.0f, 2500)),
+        RadioClipVariant(rc(R.raw.radio_defend_start_03_a, 1.0f, 2500), rc(R.raw.radio_defend_start_03_b, 1.0f, 2500)),
     )
 
     private val radioEvacStarted = listOf(
-        rc(R.raw.radio_evac_start_01_a, 1.0f, 2200),
-        rc(R.raw.radio_evac_start_02_a, 1.0f, 2200),
-        rc(R.raw.radio_evac_start_03_a, 1.0f, 2200),
+        RadioClipVariant(rc(R.raw.radio_evac_start_01_a, 1.0f, 3500), rc(R.raw.radio_evac_start_01_b, 1.0f, 3500)),
+        RadioClipVariant(rc(R.raw.radio_evac_start_02_a, 1.0f, 3500), rc(R.raw.radio_evac_start_02_b, 1.0f, 3500)),
+        RadioClipVariant(rc(R.raw.radio_evac_start_03_a, 1.0f, 3500), rc(R.raw.radio_evac_start_03_b, 1.0f, 3500)),
     )
 
     private val radioEvacAll = listOf(
-        rc(R.raw.radio_evac_all_01_a, 1.0f, 2000),
-        rc(R.raw.radio_evac_all_02_a, 1.0f, 2000),
-        rc(R.raw.radio_evac_all_03_a, 1.0f, 2000),
+        RadioClipVariant(rc(R.raw.radio_evac_all_01_a, 1.0f, 2000), rc(R.raw.radio_evac_all_01_b, 1.0f, 2000)),
+        RadioClipVariant(rc(R.raw.radio_evac_all_02_a, 1.0f, 2000), rc(R.raw.radio_evac_all_02_b, 1.0f, 2000)),
+        RadioClipVariant(rc(R.raw.radio_evac_all_03_a, 1.0f, 2000), rc(R.raw.radio_evac_all_03_b, 1.0f, 2000)),
     )
 
     private val radioEvacWarning = listOf(
-        rc(R.raw.radio_temp_evac_warning_01, 1.0f, 2100),
-        rc(R.raw.radio_temp_evac_warning_02, 1.0f, 1900),
+        RadioClipVariant(rc(R.raw.radio_temp_evac_warning_01_a, 1.0f, 2500), rc(R.raw.radio_temp_evac_warning_01_b, 1.0f, 2500)),
+        RadioClipVariant(rc(R.raw.radio_temp_evac_warning_02_a, 1.0f, 2500), rc(R.raw.radio_temp_evac_warning_02_b, 1.0f, 2500)),
     )
 
     private val radioStructureDestroyed = listOf(
-        rc(R.raw.radio_temp_structure_destroyed_01, 1.0f, 2100),
-        rc(R.raw.radio_temp_structure_destroyed_02, 1.0f, 2100),
+        RadioClipVariant(rc(R.raw.radio_temp_structure_destroyed_01_a, 1.0f, 2100), rc(R.raw.radio_temp_structure_destroyed_01_b, 1.0f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_temp_structure_destroyed_02_a, 1.0f, 2100), rc(R.raw.radio_temp_structure_destroyed_02_b, 1.0f, 2100)),
     )
 
     // --- Radio profiles ---
 
-    private val profilesByType = mapOf(
+    private fun voiceClips(list: List<RadioClipVariant>): List<RadioClip> =
+        when (currentRadioVoiceVariant) {
+            RadioVoiceVariant.A -> list.map { it.a }
+            RadioVoiceVariant.B -> list.map { it.b }
+        }
+
+    private fun buildProfiles(): Map<RadioCueType, RadioRequestProfile> = mapOf(
         RadioCueType.CAS_STARTED to RadioRequestProfile(
             priority = 90,
-            clips = radioCheckIn,
+            clips = voiceClips(radioCasStarted),
             delayMs = 1800,
             repeatable = false,
             blocksOthersUntilPlayed = true,
         ),
         RadioCueType.DEFEND_STARTED to RadioRequestProfile(
             priority = 90,
-            clips = radioDefendStarted,
+            clips = voiceClips(radioDefendStarted),
             delayMs = 1800,
             repeatable = false,
             blocksOthersUntilPlayed = true,
         ),
         RadioCueType.EVAC_STARTED to RadioRequestProfile(
             priority = 90,
-            clips = radioEvacStarted,
+            clips = voiceClips(radioEvacStarted),
             delayMs = 1800,
             repeatable = false,
             blocksOthersUntilPlayed = true,
+            suppressLowerPriorityAfterPlayMs = 1500,
         ),
         RadioCueType.SHIP_DESTROYED to RadioRequestProfile(
             priority = 50,
-            clips = radioShipDestroyed,
+            clips = voiceClips(radioShipDestroyed),
             delayMs = 500,
             repeatable = false,
             closesRadioAfterPlay = true,
         ),
         RadioCueType.GRATITUDE to RadioRequestProfile(
             priority = 50,
-            clips = radioGratitude,
+            clips = voiceClips(radioGratitude),
             delayMs = 800,
             repeatable = false,
             closesRadioAfterPlay = true,
         ),
         RadioCueType.STRUCTURE_WARNING to RadioRequestProfile(
             priority = 80,
-            clips = radioStructureWarning,
+            clips = voiceClips(radioStructureWarning),
             delayMs = 150,
             repeatable = false,
         ),
         RadioCueType.STRUCTURE_DESTROYED to RadioRequestProfile(
             priority = 80,
-            clips = radioStructureDestroyed,
+            clips = voiceClips(radioStructureDestroyed),
             delayMs = 1300,
             repeatable = false,
             closesRadioAfterPlay = true,
         ),
         RadioCueType.EVAC_ALL to RadioRequestProfile(
             priority = 80,
-            clips = radioEvacAll,
+            clips = voiceClips(radioEvacAll),
             delayMs = 150,
             repeatable = false,
         ),
         RadioCueType.EVAC_WARNING to RadioRequestProfile(
             priority = 50,
-            clips = radioEvacWarning,
+            clips = voiceClips(radioEvacWarning),
             delayMs = 500,
             repeatable = false,
         ),
         RadioCueType.FRIENDLY_LOSS to RadioRequestProfile(
             priority = 10,
-            clips = radioFriendlyLoss,
+            clips = voiceClips(radioFriendlyLoss),
             delayMs = 150,
             chance = 0.40f,
             cooldownMs = 8000,
             expiresAfterMs = 3500,
             avoidRecentCount = 2,
+            delayJitterMs = 120,
             repeatable = true,
         ),
         RadioCueType.FORWARD_PROGRESS to RadioRequestProfile(
             priority = 10,
-            clips = radioForwardProgress,
+            clips = voiceClips(radioForwardProgress),
             delayMs = 150,
             chance = 0.40f,
             cooldownMs = 8000,
             expiresAfterMs = 2500,
             avoidRecentCount = 2,
+            delayJitterMs = 200,
             repeatable = true,
         ),
     )
@@ -250,7 +267,7 @@ class AudioPlayer(val context: Context) {
     init {
         radio = RadioManager(
             playClip = { sf -> playRadioClip(sf) },
-            profilesByType = profilesByType
+            profilesByType = buildProfiles()
         )
         player.isLooping = true
     }
@@ -289,9 +306,32 @@ class AudioPlayer(val context: Context) {
         loadAllRadioClips()
     }
 
+    fun chooseRadioVoiceVariantForLevel() {
+        currentRadioVoiceVariant =
+            if (Random.nextBoolean()) RadioVoiceVariant.A else RadioVoiceVariant.B
+
+        radio.setProfiles(buildProfiles())
+    }
+
+    private fun allRadioClipVariants(): List<RadioClipVariant> =
+        buildList {
+            addAll(radioCasStarted)
+            addAll(radioDefendStarted)
+            addAll(radioEvacStarted)
+            addAll(radioFriendlyLoss)
+            addAll(radioForwardProgress)
+            addAll(radioStructureWarning)
+            addAll(radioEvacAll)
+            addAll(radioEvacWarning)
+            addAll(radioStructureDestroyed)
+            addAll(radioShipDestroyed)
+            addAll(radioGratitude)
+        }
+
     private fun loadAllRadioClips() {
-        profilesByType.values
-            .flatMap { it.clips }
+        allRadioClipVariants()
+            .flatMap { listOf(it.a, it.b) }
+            .distinct()
             .forEach { it.sound.loadIntoSoundPool(context, soundPool) }
     }
 
@@ -359,8 +399,9 @@ class AudioPlayer(val context: Context) {
             currentMusicFileVolumeFactor = musicFile.volumeFactor
             updateMusicVolume()
 
-            val afd = context.resources.openRawResourceFd(musicFile.resourceId)
-            player.setDataSource(afd)
+            context.resources.openRawResourceFd(musicFile.resourceId).use { afd ->
+                player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+            }
             player.prepare()
             player.start()
             player.isLooping = true

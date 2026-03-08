@@ -2,6 +2,10 @@ package com.jimjo.exodefender
 
 import kotlin.random.Random
 
+private const val PLAY_RETRY_MS: Int = 300
+private const val MAX_RESERVED_RETRY_MS = 5000
+
+
 sealed class RadioTrigger {
     data object EnemyKilled : RadioTrigger()
     data object FriendlyKilled : RadioTrigger()
@@ -16,6 +20,10 @@ sealed class RadioTrigger {
     data object ShipDestroyed : RadioTrigger()
 }
 
+enum class RadioVoiceVariant {
+    A,
+    B
+}
 enum class RadioCueType {
     CAS_STARTED,
     DEFEND_STARTED,
@@ -38,25 +46,64 @@ data class RadioClip(
     val durationMs: Int
 )
 
+/**
+ * Defines how a radio cue behaves once it has been requested.
+ *
+ * A RadioRequestProfile describes the selection rules, timing behaviour,
+ * and playback constraints for a particular radio cue type.
+ */
 data class RadioRequestProfile(
+
     val priority: Int,
+    // Priority used when selecting between multiple eligible requests.
+    // Higher values are chosen first.
+
     val clips: List<RadioClip>,
+    // Audio clips available for this cue. One is chosen randomly when played.
 
     val delayMs: Int = 0,
+    // Minimum delay after the trigger before this request becomes eligible to play.
+
+    val delayJitterMs: Int = 0,
+    // maximum amount of random additional extra delay
+
     val chance: Float = 1f,
+    // Probability (0.0–1.0) that a trigger will create a request for this cue.
+    // Used to reduce chatter for frequently occurring events.
+
     val cooldownMs: Int = 0,
+    // Minimum time that must pass before another request of the same cue type
+    // can be created again.
+
     val expiresAfterMs: Int? = null,
+    // Maximum time the request may remain queued before it becomes invalid.
+    // If null, the request never expires.
+
     val avoidRecentCount: Int = 0,
+    // Number of recently played clips of this cue type to avoid repeating,
+    // helping reduce audible repetition.
+
     val repeatable: Boolean = true,
+    // If false, this cue type can only be played once per mission.
 
     val blocksOthersUntilPlayed: Boolean = false,
-    val closesRadioAfterPlay: Boolean = false
+    // If true, prevents other requests from being selected while this request
+    // is waiting to be played (used for important announcements).
+
+    val suppressLowerPriorityAfterPlayMs: Int = 0,
+    // After this cue begins playback, lower-priority cues cannot be selected
+    // for this many milliseconds.
+
+
+    val closesRadioAfterPlay: Boolean = false,
+    // If true, the radio system closes after this cue plays, preventing any
+    // further triggers or requests for the remainder of the mission.
 )
 
 data class RadioRequest(
     val cueType: RadioCueType,
     val createdAtMs: Int,
-    val earliestAtMs: Int,
+    var earliestAtMs: Int,
     val expiresAtMs: Int? = null,
     val force: Boolean = false
 ) {
@@ -83,17 +130,18 @@ private enum class WaitReason {
     NONE,
     BUSY,
     BLOCKED_BY_RESERVED,
-    NO_ELIGIBLE
+    SUPPRESSED_BY_PRIORITY,
+    NO_ELIGIBLE,
 }
 
 
 
 class RadioManager(
     private val playClip: (AudioPlayer.Soundfile) -> Boolean,
-    private val profilesByType: Map<RadioCueType, RadioRequestProfile>
+    private var profilesByType: Map<RadioCueType, RadioRequestProfile>
 ) {
 
-    var loggingEnabled = false
+    var loggingEnabled = true
 
     // Incoming gameplay events.
     private val triggerQueue = ArrayDeque<Pair<RadioTrigger, Int>>()
@@ -117,6 +165,9 @@ class RadioManager(
     private var lastWaitReason = WaitReason.NONE
     private var lastWaitCueType: RadioCueType? = null
     private var lastWaitUntilMs: Int = Int.MIN_VALUE
+    private var lowerPrioritySuppressedUntilMs = 0
+    private var suppressionPriority = Int.MIN_VALUE
+    private var lastRetryCueType: RadioCueType? = null
 
     // Safety gap after each line.
     private val radioTailMs: Int = 250
@@ -126,6 +177,10 @@ class RadioManager(
             clear()
             radioClosed = false
         }
+    }
+
+    fun setProfiles(profiles: Map<RadioCueType, RadioRequestProfile>) {
+        profilesByType = profiles
     }
 
     fun clear() {
@@ -220,14 +275,15 @@ class RadioManager(
             return
         }
 
-        val eligible = requestQueue
-            .filter { isEligible(it, nowMs) }
-            .sortedWith(
-                compareByDescending<RadioRequest> { profileOf(it).priority }
-                    .thenBy { it.createdAtMs }
-            )
+        // If a reserved request is now due, it must go next.
+        if (blockingRequest != null) {
+            playRequest(blockingRequest, nowMs)
+            return
+        }
 
-        if (eligible.isEmpty()) {
+        val eligibleBase = requestQueue.filter { isEligible(it, nowMs) }
+
+        if (eligibleBase.isEmpty()) {
             if (requestQueue.isEmpty()) {
                 clearWaitState()
                 return
@@ -237,6 +293,33 @@ class RadioManager(
             return
         }
 
+        val suppressionActive = nowMs < lowerPrioritySuppressedUntilMs
+
+        val eligible = if (!suppressionActive) {
+            eligibleBase
+        } else {
+            val filtered = eligibleBase.filter {
+                profileOf(it).priority >= suppressionPriority
+            }
+
+            if (filtered.isEmpty()) {
+                logWaitState(
+                    nowMs,
+                    WaitReason.SUPPRESSED_BY_PRIORITY,
+                    untilMs = lowerPrioritySuppressedUntilMs
+                ) {
+                    "suppressed (<$suppressionPriority) for ${lowerPrioritySuppressedUntilMs - nowMs}ms"
+                }
+                return
+            }
+
+            filtered
+        }.sortedWith(
+            compareByDescending<RadioRequest> { profileOf(it).priority }
+                .thenBy { it.createdAtMs }
+        )
+
+        clearWaitState()
         playRequest(eligible.first(), nowMs)
     }
 
@@ -334,10 +417,12 @@ class RadioManager(
             return
         }
 
+        val jitter = Random.nextInt(profile.delayJitterMs + 1)
+
         val req = RadioRequest(
             cueType = cueType,
             createdAtMs = nowMs,
-            earliestAtMs = nowMs + profile.delayMs,
+            earliestAtMs = nowMs + profile.delayMs + jitter,
             expiresAtMs = profile.expiresAfterMs?.let { nowMs + it },
             force = force
         )
@@ -396,21 +481,58 @@ class RadioManager(
         }
 
         val clip = profile.clips[clipIndex]
-        logAt(nowMs, "selected ${req.cueType}")
+
         val started = playClip(clip.sound)
 
         if (!started) {
-            logAt(nowMs, "play refused ${req.cueType}")
+            if (profile.blocksOthersUntilPlayed) {
+
+                val retryAge = nowMs - req.createdAtMs
+
+                if (retryAge > MAX_RESERVED_RETRY_MS) {
+                    logAt(nowMs,
+                        "⚠ radio: failed to play reserved cue ${req.cueType} after ${retryAge}ms — dropping")
+                    requestQueue.remove(req)
+                    lastRetryCueType = null
+                    return
+                }
+
+                if (lastRetryCueType != req.cueType) {
+                    logAt(nowMs, "play refused ${req.cueType}, retrying...")
+                    lastRetryCueType = req.cueType
+                }
+
+                req.earliestAtMs = nowMs + PLAY_RETRY_MS
+            } else {
+                logAt(nowMs, "play refused ${req.cueType}, dropping")
+                requestQueue.remove(req)
+            }
+
             return
         }
 
-        logAt(nowMs, "play ${req.cueType} clip#$clipIndex")
+        lastRetryCueType = null
+        logAt(nowMs, "selected ${req.cueType}")
+
 
         requestQueue.remove(req)
         lastPlayedMsByCueType[req.cueType] = nowMs
         markRecentClip(req.cueType, clipIndex, profile.avoidRecentCount)
         busyUntilMs = nowMs + clip.durationMs + radioTailMs
         clearWaitState()
+
+        logAt(nowMs, "play ${req.cueType} clip#$clipIndex")
+
+        if (profile.suppressLowerPriorityAfterPlayMs > 0) {
+            lowerPrioritySuppressedUntilMs =
+                nowMs + profile.suppressLowerPriorityAfterPlayMs
+            suppressionPriority = profile.priority
+
+            logAt(
+                nowMs,
+                "suppress lower priorities (<${profile.priority}) for ${profile.suppressLowerPriorityAfterPlayMs}ms"
+            )
+        }
 
         if (profile.closesRadioAfterPlay) {
             requestQueue.clear()

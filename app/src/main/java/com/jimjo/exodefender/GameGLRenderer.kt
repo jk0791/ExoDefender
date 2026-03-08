@@ -214,6 +214,9 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
             parent.mainActivity.isRadioSettingEnabled() && !parent.levelBuilderMode
 
         audioPlayer.setRadioEnabled(shouldEnableRadioForThisLevel)
+
+        audioPlayer.chooseRadioVoiceVariantForLevel()
+
         when (level.objectiveType) {
             Level.ObjectiveType.CAS -> audioPlayer.radio.post(RadioTrigger.CasStart, flightTimeMs)
             Level.ObjectiveType.DEFEND -> audioPlayer.radio.post(RadioTrigger.DefendStart, flightTimeMs)
