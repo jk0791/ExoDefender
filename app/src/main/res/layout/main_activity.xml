@@ -6,7 +6,12 @@
     android:background="@color/black"
     android:layout_height="match_parent">
 
-
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:scaleType="fitEnd"
+        android:layout_gravity="right"
+        android:src="@drawable/background_1" />
 
     <!-- Everything that should respect system bars AND sidebar goes in here -->
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -54,10 +59,18 @@
             app:layout_constraintEnd_toEndOf="parent" >
 
 
+
+
             <com.jimjo.exodefender.HomeView
                 android:id="@+id/homeView"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+                android:layout_height="match_parent" >
+
+                <com.jimjo.exodefender.AdminLog
+                    android:id="@+id/adminLogView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </com.jimjo.exodefender.HomeView>
 
             <com.jimjo.exodefender.StoryView
                 android:id="@+id/storyView"
@@ -88,7 +101,8 @@
     <com.jimjo.exodefender.StartupNoticeView
         android:id="@+id/startupNoticeView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:visibility="gone"/>
 
     <com.jimjo.exodefender.TrainingOutcomeView
         android:id="@+id/trainingOutcomeView"
@@ -147,11 +161,6 @@
 
     <com.jimjo.exodefender.AdminView
         android:id="@+id/adminView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
-    <com.jimjo.exodefender.AdminLog
-        android:id="@+id/adminLogView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
