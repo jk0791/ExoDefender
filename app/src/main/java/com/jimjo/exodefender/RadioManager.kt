@@ -159,6 +159,7 @@ class RadioManager(
     private val recentClipIndexesByCueType = mutableMapOf<RadioCueType, ArrayDeque<Int>>()
 
     // Channel / mission state.
+    private var enabled = true
     private var busyUntilMs: Int = 0
     private var radioClosed: Boolean = false
 
@@ -173,9 +174,13 @@ class RadioManager(
     private val radioTailMs: Int = 250
 
     fun setEnabled(on: Boolean) {
-        if (!on) {
+        enabled = on
+
+        if (!enabled) {
             clear()
-            radioClosed = false
+            log("radio disabled")
+        } else {
+            log("radio enabled")
         }
     }
 
@@ -203,6 +208,9 @@ class RadioManager(
     }
 
     fun post(trigger: RadioTrigger, nowMs: Int) {
+
+        if (!enabled) return
+
         if (radioClosed) {
             logAt(nowMs, "ignore trigger $trigger (radio closed)")
             return
@@ -240,6 +248,9 @@ class RadioManager(
     }
 
     fun tick(nowMs: Int) {
+
+        if (!enabled) return
+
         removeExpiredRequests(nowMs)
 
         if (radioClosed) {
@@ -324,6 +335,7 @@ class RadioManager(
     }
 
     private fun drainTriggersIntoRequests(nowMs: Int) {
+
         if (triggerQueue.isEmpty()) return
 
         var enemyKills = 0
