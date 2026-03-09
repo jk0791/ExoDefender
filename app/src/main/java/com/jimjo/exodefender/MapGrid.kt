@@ -1,8 +1,6 @@
 package com.jimjo.exodefender
 
 import android.opengl.GLES20
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
 
@@ -10,19 +8,13 @@ class MapGrid {
 
     var pointsCount = 0
 
-    val fillVerticesPerSquare = 6
-    val lineVerticesPerSquare = 4 // draw two lines per square, 2 vertices per line
+    private var vertexBuffer: FloatBuffer? = null
+    private var fillDrawListBuffer: IntBuffer? = null
+    private var lineDrawListBuffer: IntBuffer? = null
 
     private var fillIndexCount = 0
     private var lineIndexCount = 0
 
-    private var coords: FloatArray? = null
-    private var fillDrawOrder: IntArray? = null
-    private var lineDrawOrder: IntArray? = null
-
-    private var vertexBuffer: FloatBuffer? = null
-    private var fillDrawListBuffer: IntBuffer? = null
-    private var lineDrawListBuffer: IntBuffer? = null
     private val vertexStride: Int = COORDS_PER_VERTEX * 4
 
     private val fillColor = floatArrayOf(0f, 0f, 0f, 1.0f)
@@ -33,152 +25,57 @@ class MapGrid {
     private var positionHandle: Int = -1
     private var mColorHandle: Int = -1
 
-    fun load(world: World, glProgram: Int, vPMatrixHandle: Int, positionHandle: Int, mColorHandle: Int) {
+    fun load(
+        world: World,
+        worldManager: WorldManager,
+        glProgram: Int,
+        vPMatrixHandle: Int,
+        positionHandle: Int,
+        mColorHandle: Int
+    ) {
+        val cachedTerrainMesh = world.cachedTerrainMesh
+            ?: error("World ${world.mapId} cachedTerrainMesh not initialized")
+
+        val fillBuffer = worldManager.sharedFillDrawListBuffer
+            ?: error("sharedFillDrawListBuffer not initialized")
+
+        val lineBuffer = worldManager.sharedLineDrawListBuffer
+            ?: error("sharedLineDrawListBuffer not initialized")
+
+        println("MapGrid.load() using cached terrain for mapId=${world.mapId}")
 
         this.mProgram = glProgram
         this.vPMatrixHandle = vPMatrixHandle
         this.positionHandle = positionHandle
         this.mColorHandle = mColorHandle
 
-        loadCoords(world)
-        loadDrawLists()
-        loadByteArrays()
-    }
-
-    fun loadCoords(world: World) {
-
-        pointsCount = MAP_GRID_SIZE * MAP_GRID_SIZE
-        val coordsLocal = FloatArray(pointsCount * COORDS_PER_VERTEX)
-        fillDrawOrder = IntArray((MAP_GRID_SIZE - 1) * (MAP_GRID_SIZE - 1)  * fillVerticesPerSquare)
-        lineDrawOrder = IntArray((MAP_GRID_SIZE - 1) * (MAP_GRID_SIZE - 1) * lineVerticesPerSquare)
-
-
-        var ordCounter = -1
-        for (y in 0 ..< MAP_GRID_SIZE) {
-            for (x in 0 ..< MAP_GRID_SIZE) {
-
-                ordCounter++
-                coordsLocal[ordCounter] = x * MAP_GRID_SPACING
-
-                // set y to elevation
-                ordCounter++
-                coordsLocal[ordCounter] = world.heightMap[y][x]
-
-                ordCounter++
-                coordsLocal[ordCounter] = y * MAP_GRID_SPACING
-            }
-        }
-
-        coords = coordsLocal
-    }
-
-    fun loadDrawLists() {
-
-        val fillDrawOrderLocal = fillDrawOrder ?: error("fillDrawOrder not loaded")
-        val lineDrawOrderLocal = lineDrawOrder ?: error("lineDrawOrder not loaded")
-
-
-        var fillCounter = 0
-        var lineCounter = 0
-
-        for (y in 0 ..< MAP_GRID_SIZE) {
-
-            for (x in 0..< MAP_GRID_SIZE) {
-
-                val coordIndex = x + y * MAP_GRID_SIZE
-
-                if (x != MAP_GRID_SIZE - 1) {
-
-                    if (y != MAP_GRID_SIZE - 1) {
-                        // current row triangle
-                        fillDrawOrderLocal[fillCounter++] = coordIndex
-                        fillDrawOrderLocal[fillCounter++] = coordIndex + MAP_GRID_SIZE
-                        fillDrawOrderLocal[fillCounter++] = coordIndex + 1
-                    }
-
-                    if (y != 0) {
-                        // previous row triangle
-                        fillDrawOrderLocal[fillCounter++] = coordIndex
-                        fillDrawOrderLocal[fillCounter++] = coordIndex + 1
-                        fillDrawOrderLocal[fillCounter++] = coordIndex - MAP_GRID_SIZE + 1
-                    }
-                }
-                // draw two lines bordering current row square
-                if (x != MAP_GRID_SIZE - 1 && y != MAP_GRID_SIZE - 1) {
-                    lineDrawOrderLocal[lineCounter++] = coordIndex
-                    lineDrawOrderLocal[lineCounter++] = coordIndex + 1
-                    lineDrawOrderLocal[lineCounter++] = coordIndex
-                    lineDrawOrderLocal[lineCounter++] = coordIndex + MAP_GRID_SIZE
-                }
-            }
-        }
-
-        fillIndexCount = fillCounter
-        lineIndexCount = lineCounter
-
-//        println("fillDrawOrderLocal.size=${fillDrawOrderLocal.size}")
-//        println("fillCounter=$fillCounter")
-//        println("lineDrawOrderLocal.size=${lineDrawOrderLocal.size}")
-//        println("lineCounter=$lineCounter")
+        this.pointsCount = cachedTerrainMesh.pointsCount
+        this.vertexBuffer = cachedTerrainMesh.vertexBuffer
+        this.fillDrawListBuffer = fillBuffer
+        this.lineDrawListBuffer = lineBuffer
+        this.fillIndexCount = worldManager.sharedFillIndexCount
+        this.lineIndexCount = worldManager.sharedLineIndexCount
     }
 
     fun unload() {
-        coords = null
-        fillDrawOrder = null
-        lineDrawOrder = null
-
         vertexBuffer = null
         fillDrawListBuffer = null
         lineDrawListBuffer = null
-
         fillIndexCount = 0
         lineIndexCount = 0
         pointsCount = 0
     }
-
-    fun loadByteArrays() {
-        val coordsLocal = coords ?: error("coords not loaded")
-        val fillLocal = fillDrawOrder ?: error("fillDrawOrder not loaded")
-        val lineLocal = lineDrawOrder ?: error("lineDrawOrder not loaded")
-
-        vertexBuffer = ByteBuffer.allocateDirect(coordsLocal.size * 4).run {
-            order(ByteOrder.nativeOrder())
-            asFloatBuffer().apply {
-                put(coordsLocal)
-                position(0)
-            }
-        }
-
-        fillDrawListBuffer = ByteBuffer.allocateDirect(fillLocal.size * 4).run {
-            order(ByteOrder.nativeOrder())
-            asIntBuffer().apply {
-                put(fillLocal)
-                position(0)
-            }
-        }
-
-        lineDrawListBuffer = ByteBuffer.allocateDirect(lineLocal.size * 4).run {
-            order(ByteOrder.nativeOrder())
-            asIntBuffer().apply {
-                put(lineLocal)
-                position(0)
-            }
-        }
-
-        // release heap copies
-        coords = null
-        fillDrawOrder = null
-        lineDrawOrder = null
-    }
-
 
     fun draw(mvpMatrix: FloatArray) {
         val vertexBufferLocal = vertexBuffer ?: return
         val fillDrawListBufferLocal = fillDrawListBuffer ?: return
         val lineDrawListBufferLocal = lineDrawListBuffer ?: return
 
-        GLES20.glUseProgram(mProgram)
+        vertexBufferLocal.position(0)
+        fillDrawListBufferLocal.position(0)
+        lineDrawListBufferLocal.position(0)
 
+        GLES20.glUseProgram(mProgram)
         GLES20.glEnableVertexAttribArray(positionHandle)
 
         GLES20.glVertexAttribPointer(

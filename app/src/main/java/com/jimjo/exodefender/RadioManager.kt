@@ -141,7 +141,7 @@ class RadioManager(
     private var profilesByType: Map<RadioCueType, RadioRequestProfile>
 ) {
 
-    var loggingEnabled = true
+    var loggingEnabled = false
 
     // Incoming gameplay events.
     private val triggerQueue = ArrayDeque<Pair<RadioTrigger, Int>>()

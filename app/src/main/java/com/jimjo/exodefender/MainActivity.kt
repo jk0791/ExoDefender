@@ -10,6 +10,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.Message
+import android.os.SystemClock.sleep
 import android.view.Surface
 import kotlin.math.atan2
 import android.view.View
@@ -399,6 +400,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         }
     }
 
+
     fun View.applySystemBarInsets(
         left: Boolean = true,
         top: Boolean = true,
@@ -734,10 +736,20 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         setKeepScreenOn(false)
     }
 
+
+    // for debugging only
+    fun killLevel() {
+        exitLevel()
+        val nextLevel = levelManager.getNextLevel(currentLevel!!)
+        if (nextLevel != null) {
+            window.decorView.postDelayed({
+                openLevelById(nextLevel.id, false)
+            }, 2000)
+        }
+    }
     fun exitLevel() {
 
         unloadGLView()
-
         levelActive = false
         levelOpen = false
         hideAllViews()

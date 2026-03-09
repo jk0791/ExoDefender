@@ -3,6 +3,7 @@ package com.jimjo.exodefender
 import android.graphics.PointF
 import android.graphics.RectF
 import androidx.core.graphics.contains
+import java.nio.FloatBuffer
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
@@ -12,6 +13,10 @@ const val MAP_GRID_SIZE = 500
 const val MAP_GRID_SPACING = 10f
 const val MAX_ALTITIUDE = 500f
 
+data class CachedTerrainMesh(
+    val vertexBuffer: FloatBuffer,
+    val pointsCount: Int
+)
 data class CivilianTotals(
     val remaining: Int,
     val initial: Int,
@@ -20,7 +25,7 @@ data class CivilianTotals(
 
 class World(val mapId: Int) {
 
-//    val filename = "map_" + mapId.toString().padStart(3, '0') + ".dat"
+    var cachedTerrainMesh: CachedTerrainMesh? = null
 
     var flightLog: FlightLog? = null
     val replayActive: Boolean

@@ -8,6 +8,7 @@ import com.jimjo.exodefender.ServerConfig.getHostServer
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.IntBuffer
 import kotlin.String
 import kotlin.collections.Map
 import kotlin.math.max
@@ -37,6 +38,12 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
     @Volatile var structureClipboard: FriendlyStructureTemplate? = null
     @Volatile var editorLastLevelId: Int? = null
     @Volatile var editorLastCameraPos: Camera.Location? = null
+
+
+    var sharedFillDrawListBuffer: IntBuffer? = null
+    var sharedLineDrawListBuffer: IntBuffer? = null
+    var sharedFillIndexCount = 0
+    var sharedLineIndexCount = 0
 
     init {
         levelsDir = File(levelsDirPath)

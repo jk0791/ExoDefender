@@ -17,6 +17,7 @@ const val SET_SCREEN_KEEP_ON = 4
 const val LAST_FLIGHTLOG_SAVED = 5
 const val RESET_GAME = 6
 const val FIRST_LANDING = 7
+const val KILL_LEVEL = 8
 
 class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererReadyListener {
 
@@ -489,6 +490,9 @@ class CustomHandler(looper: Looper, val gLView: GameSurfaceView): Handler(looper
             }
             LAST_FLIGHTLOG_SAVED -> {
                 gLView.mainActivity.levelCompletionManager.onLastFlightLogSaved()
+            }
+            KILL_LEVEL -> {
+                gLView.mainActivity.killLevel()
             }
         }
     }

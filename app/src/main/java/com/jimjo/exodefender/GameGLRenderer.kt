@@ -323,6 +323,8 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                 else {
                     audioPlayer.radio.post(RadioTrigger.FriendlyKilled, flightTimeMs)
                 }
+                // DEBUG: kill the level upon first friendly destroyed
+                handler.sendEmptyMessage(KILL_LEVEL)
             }
             is EnemyActor -> audioPlayer.radio.post(RadioTrigger.EnemyKilled, flightTimeMs)
         }
@@ -916,7 +918,14 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
         friendlyLaserBoltPool.fillPool(mProgram, vPMatrixHandle, positionHandle, mColorHandle)
 
         mapGrid.unload()
-        mapGrid.load(level.world, mProgram, vPMatrixHandle, positionHandle, mColorHandle)
+        mapGrid.load(
+            world = level.world,
+            worldManager = parent.mainActivity.levelManager.worldManager,
+            glProgram = mProgram,
+            vPMatrixHandle = vPMatrixHandle,
+            positionHandle = positionHandle,
+            mColorHandle = mColorHandle
+        )
 
         resetGame()
 
