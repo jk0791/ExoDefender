@@ -1,6 +1,8 @@
 package com.jimjo.exodefender
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.AttributeSet
@@ -29,6 +31,14 @@ class SettingsView(context: Context, attrs: AttributeSet? = null) :
     val musicVolumeControl: SeekBar
     val btnEnableVibration: Switch
     val btnEnableRadio: Switch
+    val btnSwapJoysticks: Switch
+    val btnSwapThrottle: Switch
+
+    val imgControlPostitions: ImageView
+    val bitmapControlsJrTr: Bitmap
+    val bitmapControlsJlTr: Bitmap
+    val bitmapControlsJrTl: Bitmap
+    val bitmapControlsJlTl: Bitmap
 
     val txtCurrentCallSign: TextView
 
@@ -139,6 +149,23 @@ class SettingsView(context: Context, attrs: AttributeSet? = null) :
             enableRadioChanged(isChecked)
         }
 
+        btnSwapJoysticks = this.findViewById(R.id.btnSwapJoysticks)
+        btnSwapJoysticks.setOnCheckedChangeListener { _, isChecked ->
+            swapJoysticks(isChecked)
+        }
+
+        btnSwapThrottle = this.findViewById(R.id.btnSwapThrottle)
+        btnSwapThrottle.setOnCheckedChangeListener { _, isChecked ->
+            swapThrottle(isChecked)
+        }
+
+        imgControlPostitions = this.findViewById(R.id.imgControlPostitions)
+
+        bitmapControlsJrTr = BitmapFactory.decodeResource(resources, R.drawable.control_hand_jr_tr)
+        bitmapControlsJlTr = BitmapFactory.decodeResource(resources, R.drawable.control_hand_jl_tr)
+        bitmapControlsJrTl = BitmapFactory.decodeResource(resources, R.drawable.control_hand_jr_tl)
+        bitmapControlsJlTl = BitmapFactory.decodeResource(resources, R.drawable.control_hand_jl_tl)
+
         txtCurrentCallSign = findViewById(R.id.txtCurrentCallsign)
 
         val changeButton = findViewById<Button>(R.id.btnChangeCallsign)
@@ -155,14 +182,11 @@ class SettingsView(context: Context, attrs: AttributeSet? = null) :
 
         appVersionLabel = findViewById(R.id.appVersionLabel)
 
-        findViewById<ImageView>(R.id.closeAboutDialog).apply {
-            setOnClickListener {
-                aboutView.visibility = GONE
-            }
+        findViewById<ImageView>(R.id.closeAboutDialog).setOnClickListener {
+            aboutView.visibility = GONE
         }
 
-        val closeButton = this.findViewById<Button>(R.id.btnCloseSettings)
-        closeButton.setOnClickListener({
+        this.findViewById<ImageView>(R.id.btnCloseSettings).setOnClickListener({
             mainActivity.closeSettings()
         })
 
@@ -191,7 +215,15 @@ class SettingsView(context: Context, attrs: AttributeSet? = null) :
         updateVibrationSwitch(mainActivity.haptics.enabled)
         updateRadioSwitch(mainActivity.isRadioSettingEnabled())
 
-        if (mainActivity.callsign != null) {
+        val jh = mainActivity.getJoystickHandedness()
+        val th = mainActivity.getThrottleHandedness()
+
+        btnSwapJoysticks.isChecked = jh == ControlHandedness.LEFT_HANDED
+        btnSwapThrottle.isChecked = th == ControlHandedness.LEFT_HANDED
+
+        updateControlPositionBitmap(jh, th)
+
+            if (mainActivity.callsign != null) {
             txtCurrentCallSign.text = mainActivity.callsign!!
         }
 
@@ -206,6 +238,19 @@ class SettingsView(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
+    fun updateControlPositionBitmap(joystickHandedness: ControlHandedness, throttleHandedness: ControlHandedness) {
+        val bitmap: Bitmap
+        if (joystickHandedness == ControlHandedness.RIGHT_HANDED && throttleHandedness == ControlHandedness.RIGHT_HANDED)
+            bitmap = bitmapControlsJrTr
+        else if (joystickHandedness == ControlHandedness.LEFT_HANDED && throttleHandedness == ControlHandedness.RIGHT_HANDED)
+            bitmap = bitmapControlsJlTr
+        else if (joystickHandedness == ControlHandedness.RIGHT_HANDED && throttleHandedness == ControlHandedness.LEFT_HANDED)
+            bitmap = bitmapControlsJrTl
+        else
+            bitmap = bitmapControlsJlTl
+
+        imgControlPostitions.setImageBitmap(bitmap)
+    }
     fun tranSensitivityChanged(newValue: Int) {
         mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
             putInt(mainActivity.TRAN_SENSITIVITY_SETTING, newValue)
@@ -269,6 +314,45 @@ class SettingsView(context: Context, attrs: AttributeSet? = null) :
         mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
             putBoolean(mainActivity.RADIO_ENABLED, isChecked)
         }
+    }
+
+    fun swapJoysticks(isChecked: Boolean) {
+        val surfaceView = glView
+        if (surfaceView != null) {
+            surfaceView.flightControls.joystickHandedness =
+                if (isChecked)
+                    ControlHandedness.LEFT_HANDED
+                else
+                    ControlHandedness.RIGHT_HANDED
+        }
+        mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
+            putBoolean(mainActivity.JOYSTICK_HANDEDNESS_IS_LEFT, isChecked)
+        }
+        updateControlPositionBitmap(
+            mainActivity.getJoystickHandedness(),
+            mainActivity.getThrottleHandedness()
+        )
+    }
+
+    fun swapThrottle(isChecked: Boolean) {
+        val surfaceView = glView
+        if (surfaceView != null) {
+
+            val newHandedness = if (isChecked)
+                ControlHandedness.LEFT_HANDED
+            else
+                ControlHandedness.RIGHT_HANDED
+
+            surfaceView.flightControls.throttleHandedness = newHandedness
+            surfaceView.screenOverlay.applyOverlayHandedness(newHandedness)
+        }
+        mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit {
+            putBoolean(mainActivity.THROTTLE_HANDEDNESS_IS_LEFT, isChecked)
+        }
+        updateControlPositionBitmap(
+            mainActivity.getJoystickHandedness(),
+            mainActivity.getThrottleHandedness()
+        )
     }
 
     override fun editCallsignChanged() {

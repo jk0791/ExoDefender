@@ -48,8 +48,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
     private var mDeltaTouchVertRB = 0f
 
     private var screenCenterX = 0
-    private var leftVerticalDivider = 0
-    private var rightVerticalDivider = 0
+    private var verticalDivider = 0
 
     private  var mPointerLB = -1
     private  var mPointerLT = -1
@@ -90,6 +89,8 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         renderer.parent = this
         renderer.modelManager = modelManager
         flightControls.gyroMode = !flightLog.replayActive && !levelBuilderMode
+        flightControls.joystickHandedness = mainActivity.getJoystickHandedness()
+        flightControls.throttleHandedness = mainActivity.getThrottleHandedness()
         renderer.flightControls = flightControls
         flightControls.receiver = renderer
         this.level.world.flightLog = flightLog
@@ -109,8 +110,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         super.onLayout(changed, left, top, right, bottom)
         if (!ranOnce) {
             screenCenterX = this.width / 2
-            leftVerticalDivider = (this.height * 0.2f).toInt()
-            rightVerticalDivider = (this.height * 0.7f).toInt()
+            verticalDivider = (this.height * 0.7f).toInt()
 
             val preferences = mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
             updateTranSensitivity(preferences.getInt(mainActivity.TRAN_SENSITIVITY_SETTING, 5))
@@ -142,6 +142,10 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         startThrottle = flightControls.throttle
         screenOverlay.reset(levelBuilderMode)
 
+        resetTouches()
+    }
+
+    fun resetTouches() {
         mDeltaTouchHorzLT = 0f
         mDeltaTouchVertLT = 0f
         mDeltaTouchHorzLB = 0f
@@ -161,6 +165,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         mStartTouchYRB = 0f
 
         mDownLT = false
+        mDownLB = false
         mDownRT = false
         mDownRB = false
     }
@@ -204,7 +209,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         val y = MotionEventCompat.getY(event, event.actionIndex)
 
         if (x < screenCenterX) {
-            if (y < leftVerticalDivider) {
+            if (y < verticalDivider) {
                 mStartTouchXLT = x
                 mStartTouchYLT = y
                 mDownLT = true
@@ -217,7 +222,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             }
         }
         else {
-            if (y < rightVerticalDivider) {
+            if (y < verticalDivider) {
                 mStartTouchXRT = x
                 mStartTouchYRT = y
                 mDownRT = true
@@ -227,11 +232,27 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
                 mStartTouchXRB = x
                 mStartTouchYRB = y
                 mDownRB = true
-                startThrottle = flightControls.throttle
                 mPointerRB = event.getPointerId(event.actionIndex)
             }
         }
-        flightControls.isShiftHeld = mDownLB
+
+        if (flightControls.throttleHandedness == ControlHandedness.RIGHT_HANDED) {
+            flightControls.isShiftHeld = mDownLB
+            if (mDownRB) {
+                startThrottle = flightControls.throttle
+            }
+        }
+        else {
+            flightControls.isShiftHeld = mDownRB
+            if (mDownLB) {
+                startThrottle = flightControls.throttle
+            }
+        }
+
+
+
+
+
 //        println("ACTION_DOWN mDownRB=$mDownRB mDownRT=$mDownRT")
     }
 
@@ -240,7 +261,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         val y1 = event.getY()
 
         if (x1 < screenCenterX) {
-            if (y1 < leftVerticalDivider && mDownLT) {
+            if (y1 < verticalDivider && mDownLT) {
                 mDeltaTouchHorzLT = x1 - mStartTouchXLT
                 mDeltaTouchVertLT = y1 - mStartTouchYLT
             }
@@ -250,7 +271,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             }
         }
         else {
-            if (y1 < rightVerticalDivider) {
+            if (y1 < verticalDivider) {
                 mDeltaTouchHorzRT = x1 - mStartTouchXRT
                 mDeltaTouchVertRT = y1 - mStartTouchYRT
             }
@@ -270,7 +291,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             val y2 = event.getY(1)
 
             if (x2 < screenCenterX) {
-                if (y2 < leftVerticalDivider && mDownLT) {
+                if (y2 < verticalDivider && mDownLT) {
                     mDeltaTouchHorzLT = x2 - mStartTouchXLT
                     mDeltaTouchVertLT = y2 - mStartTouchYLT
                 }
@@ -280,7 +301,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
                 }
             }
             else {
-                if (y2 < rightVerticalDivider) {
+                if (y2 < verticalDivider) {
                     mDeltaTouchHorzRT = x2 - mStartTouchXRT
                     mDeltaTouchVertRT = y2 - mStartTouchYRT
                 }
@@ -301,7 +322,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             val y3 = event.getY(2)
 
             if (x3 < screenCenterX) {
-                if (y3 < leftVerticalDivider && mDownLT) {
+                if (y3 < verticalDivider && mDownLT) {
                     mDeltaTouchHorzLT = x3 - mStartTouchXLT
                     mDeltaTouchVertLT = y3 - mStartTouchYLT
                 }
@@ -311,14 +332,10 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
                 }
             }
             else {
-                if (y3 < rightVerticalDivider) {
+                if (y3 < verticalDivider) {
                     mDeltaTouchHorzRT = x3 - mStartTouchXRT
                     mDeltaTouchVertRT = y3 - mStartTouchYRT
                 }
-//                else {
-//                    mDeltaTouchHorzRB = x3 - mStartTouchXRB
-//                    mDeltaTouchVertRB = y3 - mStartTouchYRB
-//                }
                 else if (mDownRB) {
                     mDeltaTouchHorzRB = x3 - mStartTouchXRB
                     mDeltaTouchVertRB = y3 - mStartTouchYRB
@@ -326,23 +343,62 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             }
         }
 
-        flightControls.translationHorz = Math.max(Math.min(mDeltaTouchHorzLB / maxTranslationControlDeflection, 1f), -1f)
-        flightControls.translationVert = Math.max(Math.min(mDeltaTouchVertLB / maxTranslationControlDeflection, 1f), -1f)
+        val tranHorzDeflection: Float
+        val tranVertDeflection: Float
+        val rotHorzDeflection: Float
+        val rotVertDeflection: Float
+        val firingDown: Boolean
+
+        if (flightControls.joystickHandedness == ControlHandedness.RIGHT_HANDED) {
+            tranHorzDeflection = mDeltaTouchHorzLT
+            tranVertDeflection = mDeltaTouchVertLT
+            rotHorzDeflection = mDeltaTouchHorzRT
+            rotVertDeflection = mDeltaTouchVertRT
+            firingDown = mDownRT
+        }
+        else {  // ControlHandedness.LEFT_HANDED
+            tranHorzDeflection = mDeltaTouchHorzRT
+            tranVertDeflection = mDeltaTouchVertRT
+            rotHorzDeflection = mDeltaTouchHorzLT
+            rotVertDeflection = mDeltaTouchVertLT
+            firingDown = mDownLT
+        }
+
+        val tranDown: Boolean
+        val throttleDeflection: Float
+        val throttleDown: Boolean
+
+        if (flightControls.throttleHandedness == ControlHandedness.RIGHT_HANDED) {
+            tranDown = mDownLT
+            throttleDeflection = mDeltaTouchHorzRB
+            throttleDown = mDownRB
+        }
+        else {  // ControlHandedness.LEFT_HANDED
+            tranDown = mDownRT
+            throttleDeflection = mDeltaTouchHorzLB
+            throttleDown = mDownLB
+        }
+
+
+
+
+        flightControls.translationHorz = Math.max(Math.min(tranHorzDeflection / maxTranslationControlDeflection, 1f), -1f)
+        flightControls.translationVert = Math.max(Math.min(tranVertDeflection / maxTranslationControlDeflection, 1f), -1f)
 
         if (flightControls.gyroMode) {
-            if (mDownRT && !flightControls.firing) flightControls.firingStarted()
-            flightControls.firing = mDownRT
+            if (firingDown && !flightControls.firing) flightControls.firingStarted()
+            flightControls.firing = firingDown
         }
         else {
-            flightControls.rotationHorz = Math.max(Math.min(mDeltaTouchHorzRT / maxTranslationControlDeflection, 1f), -1f)
-            flightControls.rotationVert = Math.max(Math.min(mDeltaTouchVertRT / maxTranslationControlDeflection, 1f), -1f)
+            flightControls.rotationHorz = Math.max(Math.min(rotHorzDeflection / maxTranslationControlDeflection, 1f), -1f)
+            flightControls.rotationVert = Math.max(Math.min(rotVertDeflection / maxTranslationControlDeflection, 1f), -1f)
         }
 
-        if (mDownRB) {
-            flightControls.throttle = Math.max(Math.min(startThrottle + mDeltaTouchHorzRB / maxThrottleControlDeflection, 1f), flightControls.minThrottle)
+        if (throttleDown) {
+            flightControls.throttle = Math.max(Math.min(startThrottle + throttleDeflection / maxThrottleControlDeflection, 1f), flightControls.minThrottle)
             screenOverlay.throttle.update()
         }
-        if (mDownLB) {
+        if (tranDown) {
             screenOverlay.tranDisplay.update(flightControls.translationHorz, flightControls.translationVert)
         }
     }
@@ -353,49 +409,70 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
 
 //        println("ACTION_UP event.actionIndex=${event.actionIndex} pointerId=$pointerId mPointerLB=$mPointerLB mPointerRB=$mPointerRB")
 
-        if (pointerId == mPointerLB) {
-            mDownLB = false
-            mDeltaTouchHorzLB = 0f
-            mDeltaTouchVertLB = 0f
-            flightControls.translationHorz = 0f
-            flightControls.translationVert = 0f
-            screenOverlay.tranDisplay.reset()
-            mPointerLB = -1
-        }
-        else if (pointerId == mPointerLT) {
+        if (pointerId == mPointerLT) {
             mDownLT = false
             mPointerLT = -1
+
+            if (flightControls.joystickHandedness == ControlHandedness.RIGHT_HANDED) {
+                flightControls.springTranslationBack()
+                screenOverlay.tranDisplay.reset()
+            }
+            else {
+                flightControls.releaseFiring()
+                renderer.shipLaserBoltPool.sinceLastFired = 0
+                if (!flightControls.gyroMode) flightControls.springRotationBack()
+            }
+        }
+        else if (pointerId == mPointerLB) {
+            mDownLB = false
+            mPointerLB = -1
+
+            if (flightControls.throttleHandedness == ControlHandedness.LEFT_HANDED) {
+                flightControls.springThrottleBack()
+                screenOverlay.throttle.update()
+            }
         }
         else if (pointerId == mPointerRB) {
             mDownRB = false
-            mDeltaTouchHorzRB = 0f
-            mDeltaTouchVertRB = 0f
             mPointerRB = -1
 
-            // sptring throttle and update throttle display on HUD
-            flightControls.springThrottleBack()
-            screenOverlay.throttle.update()
+            if (flightControls.throttleHandedness == ControlHandedness.RIGHT_HANDED) {
+                flightControls.springThrottleBack()
+                screenOverlay.throttle.update()
+            }
         }
         else if (pointerId == mPointerRT) {
+
             mDownRT = false
-            if (!flightControls.gyroMode) {
-                flightControls.rotationHorz = 0f
-                flightControls.rotationVert = 0f
-            }
-            flightControls.firing = false
-            renderer.shipLaserBoltPool.sinceLastFired = 0
             mPointerRT = -1
+
+            if (flightControls.joystickHandedness == ControlHandedness.RIGHT_HANDED) {
+                flightControls.releaseFiring()
+                renderer.shipLaserBoltPool.sinceLastFired = 0
+                if (!flightControls.gyroMode) flightControls.springRotationBack()
+            }
+            else {
+                flightControls.springTranslationBack()
+                screenOverlay.tranDisplay.reset()
+            }
+
         }
 
-        mDeltaTouchHorzRT = 0f
-        mDeltaTouchVertRT = 0f
-
-        flightControls.isShiftHeld = mDownLB
+        flightControls.isShiftHeld =
+            if (flightControls.joystickHandedness == ControlHandedness.RIGHT_HANDED)
+                mDownLB
+            else
+                mDownRB
     }
 }
 
 interface FlightControlReceiver{
     fun firingStarted()
+}
+
+enum class ControlHandedness {
+    RIGHT_HANDED,
+    LEFT_HANDED
 }
 class FlightControls(
     var gyroMode: Boolean = true,
@@ -406,6 +483,8 @@ class FlightControls(
     var translationVert: Float = 0f,
     var firing: Boolean = false,
     var setDeviceNeutral: Boolean = false,
+    var throttleHandedness: ControlHandedness = ControlHandedness.RIGHT_HANDED,
+    var joystickHandedness: ControlHandedness = ControlHandedness.RIGHT_HANDED,
 ) {
 
     enum class ThrottleMode {CAMERA_CONTROL, GAME}
@@ -449,6 +528,22 @@ class FlightControls(
                 else if (throttle < 0.05f) throttle = 0f
             }
         }
+    }
+
+    fun springTranslationBack() {
+        translationHorz = 0f
+        translationVert = 0f
+    }
+
+    fun springRotationBack() {
+        rotationHorz = 0f
+        rotationVert = 0f
+    }
+
+
+
+    fun releaseFiring() {
+        firing = false
     }
 
     override fun toString(): String {

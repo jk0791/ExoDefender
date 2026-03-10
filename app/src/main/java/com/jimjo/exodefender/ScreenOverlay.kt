@@ -1,6 +1,7 @@
 package com.jimjo.exodefender
 
 import android.content.Context
+import android.content.res.Resources
 import android.os.Message
 import android.util.AttributeSet
 import android.view.ViewTreeObserver
@@ -12,6 +13,10 @@ import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
 import android.os.Handler
 import android.os.Looper
+import android.view.LayoutInflater
+import android.view.View
+import androidx.constraintlayout.widget.ConstraintSet
+
 
 
 enum class PausePlayButtonState {PLAY, PAUSE, RESET}
@@ -20,6 +25,12 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     ConstraintLayout(context, attrs), JoystickDisplaylListener, OnRendererReadyListener, WriteFileRequester {
 
     private val mainActivity = context as MainActivity
+    private val overlayRoot: ConstraintLayout
+
+    private val controlRowRoot: ConstraintLayout by lazy {
+        findViewById<View>(R.id.throttle).parent as ConstraintLayout
+    }
+
     val replayController = ScreenOverlayReplayController(this)
     lateinit var gLView: GameSurfaceView
     lateinit private var currentLevel: Level
@@ -90,7 +101,8 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
     var lastClickedSide: MarkerClickSide? = null
 
     init {
-        inflate(context, R.layout.screen_overlay, this)
+        overlayRoot = LayoutInflater.from(context)
+            .inflate(R.layout.screen_overlay, this, true) as ConstraintLayout
 
 //        setWillNotDraw(false)
 
@@ -432,6 +444,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         structureRadioWarningGiven = false
 
         setDisplayFrozen(false)
+        applyOverlayHandedness(gLView.flightControls.throttleHandedness)
 
         val destructibleStructure = currentLevel.world.destructibleStructure
         if (destructibleStructure != null && !levelBuilderMode) {
@@ -451,7 +464,7 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         mainActivity.setNeutral()
     }
 
-
+    
 
     override fun onRendererReady() {
         if (replayMode) {
@@ -526,6 +539,72 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         structureCountdownDisplay.pauseIfFlashing(frozen)
         attitudeDisplay.setDisplayState(frozen)
     }
+
+    fun applyOverlayHandedness(layoutMode: ControlHandedness) {
+
+        val root = controlRowRoot
+
+        val set = ConstraintSet()
+        set.clone(root)
+
+        val tran = R.id.tranDisplay
+        val attitude = R.id.attitudeDisplay
+        val civ = R.id.civiliansOnboardDisplay
+        val center = R.id.linearLayout
+        val throt = R.id.throttle
+
+        fun clearHorizontal(id: Int) {
+            set.clear(id, ConstraintSet.START)
+            set.clear(id, ConstraintSet.END)
+            set.clear(id, ConstraintSet.LEFT)
+            set.clear(id, ConstraintSet.RIGHT)
+        }
+
+        clearHorizontal(tran)
+        clearHorizontal(attitude)
+        clearHorizontal(civ)
+        clearHorizontal(throt)
+
+        if (layoutMode == ControlHandedness.LEFT_HANDED) {
+            // throttle | center | civ | tran | attitude
+
+            set.connect(throt, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, dp(16))
+
+            set.connect(civ, ConstraintSet.START, center, ConstraintSet.END, 0)
+            set.connect(civ, ConstraintSet.END, tran, ConstraintSet.START, 0)
+
+            set.connect(tran, ConstraintSet.START, civ, ConstraintSet.END, 20)
+            set.connect(tran, ConstraintSet.END, attitude, ConstraintSet.START, 0)
+
+            set.connect(attitude, ConstraintSet.START, tran, ConstraintSet.END, 20)
+            set.connect(attitude, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, 70)
+        } else {
+            // tran | attitude | civ | center | throttle
+
+            set.connect(tran, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 70)
+            set.connect(tran, ConstraintSet.END, attitude, ConstraintSet.START, 0)
+
+            set.connect(attitude, ConstraintSet.START, tran, ConstraintSet.END, 20)
+            set.connect(attitude, ConstraintSet.END, civ, ConstraintSet.START, 0)
+
+            set.connect(civ, ConstraintSet.START, attitude, ConstraintSet.END, 0)
+            set.connect(civ, ConstraintSet.END, center, ConstraintSet.START, 0)
+
+            set.connect(throt, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, 16)
+        }
+
+        set.applyTo(root)
+        root.requestLayout()
+    }
+    private fun clearHorizontal(set: ConstraintSet, id: Int) {
+        set.clear(id, ConstraintSet.START)
+        set.clear(id, ConstraintSet.END)
+        set.clear(id, ConstraintSet.LEFT)
+        set.clear(id, ConstraintSet.RIGHT)
+    }
+
+    private fun dp(value: Int): Int =
+        (value * Resources.getSystem().displayMetrics.density).toInt()
 
     // REPLAY EDITOR
 

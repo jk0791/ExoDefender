@@ -47,12 +47,13 @@ class LevelManager(val context: Context): NetworkResponseReceiver {
 
     init {
         levelsDir = File(levelsDirPath)
+    }
+
+    fun initialize() {
         if (!levelsDir.exists()) {
             levelsDir.mkdirs()
         }
-
         worldManager.readMapFiles()
-
     }
 
     fun filenameFromId(id: Int): String = "lvl${id}.dat"

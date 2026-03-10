@@ -324,7 +324,7 @@ class GameGLRenderer : GLSurfaceView.Renderer, ModelParent, WriteFileRequester, 
                     audioPlayer.radio.post(RadioTrigger.FriendlyKilled, flightTimeMs)
                 }
                 // DEBUG: kill the level upon first friendly destroyed
-                handler.sendEmptyMessage(KILL_LEVEL)
+//                handler.sendEmptyMessage(KILL_LEVEL)
             }
             is EnemyActor -> audioPlayer.radio.post(RadioTrigger.EnemyKilled, flightTimeMs)
         }

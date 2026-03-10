@@ -42,9 +42,9 @@ class AudioPlayer(val context: Context) {
 
     // SFX
 //    val laser1 = Soundfile(R.raw.laser1, 0.5f)
-    val laser2 = Soundfile(R.raw.laser2, 0.5f)
-    val laser2_low = Soundfile(R.raw.laser2_low, 0.2f)
-    val laser2_high = Soundfile(R.raw.laser2_high, 0.2f)
+    val laser_m = Soundfile(R.raw.laser_m, 0.5f)
+    val laser_l = Soundfile(R.raw.laser_l, 0.5f)
+    val laser_h = Soundfile(R.raw.laser_h, 0.5f)
     val explosion1 = Soundfile(R.raw.explosion1, 1f)
     val explosion2 = Soundfile(R.raw.explosion2, 1f)
     val explosion3 = Soundfile(R.raw.explosion3, 1.5f)
@@ -71,16 +71,16 @@ class AudioPlayer(val context: Context) {
     // --- Radio clips ---
 
     private val radioCasStarted = listOf(
-        RadioClipVariant(rc(R.raw.radio_arrival_01_a, 0.90f, 2200), rc(R.raw.radio_arrival_01_b, 0.90f, 2200)),
-        RadioClipVariant(rc(R.raw.radio_arrival_02_a, 0.90f, 2100), rc(R.raw.radio_arrival_02_b, 0.90f, 2100)),
-        RadioClipVariant(rc(R.raw.radio_arrival_03_a, 0.90f, 2200), rc(R.raw.radio_arrival_03_b, 0.90f, 2200)),
-        RadioClipVariant(rc(R.raw.radio_arrival_04_a, 0.90f, 2200), rc(R.raw.radio_arrival_04_b, 0.90f, 2200)),
-        RadioClipVariant(rc(R.raw.radio_arrival_05_a, 0.90f, 2100), rc(R.raw.radio_arrival_05_b, 0.90f, 2100)),
-        RadioClipVariant(rc(R.raw.radio_arrival_06_a, 0.90f, 2200), rc(R.raw.radio_arrival_06_b, 0.90f, 2200)),
-        RadioClipVariant(rc(R.raw.radio_arrival_07_a, 0.90f, 2200), rc(R.raw.radio_arrival_07_b, 0.90f, 2200)),
-        RadioClipVariant(rc(R.raw.radio_arrival_08_a, 0.90f, 2100), rc(R.raw.radio_arrival_08_b, 0.90f, 2100)),
-        RadioClipVariant(rc(R.raw.radio_arrival_09_a, 0.90f, 2200), rc(R.raw.radio_arrival_09_b, 0.90f, 2200)),
-        RadioClipVariant(rc(R.raw.radio_arrival_10_a, 0.90f, 2100), rc(R.raw.radio_arrival_10_b, 0.90f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_cas_start_01_a, 0.90f, 2200), rc(R.raw.radio_cas_start_01_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_cas_start_02_a, 0.90f, 2100), rc(R.raw.radio_cas_start_02_b, 0.90f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_cas_start_03_a, 0.90f, 2200), rc(R.raw.radio_cas_start_03_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_cas_start_04_a, 0.90f, 2200), rc(R.raw.radio_cas_start_04_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_cas_start_05_a, 0.90f, 2100), rc(R.raw.radio_cas_start_05_b, 0.90f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_cas_start_06_a, 0.90f, 2200), rc(R.raw.radio_cas_start_06_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_cas_start_07_a, 0.90f, 2200), rc(R.raw.radio_cas_start_07_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_cas_start_08_a, 0.90f, 2100), rc(R.raw.radio_cas_start_08_b, 0.90f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_cas_start_09_a, 0.90f, 2200), rc(R.raw.radio_cas_start_09_b, 0.90f, 2200)),
+        RadioClipVariant(rc(R.raw.radio_cas_start_10_a, 0.90f, 2100), rc(R.raw.radio_cas_start_10_b, 0.90f, 2100)),
     )
 
     private val radioFriendlyLoss = listOf(
@@ -161,13 +161,14 @@ class AudioPlayer(val context: Context) {
     )
 
     private val radioEvacWarning = listOf(
-        RadioClipVariant(rc(R.raw.radio_temp_evac_warning_01_a, 1.0f, 2500), rc(R.raw.radio_temp_evac_warning_01_b, 1.0f, 2500)),
-        RadioClipVariant(rc(R.raw.radio_temp_evac_warning_02_a, 1.0f, 2500), rc(R.raw.radio_temp_evac_warning_02_b, 1.0f, 2500)),
+        RadioClipVariant(rc(R.raw.radio_evac_warning_01_a, 1.0f, 2500), rc(R.raw.radio_evac_warning_01_b, 1.0f, 2500)),
+        RadioClipVariant(rc(R.raw.radio_evac_warning_02_a, 1.0f, 2500), rc(R.raw.radio_evac_warning_02_b, 1.0f, 2500)),
     )
 
     private val radioStructureDestroyed = listOf(
-        RadioClipVariant(rc(R.raw.radio_temp_structure_destroyed_01_a, 1.0f, 2100), rc(R.raw.radio_temp_structure_destroyed_01_b, 1.0f, 2100)),
-        RadioClipVariant(rc(R.raw.radio_temp_structure_destroyed_02_a, 1.0f, 2100), rc(R.raw.radio_temp_structure_destroyed_02_b, 1.0f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_structure_destroyed_01_a, 1.0f, 2100), rc(R.raw.radio_structure_destroyed_01_b, 1.0f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_structure_destroyed_02_a, 1.0f, 2100), rc(R.raw.radio_structure_destroyed_02_b, 1.0f, 2100)),
+        RadioClipVariant(rc(R.raw.radio_structure_destroyed_03_a, 1.0f, 2100), rc(R.raw.radio_structure_destroyed_03_b, 1.0f, 2100)),
     )
 
     // --- Radio profiles ---
@@ -284,9 +285,9 @@ class AudioPlayer(val context: Context) {
             .build()
 
         // Load SFX
-        laser2.loadIntoSoundPool(context, soundPool)
-        laser2_low.loadIntoSoundPool(context, soundPool)
-        laser2_high.loadIntoSoundPool(context, soundPool)
+        laser_m.loadIntoSoundPool(context, soundPool)
+        laser_l.loadIntoSoundPool(context, soundPool)
+        laser_h.loadIntoSoundPool(context, soundPool)
         explosion1.loadIntoSoundPool(context, soundPool)
         explosion2.loadIntoSoundPool(context, soundPool)
         explosion3.loadIntoSoundPool(context, soundPool)
@@ -338,10 +339,13 @@ class AudioPlayer(val context: Context) {
     // --- SFX helpers ---
 
     fun playLaser(): Int = playSound(
-        when (Random.nextInt(3)) {
-            0 -> laser2
-            1 -> laser2
-            else -> laser2
+        when (Random.nextInt(6)) {
+            0 -> laser_m
+            1 -> laser_m
+            2 -> laser_m
+            3 -> laser_m
+            4 -> laser_l
+            else -> laser_h
         }
     )
 

@@ -1398,7 +1398,7 @@ class ShipActor(
                         yawRad,
                         -pitchRad
                     )
-                    parent.audioPlayer.playSound(parent.audioPlayer.laser2)
+                    parent.audioPlayer.playSound(parent.audioPlayer.laser_m)
                 }
             }
 

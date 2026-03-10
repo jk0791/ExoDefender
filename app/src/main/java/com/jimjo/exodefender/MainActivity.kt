@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.res.Configuration
+import android.graphics.Color
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -74,6 +75,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
     val ROT_SENSITIVITY_SETTING = "rot_sensitivity_setting"
     val EFFECTS_VOLUME_SETTING = "effects_volume_setting"
     val MUSIC_VOLUME_SETTING = "music_volume_setting"
+    val JOYSTICK_HANDEDNESS_IS_LEFT = "joystick_handedness_is_left"
+    val THROTTLE_HANDEDNESS_IS_LEFT = "throttle_handedness_is_left"
     val VIBRATION_EFFECT = "vibration_effect"
     val RADIO_ENABLED = "radio_enabled"
     val LAST_USED_FEATURE = "last_used_feature" // "home", "milkruns", "missions"
@@ -225,10 +228,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
 
         modelManager = ModelManager(assets)
 
-        // TODO support levels and maps stored in database
-        // DEEBUG: uncomment to copy levels and maps from raw
-//        levelManager.copyLevelsFromRaw()
-        levelManager.loadLevelsFromInternalStorage()
 
         mainLayout = this.findViewById(R.id.mainLayout)
         val mainFrameLayoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
@@ -314,6 +313,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
 
         getAppVersion()
 
+        levelManager.initialize()
+        levelManager.loadLevelsFromInternalStorage()
+
         adminLogView.printout("Connecting to ${getHostServer(this)}...")
         Thread({ Networker(this, getHostServer(this)).testConn() }).start()
 
@@ -357,6 +359,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
 
     fun isRadioSettingEnabled() =
         getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).getBoolean(RADIO_ENABLED, true)
+
+    fun getJoystickHandedness() =
+        if (getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).getBoolean(JOYSTICK_HANDEDNESS_IS_LEFT, false))
+            ControlHandedness.LEFT_HANDED
+        else
+            ControlHandedness.RIGHT_HANDED
+
+    fun getThrottleHandedness() =
+        if (getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).getBoolean(THROTTLE_HANDEDNESS_IS_LEFT, false))
+            ControlHandedness.LEFT_HANDED
+        else
+            ControlHandedness.RIGHT_HANDED
+
 
     private fun showStartupNotice() {
         startupNoticeView.load(

@@ -11,6 +11,7 @@ import java.nio.IntBuffer
 
 class WorldManager(val context: Context) {
 
+    val mainActivity = context as MainActivity
     val mapFiles = listOf(
         Pair(R.raw.map_000, 0),
         Pair(R.raw.map_001, 1),
@@ -36,6 +37,8 @@ class WorldManager(val context: Context) {
 
         worlds.clear()
         worldLookupById.clear()
+
+        mainActivity.adminLogView.printout("Building terrain mesh for worlds...")
 
         for (mapfile in mapFiles) {
             val inputStream = context.resources.openRawResource(mapfile.first)
@@ -66,6 +69,7 @@ class WorldManager(val context: Context) {
                 }
                 bufferedReader.close()
 
+
                 buildCachedTerrainMesh(world)
 
                 worlds.add(world)
@@ -80,7 +84,7 @@ class WorldManager(val context: Context) {
     }
 
     private fun buildCachedTerrainMesh(world: World) {
-        println("Building terrain mesh for world ${world.mapId}")
+//        println("Building terrain mesh for world ${world.mapId}")
         val pointsCount = MAP_GRID_SIZE * MAP_GRID_SIZE
         val coords = FloatArray(pointsCount * COORDS_PER_VERTEX)
 

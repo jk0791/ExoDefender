@@ -58,19 +58,11 @@
             app:layout_constraintStart_toEndOf="@+id/sidebarLayout"
             app:layout_constraintEnd_toEndOf="parent" >
 
-
-
-
             <com.jimjo.exodefender.HomeView
                 android:id="@+id/homeView"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" >
+                android:layout_height="match_parent" />
 
-                <com.jimjo.exodefender.AdminLog
-                    android:id="@+id/adminLogView"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-            </com.jimjo.exodefender.HomeView>
 
             <com.jimjo.exodefender.StoryView
                 android:id="@+id/storyView"
@@ -163,6 +155,12 @@
         android:id="@+id/adminView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <com.jimjo.exodefender.AdminLog
+        android:id="@+id/adminLogView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
 
 
 </FrameLayout>
