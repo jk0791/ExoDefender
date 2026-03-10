@@ -279,10 +279,10 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
                 mDeltaTouchHorzRB = x1 - mStartTouchXRB
                 mDeltaTouchVertRB = y1 - mStartTouchYRB
             }
-            if (mDownRB) {
-                mDeltaTouchHorzRB = x1 - mStartTouchXRB
-                mDeltaTouchVertRB = y1 - mStartTouchYRB
-            }
+//            if (mDownRB) {
+//                mDeltaTouchHorzRB = x1 - mStartTouchXRB
+//                mDeltaTouchVertRB = y1 - mStartTouchYRB
+//            }
         }
 
         if (event.pointerCount == 2) {
@@ -305,14 +305,14 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
                     mDeltaTouchHorzRT = x2 - mStartTouchXRT
                     mDeltaTouchVertRT = y2 - mStartTouchYRT
                 }
-//                else {
-//                    mDeltaTouchHorzRB = x2 - mStartTouchXRB
-//                    mDeltaTouchVertRB = y2 - mStartTouchYRB
-//                }
-                else if (mDownRB) {
+                else {
                     mDeltaTouchHorzRB = x2 - mStartTouchXRB
                     mDeltaTouchVertRB = y2 - mStartTouchYRB
                 }
+//                if (mDownRB) {
+//                    mDeltaTouchHorzRB = x2 - mStartTouchXRB
+//                    mDeltaTouchVertRB = y2 - mStartTouchYRB
+//                }
             }
         }
 
@@ -336,7 +336,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
                     mDeltaTouchHorzRT = x3 - mStartTouchXRT
                     mDeltaTouchVertRT = y3 - mStartTouchYRT
                 }
-                else if (mDownRB) {
+                else {
                     mDeltaTouchHorzRB = x3 - mStartTouchXRB
                     mDeltaTouchVertRB = y3 - mStartTouchYRB
                 }
@@ -359,7 +359,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         else {  // ControlHandedness.LEFT_HANDED
             tranHorzDeflection = mDeltaTouchHorzRT
             tranVertDeflection = mDeltaTouchVertRT
-            rotHorzDeflection = mDeltaTouchHorzLT
+                rotHorzDeflection = mDeltaTouchHorzLT
             rotVertDeflection = mDeltaTouchVertLT
             firingDown = mDownLT
         }
@@ -378,9 +378,6 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             throttleDeflection = mDeltaTouchHorzLB
             throttleDown = mDownLB
         }
-
-
-
 
         flightControls.translationHorz = Math.max(Math.min(tranHorzDeflection / maxTranslationControlDeflection, 1f), -1f)
         flightControls.translationVert = Math.max(Math.min(tranVertDeflection / maxTranslationControlDeflection, 1f), -1f)
@@ -412,6 +409,8 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         if (pointerId == mPointerLT) {
             mDownLT = false
             mPointerLT = -1
+            mDeltaTouchHorzLT = 0f
+            mDeltaTouchVertLT = 0f
 
             if (flightControls.joystickHandedness == ControlHandedness.RIGHT_HANDED) {
                 flightControls.springTranslationBack()
@@ -422,6 +421,24 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
                 renderer.shipLaserBoltPool.sinceLastFired = 0
                 if (!flightControls.gyroMode) flightControls.springRotationBack()
             }
+        }
+        else if (pointerId == mPointerRT) {
+
+            mDownRT = false
+            mPointerRT = -1
+            mDeltaTouchHorzRT = 0f
+            mDeltaTouchVertRT = 0f
+
+            if (flightControls.joystickHandedness == ControlHandedness.RIGHT_HANDED) {
+                flightControls.releaseFiring()
+                renderer.shipLaserBoltPool.sinceLastFired = 0
+                if (!flightControls.gyroMode) flightControls.springRotationBack()
+            }
+            else {
+                flightControls.springTranslationBack()
+                screenOverlay.tranDisplay.reset()
+            }
+
         }
         else if (pointerId == mPointerLB) {
             mDownLB = false
@@ -440,22 +457,6 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
                 flightControls.springThrottleBack()
                 screenOverlay.throttle.update()
             }
-        }
-        else if (pointerId == mPointerRT) {
-
-            mDownRT = false
-            mPointerRT = -1
-
-            if (flightControls.joystickHandedness == ControlHandedness.RIGHT_HANDED) {
-                flightControls.releaseFiring()
-                renderer.shipLaserBoltPool.sinceLastFired = 0
-                if (!flightControls.gyroMode) flightControls.springRotationBack()
-            }
-            else {
-                flightControls.springTranslationBack()
-                screenOverlay.tranDisplay.reset()
-            }
-
         }
 
         flightControls.isShiftHeld =
