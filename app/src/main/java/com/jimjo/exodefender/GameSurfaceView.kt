@@ -237,111 +237,48 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         }
 
         if (flightControls.throttleHandedness == ControlHandedness.RIGHT_HANDED) {
-            flightControls.isShiftHeld = mDownLB
+            flightControls.isShiftHeld = mDownLT
             if (mDownRB) {
                 startThrottle = flightControls.throttle
             }
         }
         else {
-            flightControls.isShiftHeld = mDownRB
+            flightControls.isShiftHeld = mDownRT
             if (mDownLB) {
                 startThrottle = flightControls.throttle
             }
         }
-
-
-
-
-
-//        println("ACTION_DOWN mDownRB=$mDownRB mDownRT=$mDownRT")
     }
 
     fun actionMove(event: MotionEvent) {
-        val x1 = event.getX()
-        val y1 = event.getY()
 
-        if (x1 < screenCenterX) {
-            if (y1 < verticalDivider && mDownLT) {
-                mDeltaTouchHorzLT = x1 - mStartTouchXLT
-                mDeltaTouchVertLT = y1 - mStartTouchYLT
-            }
-            else if (mDownLB) {
-                mDeltaTouchHorzLB = x1 - mStartTouchXLB
-                mDeltaTouchVertLB = y1 - mStartTouchYLB
-            }
-        }
-        else {
-            if (y1 < verticalDivider) {
-                mDeltaTouchHorzRT = x1 - mStartTouchXRT
-                mDeltaTouchVertRT = y1 - mStartTouchYRT
-            }
-            else {
-                mDeltaTouchHorzRB = x1 - mStartTouchXRB
-                mDeltaTouchVertRB = y1 - mStartTouchYRB
-            }
-//            if (mDownRB) {
-//                mDeltaTouchHorzRB = x1 - mStartTouchXRB
-//                mDeltaTouchVertRB = y1 - mStartTouchYRB
-//            }
-        }
-
-        if (event.pointerCount == 2) {
-
-            val x2 = event.getX(1)
-            val y2 = event.getY(1)
-
-            if (x2 < screenCenterX) {
-                if (y2 < verticalDivider && mDownLT) {
-                    mDeltaTouchHorzLT = x2 - mStartTouchXLT
-                    mDeltaTouchVertLT = y2 - mStartTouchYLT
+        fun calcTouchDeltas(x: Float, y: Float) {
+            if (x < screenCenterX) {
+                if (y < verticalDivider && mDownLT) {
+                    mDeltaTouchHorzLT = x - mStartTouchXLT
+                    mDeltaTouchVertLT = y - mStartTouchYLT
                 }
                 else if (mDownLB) {
-                    mDeltaTouchHorzLB = x2 - mStartTouchXLB
-                    mDeltaTouchVertLB = y2 - mStartTouchYLB
+                    mDeltaTouchHorzLB = x - mStartTouchXLB
+                    mDeltaTouchVertLB = y - mStartTouchYLB
                 }
             }
             else {
-                if (y2 < verticalDivider) {
-                    mDeltaTouchHorzRT = x2 - mStartTouchXRT
-                    mDeltaTouchVertRT = y2 - mStartTouchYRT
+                if (y < verticalDivider) {
+                    mDeltaTouchHorzRT = x - mStartTouchXRT
+                    mDeltaTouchVertRT = y - mStartTouchYRT
                 }
                 else {
-                    mDeltaTouchHorzRB = x2 - mStartTouchXRB
-                    mDeltaTouchVertRB = y2 - mStartTouchYRB
+                    mDeltaTouchHorzRB = x - mStartTouchXRB
+                    mDeltaTouchVertRB = y - mStartTouchYRB
                 }
-//                if (mDownRB) {
-//                    mDeltaTouchHorzRB = x2 - mStartTouchXRB
-//                    mDeltaTouchVertRB = y2 - mStartTouchYRB
-//                }
             }
         }
 
-        if (event.pointerCount == 3) {
-
-            val x3 = event.getX(2)
-            val y3 = event.getY(2)
-
-            if (x3 < screenCenterX) {
-                if (y3 < verticalDivider && mDownLT) {
-                    mDeltaTouchHorzLT = x3 - mStartTouchXLT
-                    mDeltaTouchVertLT = y3 - mStartTouchYLT
-                }
-                else if (mDownLB) {
-                    mDeltaTouchHorzLB = x3 - mStartTouchXLB
-                    mDeltaTouchVertLB = y3 - mStartTouchYLB
-                }
-            }
-            else {
-                if (y3 < verticalDivider) {
-                    mDeltaTouchHorzRT = x3 - mStartTouchXRT
-                    mDeltaTouchVertRT = y3 - mStartTouchYRT
-                }
-                else {
-                    mDeltaTouchHorzRB = x3 - mStartTouchXRB
-                    mDeltaTouchVertRB = y3 - mStartTouchYRB
-                }
-            }
-        }
+        // apply each touch pointer's movements to the appropriate deltas
+        calcTouchDeltas(event.getX(), event.getY())
+        if (event.pointerCount == 2) calcTouchDeltas(event.getX(1), event.getY(1))
+        if (event.pointerCount == 3) calcTouchDeltas(event.getX(2), event.getY(2))
 
         val tranHorzDeflection: Float
         val tranVertDeflection: Float
@@ -415,6 +352,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             if (flightControls.joystickHandedness == ControlHandedness.RIGHT_HANDED) {
                 flightControls.springTranslationBack()
                 screenOverlay.tranDisplay.reset()
+                flightControls.isShiftHeld = false
             }
             else {
                 flightControls.releaseFiring()
@@ -437,13 +375,13 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             else {
                 flightControls.springTranslationBack()
                 screenOverlay.tranDisplay.reset()
+                flightControls.isShiftHeld = false
             }
 
         }
         else if (pointerId == mPointerLB) {
             mDownLB = false
             mPointerLB = -1
-
             if (flightControls.throttleHandedness == ControlHandedness.LEFT_HANDED) {
                 flightControls.springThrottleBack()
                 screenOverlay.throttle.update()
@@ -452,18 +390,11 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         else if (pointerId == mPointerRB) {
             mDownRB = false
             mPointerRB = -1
-
             if (flightControls.throttleHandedness == ControlHandedness.RIGHT_HANDED) {
                 flightControls.springThrottleBack()
                 screenOverlay.throttle.update()
             }
         }
-
-        flightControls.isShiftHeld =
-            if (flightControls.joystickHandedness == ControlHandedness.RIGHT_HANDED)
-                mDownLB
-            else
-                mDownRB
     }
 }
 
