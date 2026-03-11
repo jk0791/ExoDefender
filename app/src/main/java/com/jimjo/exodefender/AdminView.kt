@@ -10,12 +10,14 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.Switch
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.core.content.edit
 import com.jimjo.exodefender.ServerConfig.getHostServer
 
@@ -31,8 +33,6 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
     private var replayActivityButton: Button
     private var downloadFlightLogButton: Button
     val networkProgress: ProgressBar
-
-    val closeButton: Button
 
     var loadingView = false
 
@@ -240,9 +240,7 @@ class AdminView(context: Context, attrs: AttributeSet? = null) :
         }
 
 
-        closeButton = this.findViewById<Button>(R.id.closeAdminButton).apply {
-            setOnClickListener({ mainActivity.closeAdminView() })
-        }
+        this.findViewById<ImageView>(R.id.closeAdminButton).setOnClickListener({ mainActivity.closeAdminView() })
     }
 
     fun load() {
