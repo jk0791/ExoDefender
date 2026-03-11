@@ -13,8 +13,8 @@ class LevelPrologueView(context: Context, attrs: AttributeSet? = null) :
 
     object LevelIds {
         const val DEFEND_PREAMBLE = 298
-        const val LANDING_TRAINING = 278
-        const val EVAC_PREAMBLE = 278
+        const val LANDING_TRAINING = 318
+        const val EVAC_PREAMBLE = 318
 
         private val APPLICABLE = setOf(
             DEFEND_PREAMBLE,

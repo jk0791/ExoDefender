@@ -225,6 +225,8 @@ class MissionSummaryView @JvmOverloads constructor(
             txtFailureReason.text = when (flightLog.completionOutcome) {
                 CompletionOutcome.FAILED_DESTROYED -> "Ship destroyed"
                 CompletionOutcome.FAILED_ZERO_FRIENDLIES -> "All friendlies lost"
+                CompletionOutcome.FAILED_STRUCTURE_DESTROYED -> "Structure destroyed"
+                CompletionOutcome.FAILED_CIVILIANS_NOT_RESCUED -> "Civilians lost"
                 else -> "Mission failed"
             }
 
