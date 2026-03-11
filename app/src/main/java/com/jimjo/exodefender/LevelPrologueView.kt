@@ -32,14 +32,6 @@ class LevelPrologueView(context: Context, attrs: AttributeSet? = null) :
 
     lateinit var requestedLevel: Level
 
-//    val DEFEND_PREAMBLE_LEVEL_ID = 267
-//    val LANDING_TRAINING_LEVEL_ID = 278
-//
-//    val applicableLevelIds = mutableListOf(
-//        DEFEND_PREAMBLE_LEVEL_ID,
-//        LANDING_TRAINING_LEVEL_ID,
-//    )
-
     init {
 
         inflate(context, R.layout.level_prologue, this)
