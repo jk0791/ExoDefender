@@ -45,7 +45,7 @@ abstract class Actor(
     var drawEditorBounds = false
 
     val position = Vec3()
-    var yawRad = 0.0   // was angleP
+    var yawRad = 0.0
     var pitchRad = 0.0 // was angleE
     var rollRad = 0.0  // was angleB
     var weaponYawRad: Double = 0.0
