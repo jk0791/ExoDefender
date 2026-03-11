@@ -134,10 +134,6 @@ class ShipCollisionSolver {
 
                 val bb = a as? BuildingBlockActor
                 if (bb != null) {
-                    // Broadphase already got us here via bb.instance.worldAabb.
-                    // Narrowphase uses the true yawed box.
-
-
                     val realTopZ = bb.position.z + bb.halfExtents.z
 
                     val insideTopFootprint =
@@ -150,7 +146,15 @@ class ShipCollisionSolver {
                             radiusXY
                         )
 
-                    if (insideTopFootprint && p0z >= realTopZ - 0.05f) {
+                    val shipBottomZ = p0z - radiusZ
+                    val topTolBelow = 0.05f
+                    val topTolAbove = epsilon + 0.05f
+
+                    if (
+                        insideTopFootprint &&
+                        shipBottomZ >= realTopZ - topTolBelow &&
+                        shipBottomZ <= realTopZ + topTolAbove
+                    ) {
                         val t = 0f
                         if (t < bestT) {
                             bestT = t
@@ -326,10 +330,17 @@ class ShipCollisionSolver {
                     // Preserve your "above the true top face = support" behavior
                     if (!horizontalOnly) {
                         val realTopZ = bb.position.z + bb.halfExtents.z
-                        if (pz >= realTopZ - 0.05f) {
+                        val shipBottomZ = pz - radiusZ
+                        val topTolBelow = 0.05f
+                        val topTolAbove = epsilon + 0.05f
+
+                        if (
+                            shipBottomZ >= realTopZ - topTolBelow &&
+                            shipBottomZ <= realTopZ + topTolAbove
+                        ) {
                             val expandedTopZ = realTopZ + radiusZ
                             val dzMax = expandedTopZ - pz
-                            if (dzMax < bestPen) {
+                            if (dzMax >= 0f && dzMax < bestPen) {
                                 bestPen = dzMax
                                 nx = 0f
                                 ny = 0f
