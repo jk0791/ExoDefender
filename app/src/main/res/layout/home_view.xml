@@ -84,28 +84,6 @@
 
             <TableRow
                 android:layout_width="match_parent"
-                android:layout_height="50dp">
-
-                <Button
-                    android:id="@+id/btnCommunity"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:textSize="40dp"
-                    android:textAlignment="center"
-                    style="@style/DefaultBorderlessButton"
-                    android:enabled="false"
-                    android:text = "Community" />
-
-                <Space
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1" />
-
-            </TableRow>
-
-            <TableRow
-                android:layout_width="match_parent"
                 android:layout_height="60dp">
 
                 <Button
@@ -123,6 +101,29 @@
                     android:layout_height="match_parent"
                     android:layout_weight="1" />
             </TableRow>
+
+            <TableRow
+                android:layout_width="match_parent"
+                android:layout_height="50dp">
+
+                <Button
+                    android:id="@+id/btnCommunity"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:textSize="40dp"
+                    android:textAlignment="center"
+                    style="@style/DefaultBorderlessButton"
+                    android:text = "Community" />
+
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1" />
+
+            </TableRow>
+
+
 
         </TableLayout>
 

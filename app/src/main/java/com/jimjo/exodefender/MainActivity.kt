@@ -56,6 +56,7 @@ enum class Feature {
     ADMIN,
     LEVEL_TESTING,
     LEVEL_BUILDER,
+    MANUAL,
     UNKNOWN,
 }
 
@@ -101,6 +102,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
     lateinit var storyView: StoryView
     lateinit var replayManager: ReplayManager
     lateinit var trainingView: TrainingView
+    lateinit var manualsView: ManualsView
+    lateinit var communityView: CommunityView
     lateinit var levelEditorView: LevelEditorView
     lateinit var levelBuilderToolbar: LevelEditorToolbarView
     lateinit var levelEditorMetadataView: LevelEditorMetadataView
@@ -238,6 +241,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         storyView = findViewById(R.id.storyView)
         replayManager = findViewById(R.id.replayManager)
         trainingView = findViewById(R.id.trainingView)
+        manualsView = findViewById(R.id.manualsView)
+        manualsView.visibility = GONE
+        communityView = findViewById(R.id.communityView)
+        communityView.visibility = GONE
         trainingOutcomeView = findViewById(R.id.trainingOutcomeView)
         trainingOutcomeView.visibility = GONE
         levelPrologueView = findViewById(R.id.levelPrologueView)
@@ -299,7 +306,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         levelEditorView.applySystemBarInsets(true, false, true, true)
         adminLogView.applySystemBarInsets(true, false, true, false)
         levelEditorMetadataView.applySystemBarInsets(true, false, true, true)
-
 
         onBackPressedDispatcher.addCallback(onBackPressedCallback)
 
@@ -1068,6 +1074,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         setPauseGame(false)
     }
 
+    fun showManual(pageType: MANUAL_PAGE) {
+        manualsView.load(pageType)
+        manualsView.visibility = VISIBLE
+        manualsView.bringToFront()
+        setCurrentFeature(Feature.MANUAL)
+    }
+
     fun showAdminView() {
         adminView.load()
         adminView.visibility = VISIBLE
@@ -1209,6 +1222,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         settingsView.visibility = GONE
         trainingOutcomeView.visibility = GONE
         trainingView.visibility = INVISIBLE
+        manualsView.visibility = INVISIBLE
+        communityView.visibility = GONE
         levelsView.visibility = INVISIBLE
         screenOverlay.visibility = GONE
         homeView.visibility = INVISIBLE
@@ -1355,6 +1370,7 @@ class OnBackPressedCallback(val mainActivity: MainActivity):  OnBackPressedCallb
                     mainActivity.showHomeView()
                 }
             }
+            Feature.MANUAL -> mainActivity.showTrainingView()
             Feature.ADMIN -> mainActivity.closeAdminView()
             Feature.ADMIN_LEVELS -> mainActivity.closeLevelEditorView()
             else -> {}

@@ -34,6 +34,14 @@ class TrainingView(context: Context, attrs: AttributeSet? = null) :
                 mainActivity.openLevelByGlobalIndex(Level.LevelType.TRAINING, 2, false)
             }
         }
+
+        findViewById<Button>(R.id.btnManualsBasic).setOnClickListener {
+            mainActivity.showManual(MANUAL_PAGE.BASIC)
+        }
+
+        findViewById<Button>(R.id.btnManualsAdvanced).setOnClickListener {
+            mainActivity.showManual(MANUAL_PAGE.ADVANCED)
+        }
     }
 
     fun load() {

@@ -79,6 +79,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
+            <com.jimjo.exodefender.CommunityView
+                android:id="@+id/communityView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <com.jimjo.exodefender.ManualsView
+                android:id="@+id/manualsView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
 
             <com.jimjo.exodefender.LevelsView
                 android:id="@+id/levelsView"

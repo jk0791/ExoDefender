@@ -15,7 +15,7 @@
 
 
     <TextView
-        android:id="@+id/trainingHeading"
+        android:id="@+id/communityHeading"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         app:layout_constraintTop_toTopOf="parent"
@@ -33,7 +33,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:orientation="vertical"
-        app:layout_constraintTop_toBottomOf="@+id/trainingHeading"
+        app:layout_constraintTop_toBottomOf="@+id/communityHeading"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -94,7 +94,6 @@
                 android:layout_height="50dp"
                 android:textSize="40dp"
                 android:textAlignment="center"
-                android:enabled="false"
                 style="@style/DefaultBorderlessButton"
                 android:text = "Basic" />
 
@@ -104,7 +103,6 @@
                 android:layout_height="50dp"
                 android:textSize="40dp"
                 android:textAlignment="center"
-                android:enabled="false"
                 style="@style/DefaultBorderlessButton"
                 android:text = "Advanced" />
 

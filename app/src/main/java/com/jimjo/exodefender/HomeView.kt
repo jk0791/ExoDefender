@@ -28,6 +28,11 @@ class HomeView(context: Context, attrs: AttributeSet? = null) :
         findViewById<Button>(R.id.btnReplays).apply {
             setOnClickListener { mainActivity.showReplayManager(true) }
         }
+        findViewById<Button>(R.id.btnCommunity).setOnClickListener {
+            mainActivity.hideAllViews()
+            mainActivity.communityView.visibility = VISIBLE
+            mainActivity.communityView.bringToFront()
+        }
 
     }
 

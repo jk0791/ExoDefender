@@ -188,9 +188,6 @@ class Networker(receiver: NetworkResponseReceiver? = null, var hostServer: Strin
     private var connection: HttpURLConnection? = null
     private val handler: NetworkHandler? =
         receiver?.let { NetworkHandler(Looper.getMainLooper(), it) }
-//    private var hostServer = "http://52.249.217.188"
-//    private var hostServer = "http://52.249.217.188:8080"
-//    private var hostServer = "http://192.168.0.15:7139"
 
     private val scoresPath = "api/scores"
     private val userPath = "api/user"
