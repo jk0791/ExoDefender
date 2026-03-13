@@ -235,9 +235,9 @@
                     android:textSize="30dp" />
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="50dp"
-                    android:layout_marginLeft="10dp"
+                    android:layout_marginHorizontal="10dp"
                     android:orientation="horizontal">
 
                     <ImageView
@@ -249,9 +249,10 @@
                     <SeekBar
                         android:id="@+id/tranSensitivitySeekbar"
                         style="@style/Widget.AppCompat.SeekBar.Discrete"
-                        android:layout_width="350dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
+                        android:layout_weight="1"
                         android:max="9"
                         android:min="1"
                         android:progress="5"
@@ -274,9 +275,9 @@
                 </LinearLayout>
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="50dp"
-                    android:layout_marginLeft="10dp"
+                    android:layout_marginHorizontal="10dp"
                     android:orientation="horizontal">
 
                     <ImageView
@@ -288,9 +289,10 @@
                     <SeekBar
                         android:id="@+id/rotSensitivitySeekbar"
                         style="@style/Widget.AppCompat.SeekBar.Discrete"
-                        android:layout_width="350dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
+                        android:layout_weight="1"
                         android:max="9"
                         android:min="1"
                         android:progress="5"
