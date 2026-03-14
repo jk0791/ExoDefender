@@ -76,7 +76,7 @@ class ScoreBreakdownPopupView @JvmOverloads constructor(
             else -> null
         }
 
-        addRow("Base", fmtInt(base), detail = baseDetails)
+        addRow("Base Score", fmtInt(base), detail = baseDetails)
 
         // CAS/DEFEND only: show if applicable (non-null), even if 0
         friendliesBonus?.let {

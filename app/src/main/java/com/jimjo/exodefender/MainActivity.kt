@@ -678,26 +678,20 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         return false
     }
 
-    fun replayLastFlight(fromLevelsView: Boolean) {
-        val flightLog = flightLogManager.readLastFlightLogFile()
-
-        // DEBUG: unncomment to debug mission summary
-//        currentLevel = levelManager.levelIdLookup[57]!!
-//        showMissionSummaryAfterMission(flightLog!!, false)
-//        return
-
+    fun replayBestFlight(levelId: Int) {
+        val flightLog = flightLogManager.readBestSuccessfulLog(levelId)
         if (flightLog != null) {
-            val replayLevel = levelManager.levelIdLookup[flightLog.levelId]
+            replayFlightLog(flightLog, "Best flight (from level summary)")
+        }
+        else {
+            adminLogView.printout("ERROR: No such flight log found")
+        }
+    }
 
-            if (replayLevel != null) {
-                replayLevel.reset()
-                currentLevel = replayLevel
-                openLevel(currentLevel!!, true, flightLog, null, false, false)
-
-                if (fromLevelsView && globalSettings.logReplayStarted) {
-                    logMiscActivity(ActivityCode.REPLAY_STARTED, flightLog.levelId, "Last flight")
-                }
-            }
+    fun replayLastFlight(replayContext: String) {
+        val flightLog = flightLogManager.readLastFlightLogFile()
+        if (flightLog != null) {
+            replayFlightLog(flightLog, replayContext)
         }
         else {
             adminLogView.printout("ERROR: No such flight log found")
@@ -707,19 +701,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
     fun replaySavedFlightLog(filename: String) {
         showReplayManager(false)
         val flightLog = flightLogManager.readSavedReplayFlightLogFile(filename)
-
         if (flightLog != null) {
-            val replayLevel = levelManager.levelIdLookup[flightLog.levelId]
-
-            if (replayLevel != null) {
-                replayLevel.reset()
-                currentLevel = replayLevel // Level(-1, null, Level.LevelType.MISSION, -1, -1, replayLevel.world)
-                openLevel(currentLevel!!, true, flightLog, filename, false, false)
-
-                if (globalSettings.logReplayStarted) {
-                    logMiscActivity(ActivityCode.REPLAY_STARTED, flightLog.levelId, "Saved replay")
-                }
-            }
+            replayFlightLog(flightLog, "Saved replay", filename)
         }
         else {
             adminLogView.printout("ERROR: No such flight log found")
@@ -727,18 +710,28 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
     }
 
     fun replayDownloadedFlightLog(flightLog: FlightLog, callSign: String?, admin: Boolean) {
+        if (levelManager.levelIdLookup.contains(flightLog.levelId)) {
+            replayFlightLog(flightLog, "Downloaded replay")
+        }
+        else {
+            adminLogView.printout("ERROR: Level id ${flightLog.levelId} in downloaded log file does not exist on this device")
+        }
+    }
+
+    fun replayFlightLog(flightLog: FlightLog, replayContext: String, savedFlightLogFilename: String? = null, ) {
         val replayLevel = levelManager.levelIdLookup[flightLog.levelId]
 
         if (replayLevel != null) {
             replayLevel.reset()
             currentLevel = replayLevel // Level(-1, null, Level.LevelType.MISSION, -1, -1, replayLevel.world)
-            openLevel(currentLevel!!, true, flightLog, null, false, true)
+            openLevel(currentLevel!!, true, flightLog, savedFlightLogFilename, false, false)
 
-            if (!admin && globalSettings.logReplayStarted) {
-                logMiscActivity(ActivityCode.REPLAY_STARTED, flightLog.levelId, "Downloaded replay")
+            if (globalSettings.logReplayStarted) {
+                logMiscActivity(ActivityCode.REPLAY_STARTED, flightLog.levelId, replayContext)
             }
         }
     }
+
 
     fun unloadGLView() {
         if (gLView != null) {

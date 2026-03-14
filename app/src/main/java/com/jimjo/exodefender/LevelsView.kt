@@ -67,9 +67,9 @@ class LevelsView(context: Context, attrs: AttributeSet? = null) :
         val lastFlightButton: ImageView = findViewById(R.id.btnLastFlight)
         lastFlightButton.setOnClickListener({
             if (mainActivity.globalSettings.logReplayStarted) {
-                mainActivity.logMiscActivity(ActivityCode.REPLAY_STARTED, null, "From levels view")
+                mainActivity.logMiscActivity(ActivityCode.REPLAY_STARTED, null, "Last flight (from home/levels)")
             }
-            mainActivity.replayLastFlight(true)
+            mainActivity.replayLastFlight("From home/levels")
         })
 
         nextCampaign = findViewById(R.id.nextCampaign)

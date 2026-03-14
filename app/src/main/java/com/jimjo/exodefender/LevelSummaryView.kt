@@ -414,7 +414,6 @@ class MissionSummaryView @JvmOverloads constructor(
 
     fun replayRequested() {
 
-
         if (replayMode) {
             mainActivity.resetGame()
             visibility = GONE
@@ -422,40 +421,21 @@ class MissionSummaryView @JvmOverloads constructor(
         }
 
         if (currentModel.mode == LevelSummaryMode.AFTER_LEVEL) {
-            if (mainActivity.globalSettings.logReplayStarted) {
-                val data: String
-                if (currentFlightLog == null) {
-                    data = ""
-                } else if (currentFlightLog?.completionOutcome == CompletionOutcome.SUCCESS) {
-                    data = "On level end (SUCCESS)"
-                } else {
-                    data = "On level end (FAIL)"
-                }
-                mainActivity.logMiscActivity(
-                    ActivityCode.REPLAY_STARTED,
-                    currentModel.levelId,
-                    data
-                )
+
+            val replayContext: String
+            if (currentFlightLog == null) {
+                replayContext = ""
+            } else if (currentFlightLog?.completionOutcome == CompletionOutcome.SUCCESS) {
+                replayContext = "Last flight (after level success)"
+            } else {
+                replayContext = "Last flight (after level fail)"
             }
-            mainActivity.replayLastFlight(false)
+            mainActivity.replayLastFlight(replayContext)
         }
         else {
 
-
-            if (mainActivity.globalSettings.logReplayStarted) {
-                mainActivity.logMiscActivity(
-                    ActivityCode.REPLAY_STARTED,
-                    currentModel.levelId,
-                    "Before level starts"
-                )
-            }
-
-            // TODO FIX load appropriate replay instead (e.g. best)
-            mainActivity.replayLastFlight(false)
-
+            mainActivity.replayBestFlight(currentModel.levelId)
         }
-
-
     }
 
     private fun setStatsVisible(visible: Boolean) {
