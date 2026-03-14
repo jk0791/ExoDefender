@@ -4,14 +4,12 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.res.Configuration
-import android.graphics.Color
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.Message
-import android.os.SystemClock.sleep
 import android.view.Surface
 import kotlin.math.atan2
 import android.view.View
@@ -642,7 +640,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
             isLastMilkrun = false,
             score = null,
             previousBestLog = bestLog,
-            previousBestScore = null
+            previousBestScore = null,
+            mode = LevelSummaryMode.BEFORE_LEVEL,
         )
 
         levelSummaryView.loadBestRunBeforeStart(model)
@@ -679,7 +678,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         return false
     }
 
-    fun replayLastFlight() {
+    fun replayLastFlight(fromLevelsView: Boolean) {
         val flightLog = flightLogManager.readLastFlightLogFile()
 
         // DEBUG: unncomment to debug mission summary
@@ -692,10 +691,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
 
             if (replayLevel != null) {
                 replayLevel.reset()
-                currentLevel = replayLevel // Level(-1, null, Level.LevelType.MISSION, -1, -1, replayLevel.world)
+                currentLevel = replayLevel
                 openLevel(currentLevel!!, true, flightLog, null, false, false)
 
-                if (globalSettings.logReplayStarted) {
+                if (fromLevelsView && globalSettings.logReplayStarted) {
                     logMiscActivity(ActivityCode.REPLAY_STARTED, flightLog.levelId, "Last flight")
                 }
             }
@@ -911,7 +910,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         storyView.visibility = VISIBLE
         storyView.bringToFront()
 
-        if (playIntro && globalSettings.logStoryViewed) {
+        if (!playIntro && globalSettings.logStoryViewed) {
             logMiscActivity(ActivityCode.STORY_VIEWED, null, "")
         }
 
@@ -1079,6 +1078,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         manualsView.visibility = VISIBLE
         manualsView.bringToFront()
         setCurrentFeature(Feature.MANUAL)
+        logMiscActivity(ActivityCode.MANUAL_VIEWED, null, pageType.toString())
     }
 
     fun showAdminView() {
@@ -1387,8 +1387,8 @@ enum class ActivityCode(val value: Int) {
     REPLAY_STARTED(3),
     CAMERA_TRACK_CREATED(4),
     APP_REVIEW_REQUESTED(5),
+    MANUAL_VIEWED(6),
     PLAYER_RANKING_REQUESTED(7),
-    NOTICEBOARD_REQUESTED(8),
     STORY_VIEWED(10),
     APP_VERSION_CHANGE(11),
     PLATFORM_CHANGE(12),

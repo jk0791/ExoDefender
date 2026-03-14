@@ -123,7 +123,8 @@ class LevelCompletionManager(context: Context): NetworkResponseReceiver {
                 isLastMilkrun = level == mainActivity.levelManager.milkruns.lastOrNull(),
                 score = scoreBreakdown,
                 previousBestScore = previousBestScore,
-                previousBestLog = bestLog
+                previousBestLog = bestLog,
+                mode = LevelSummaryMode.AFTER_LEVEL,
             )
 
             mainActivity.showMissionSummaryAfterMission(flightLog, replayMode, model)

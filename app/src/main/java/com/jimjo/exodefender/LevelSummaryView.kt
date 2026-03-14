@@ -13,7 +13,7 @@ import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.jimjo.exodefender.ServerConfig.getHostServer
 
-
+enum class LevelSummaryMode {BEFORE_LEVEL, AFTER_LEVEL}
 data class LevelSummaryModel(
     val levelId: Int,
     val levelTitle: String,        // "A3-5: Phantasm"
@@ -23,7 +23,8 @@ data class LevelSummaryModel(
     val isLastMilkrun: Boolean,
     val score: ScoreCalculatorV1.Breakdown?,             // null if level failed
     val previousBestScore: Int?,           // null if never completed successfully
-    val previousBestLog: FlightLog?        // optional: for VIEW_BEST_RUN screen
+    val previousBestLog: FlightLog?,        // optional: for VIEW_BEST_RUN screen
+    val mode: LevelSummaryMode,
 )
 
 class MissionSummaryView @JvmOverloads constructor(
@@ -152,10 +153,10 @@ class MissionSummaryView @JvmOverloads constructor(
             getPlayerRankings()
         }
 
-        // watch replay hook (this is just a label in your mockups)
+        // watch replay hook
         btnWatchReplay.setOnClickListener {
-            if (replayMode) mainActivity.resetGame() else mainActivity.replayLastFlight()
-            visibility = GONE
+
+            replayRequested()
         }
     }
 
@@ -406,8 +407,55 @@ class MissionSummaryView @JvmOverloads constructor(
 
     fun showPlayerRankings(response: Networker.MissionRankingsResponse) {
         mainActivity.adminLogView.printout("Retrieving user rankings levelid ${response.levelId}")
+        mainActivity.logMiscActivity(ActivityCode.PLAYER_RANKING_REQUESTED, response.levelId, "")
         val model = PlayerRankingsView.Model(currentModel.levelTitle, response, 10)
         playerRankingsView.show(model)
+    }
+
+    fun replayRequested() {
+
+
+        if (replayMode) {
+            mainActivity.resetGame()
+            visibility = GONE
+            return
+        }
+
+        if (currentModel.mode == LevelSummaryMode.AFTER_LEVEL) {
+            if (mainActivity.globalSettings.logReplayStarted) {
+                val data: String
+                if (currentFlightLog == null) {
+                    data = ""
+                } else if (currentFlightLog?.completionOutcome == CompletionOutcome.SUCCESS) {
+                    data = "On level end (SUCCESS)"
+                } else {
+                    data = "On level end (FAIL)"
+                }
+                mainActivity.logMiscActivity(
+                    ActivityCode.REPLAY_STARTED,
+                    currentModel.levelId,
+                    data
+                )
+            }
+            mainActivity.replayLastFlight(false)
+        }
+        else {
+
+
+            if (mainActivity.globalSettings.logReplayStarted) {
+                mainActivity.logMiscActivity(
+                    ActivityCode.REPLAY_STARTED,
+                    currentModel.levelId,
+                    "Before level starts"
+                )
+            }
+
+            // TODO FIX load appropriate replay instead (e.g. best)
+            mainActivity.replayLastFlight(false)
+
+        }
+
+
     }
 
     private fun setStatsVisible(visible: Boolean) {
