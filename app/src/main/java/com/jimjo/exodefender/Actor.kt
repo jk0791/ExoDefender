@@ -74,7 +74,9 @@ abstract class Actor(
     open val maxHitPoints = 0
     var hitPoints = maxHitPoints
     open val enableLogging: Boolean = true
+    open val firingSupported = true
     var firingEnabled = true
+
 
     var firing = 0
     var closeToShip = false
@@ -739,6 +741,7 @@ class GroundTrainingTargetActor(
     override val continuous = false
     override val maxHitPoints = 1
     override val qInterval = 400
+    override val firingSupported = false
 
     init {
         firingEnabled = false

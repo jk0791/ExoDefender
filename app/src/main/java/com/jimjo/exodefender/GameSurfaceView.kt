@@ -48,7 +48,9 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
     private var mDeltaTouchVertRB = 0f
 
     private var screenCenterX = 0
-    private var verticalDivider = 0
+    private var verticalDividerDepth = 0
+    private var verticalDividerL = 0
+    private var verticalDividerR = 0
 
     private  var mPointerLB = -1
     private  var mPointerLT = -1
@@ -80,7 +82,15 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         setRenderer(renderer)
     }
 
-    fun initialize(screenOverlay: ScreenOverlay, modelManager: ModelManager, level: Level, flightLog: FlightLog, savedFlightLogFilename: String?, levelBuilderMode: Boolean, downloadedReplay: Boolean) {
+    fun initialize(
+        screenOverlay: ScreenOverlay,
+        modelManager: ModelManager,
+        level: Level,
+        flightLog: FlightLog,
+        savedFlightLogFilename: String?,
+        levelBuilderMode: Boolean,
+        downloadedReplay: Boolean
+    ) {
         this.screenOverlay = screenOverlay
         handler = CustomHandler(Looper.getMainLooper(), this)
         this.level = level
@@ -110,7 +120,9 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         super.onLayout(changed, left, top, right, bottom)
         if (!ranOnce) {
             screenCenterX = this.width / 2
-            verticalDivider = (this.height * 0.7f).toInt()
+            verticalDividerDepth = (this.height * 0.7f).toInt()
+            verticalDividerL = this.height
+            verticalDividerR = verticalDividerDepth
 
             val preferences = mainActivity.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
             updateTranSensitivity(preferences.getInt(mainActivity.TRAN_SENSITIVITY_SETTING, 5))
@@ -186,6 +198,17 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         handler.sendMessage(msg)
     }
 
+    fun updateVertDividers() {
+        if (flightControls.throttleHandedness == ControlHandedness.RIGHT_HANDED) {
+            verticalDividerL = this.height
+            verticalDividerR = verticalDividerDepth
+        }
+        else { // LEFT
+            verticalDividerL = verticalDividerDepth
+            verticalDividerR = this.height
+        }
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
 
         when (event.actionMasked) {
@@ -208,8 +231,10 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         val x = MotionEventCompat.getX(event, event.actionIndex)
         val y = MotionEventCompat.getY(event, event.actionIndex)
 
+        updateVertDividers()
+
         if (x < screenCenterX) {
-            if (y < verticalDivider) {
+            if (y < verticalDividerL) {
                 mStartTouchXLT = x
                 mStartTouchYLT = y
                 mDownLT = true
@@ -222,7 +247,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             }
         }
         else {
-            if (y < verticalDivider) {
+            if (y < verticalDividerR) {
                 mStartTouchXRT = x
                 mStartTouchYRT = y
                 mDownRT = true
@@ -254,7 +279,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
 
         fun calcTouchDeltas(x: Float, y: Float) {
             if (x < screenCenterX) {
-                if (y < verticalDivider && mDownLT) {
+                if (y < verticalDividerL && mDownLT) {
                     mDeltaTouchHorzLT = x - mStartTouchXLT
                     mDeltaTouchVertLT = y - mStartTouchYLT
                 }
@@ -264,7 +289,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
                 }
             }
             else {
-                if (y < verticalDivider) {
+                if (y < verticalDividerR) {
                     mDeltaTouchHorzRT = x - mStartTouchXRT
                     mDeltaTouchVertRT = y - mStartTouchYRT
                 }
@@ -280,6 +305,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         if (event.pointerCount == 2) calcTouchDeltas(event.getX(1), event.getY(1))
         if (event.pointerCount == 3) calcTouchDeltas(event.getX(2), event.getY(2))
 
+        val tranDown: Boolean
         val tranHorzDeflection: Float
         val tranVertDeflection: Float
         val rotHorzDeflection: Float
@@ -287,6 +313,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         val firingDown: Boolean
 
         if (flightControls.joystickHandedness == ControlHandedness.RIGHT_HANDED) {
+            tranDown = mDownLT
             tranHorzDeflection = mDeltaTouchHorzLT
             tranVertDeflection = mDeltaTouchVertLT
             rotHorzDeflection = mDeltaTouchHorzRT
@@ -294,24 +321,22 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             firingDown = mDownRT
         }
         else {  // ControlHandedness.LEFT_HANDED
+            tranDown = mDownRT
             tranHorzDeflection = mDeltaTouchHorzRT
             tranVertDeflection = mDeltaTouchVertRT
-                rotHorzDeflection = mDeltaTouchHorzLT
+            rotHorzDeflection = mDeltaTouchHorzLT
             rotVertDeflection = mDeltaTouchVertLT
             firingDown = mDownLT
         }
 
-        val tranDown: Boolean
         val throttleDeflection: Float
         val throttleDown: Boolean
 
         if (flightControls.throttleHandedness == ControlHandedness.RIGHT_HANDED) {
-            tranDown = mDownLT
             throttleDeflection = mDeltaTouchHorzRB
             throttleDown = mDownRB
         }
         else {  // ControlHandedness.LEFT_HANDED
-            tranDown = mDownRT
             throttleDeflection = mDeltaTouchHorzLB
             throttleDown = mDownLB
         }

@@ -391,7 +391,7 @@ class ShipActor(
         else {
 
             // friction on idle power and on surface (1f no friction, 0.95f or higher is required if using it)
-            friction = 0.992f // 0.99f
+            friction = 0.982f // 0.99f
 
         }
 

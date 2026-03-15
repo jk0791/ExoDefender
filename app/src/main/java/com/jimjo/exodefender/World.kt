@@ -124,9 +124,6 @@ class World(val mapId: Int) {
             actor.reset()
             actor.actorIndex = i
 
-            // DEBUG:  Uncomment to disable all actor firing
-            // actor.firingEnabled = false
-
             when (actor) {
                 is FriendlyActor -> friendlyActors.add(actor)
                 is EnemyActor -> enemyActors.add(actor)
@@ -141,6 +138,17 @@ class World(val mapId: Int) {
         rebuildEnemyGrid()
         rebuildFriendlyGrid()
         proximity.build(actors)
+
+        setActorFiring(true, true)
+    }
+
+    fun setActorFiring(enemiesFiring: Boolean, friendliesFiring: Boolean) {
+        for (actor in actors) {
+            when (actor) {
+                is FriendlyActor -> actor.firingEnabled = friendliesFiring && actor.firingSupported
+                is EnemyActor -> actor.firingEnabled = enemiesFiring && actor.firingSupported
+            }
+        }
     }
 
     fun resetVisualsForLevelStart() {

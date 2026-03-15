@@ -67,8 +67,9 @@ class JoystickDisplay(context: Context, attrs: AttributeSet?=null) :
                     postInvalidate()
                 }
             }
+            return true
         }
-        return true
+        return false
     }
 
     fun initialize(parent: ScreenOverlay, defaultAlpha: Float, activeAlpha: Float, brightenOnUpdate: Boolean, clickable: Boolean) {
