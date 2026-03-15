@@ -1,11 +1,15 @@
 package com.jimjo.exodefender
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.opengl.GLSurfaceView
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
 import android.view.MotionEvent
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.MotionEventCompat
 import kotlin.math.min
 
@@ -47,10 +51,10 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
     private var mDeltaTouchHorzRB = 0f
     private var mDeltaTouchVertRB = 0f
 
-    private var screenCenterX = 0
+    var screenCenterX = 0
     private var verticalDividerDepth = 0
-    private var verticalDividerL = 0
-    private var verticalDividerR = 0
+    var verticalDividerL = 0
+    var verticalDividerR = 0
 
     private  var mPointerLB = -1
     private  var mPointerLT = -1
@@ -72,6 +76,8 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
     private var mDownRB = false
 
     private var startThrottle = 0f
+
+
 
     init {
         // Create an OpenGL ES 2.0 context
@@ -129,7 +135,6 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
             maxThrottleControlDeflection = (mainActivity.densityDpi * 0.8f).toInt()
             ranOnce = true
         }
-
     }
 
     override fun onRendererReady() {
@@ -197,6 +202,7 @@ class GameSurfaceView(context: Context) : GLSurfaceView(context), OnRendererRead
         }
         handler.sendMessage(msg)
     }
+
 
     fun updateVertDividers() {
         if (flightControls.throttleHandedness == ControlHandedness.RIGHT_HANDED) {

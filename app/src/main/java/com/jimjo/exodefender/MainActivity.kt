@@ -816,9 +816,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener, NetworkResponseRe
         // Roll-like angle (rotation around device X-ish axis, using Y vs Z)
         val rollRad = atan2(gy, gz)
 
+        // set pitch neutral if requested
         if (gLView!!.flightControls.setDeviceNeutral) {
             neutralPitchRad = pitchRad
-            neutralRollRad = rollRad
             gLView!!.flightControls.setDeviceNeutral = false
         }
 

@@ -2,6 +2,8 @@ package com.jimjo.exodefender
 
 import android.content.Context
 import android.content.res.Resources
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.os.Message
 import android.util.AttributeSet
 import android.view.ViewTreeObserver
@@ -15,6 +17,8 @@ import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.constraintlayout.widget.ConstraintSet
 
 
@@ -99,6 +103,8 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
 
     var lastClickedEvent: CameraEvent? = null
     var lastClickedSide: MarkerClickSide? = null
+
+    private val debugPaint = Paint()
 
     init {
         overlayRoot = LayoutInflater.from(context)
@@ -245,6 +251,14 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
         screenAnnotations.visibility = GONE
 
         markerOverlay = findViewById(R.id.markerOverlay)
+
+        debugPaint.apply {
+            strokeWidth = 3f
+            color = Color.Red.toArgb()
+            style = Paint.Style.STROKE
+        }
+
+        setWillNotDraw(false)
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
@@ -263,7 +277,6 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
                 }
             }
         )
-
     }
 
 
@@ -368,6 +381,16 @@ class ScreenOverlay(context: Context, attrs: AttributeSet? = null) :
             levelBuilderToolbarButton.visibility = GONE
         }
     }
+
+
+    // uncomment to show touch regions
+//    override fun onDraw(canvas: Canvas) {
+//        super.onDraw(canvas)
+//        canvas.drawLine(gLView.screenCenterX.toFloat(), 0f, gLView.screenCenterX.toFloat(), this.width.toFloat(), debugPaint)
+//        canvas.drawLine(0f, gLView.verticalDividerL.toFloat(), gLView.screenCenterX.toFloat(), gLView.verticalDividerL.toFloat(), debugPaint)
+//        canvas.drawLine(gLView.screenCenterX.toFloat(), gLView.verticalDividerR.toFloat(), this.width.toFloat(), gLView.verticalDividerR.toFloat(), debugPaint)
+//    }
+
 
     fun showGameHUD(show: Boolean) {
         val visibility = if (show) VISIBLE else INVISIBLE
